@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block content %}
+<article class="prose max-w-3xl">
+  <h1 class="text-3xl font-bold mb-4">{% trans "About OpenMobility OS" %}</h1>
+
+  <p class="text-slate-700">
+    {% trans "OpenMobility OS is an open, free, self-hostable platform for the mobility transition. It is not a consumer routing tool — it is a decision, prioritization, and transparency platform for municipalities, city planners, local politics, NGOs, journalists, and citizens." %}
+  </p>
+
+  <h2 class="text-xl font-semibold mt-8 mb-2">{% trans "Deployment modes" %}</h2>
+  <ul class="text-slate-700 space-y-1">
+    <li><strong>public-demo</strong> — {% trans "landing page lists all workspaces" %}</li>
+    <li><strong>single-city</strong> — {% trans "one municipality; landing redirects to that workspace" %}</li>
+    <li><strong>multi-city</strong> — {% trans "county, region, or state; one installation hosts many workspaces" %}</li>
+  </ul>
+
+  <h2 class="text-xl font-semibold mt-8 mb-2">{% trans "Self-hosting" %}</h2>
+  <pre class="bg-slate-900 text-slate-100 rounded p-4 text-sm overflow-x-auto">git clone https://github.com/richardkfm/openmobility-os.git
+cd openmobility-os
+cp .env.example .env
+# edit .env — set SECRET_KEY and ADMIN_TOKEN
+docker compose up --build</pre>
+
+  <h2 class="text-xl font-semibold mt-8 mb-2">{% trans "Current version" %}</h2>
+  <p class="text-slate-700">
+    <code class="bg-slate-100 rounded px-2 py-0.5">v{{ platform_version }}</code> · {% trans "Deployment mode:" %}
+    <code class="bg-slate-100 rounded px-2 py-0.5">{{ deployment_mode }}</code>
+  </p>
+
+  <h2 class="text-xl font-semibold mt-8 mb-2">{% trans "Principles" %}</h2>
+  <ul class="text-slate-700 space-y-1">
+    <li>{% trans "City-agnostic — Leipzig is just a demo." %}</li>
+    <li>{% trans "API-first and connector-based." %}</li>
+    <li>{% trans "Transparent scoring — every value traceable to its source." %}</li>
+    <li>{% trans "Self-hosting first — Docker Compose is the entry point." %}</li>
+    <li>{% trans "Open public layer — read access is always free and login-less." %}</li>
+    <li>{% trans "Internationalized from day one." %}</li>
+  </ul>
+</article>
+{% endblock %}

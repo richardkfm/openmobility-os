@@ -1,0 +1,12 @@
+/*
+ * OpenMobility OS — compiled Tailwind CSS
+ *
+ * In production: generated via `npx tailwindcss -i this-file -o staticfiles/css/tailwind.css`
+ * For development: this file uses the Tailwind CDN (loaded via <link> in base.html) as fallback.
+ * This file is kept minimal to avoid needing a Node build step in Docker.
+ *
+ * Override this with a proper build output in production deployments.
+ */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

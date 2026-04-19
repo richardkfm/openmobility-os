@@ -1,0 +1,62 @@
+{% extends "workspaces/base_workspace.html" %}
+{% load i18n omos_extras %}
+
+{% block content %}
+<div class="flex flex-col gap-6">
+
+  <div class="flex items-center justify-between gap-4">
+    <h1 class="text-2xl font-bold">{% trans "Data hub" %} — {{ workspace.name }}</h1>
+    {% if is_admin %}
+    <a href="{% url 'data_source_add' workspace.slug %}" class="rounded bg-slate-900 text-white px-3 py-2 text-sm hover:bg-slate-700">{% trans "+ Add source" %}</a>
+    {% endif %}
+  </div>
+
+  {% if sources %}
+  <div class="rounded-lg border bg-white divide-y">
+    {% for source in sources %}
+    <div class="p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+      <div class="flex-1">
+        <div class="flex flex-wrap items-center gap-2">
+          <a href="{% url 'data_source_detail' workspace.slug source.pk %}" class="font-medium hover:underline">{{ source.name }}</a>
+          <span class="text-xs rounded px-1.5 py-0.5 bg-slate-100 text-slate-600">{{ source.source_type }}</span>
+          <span class="text-xs rounded px-1.5 py-0.5 bg-slate-100 text-slate-600">{{ source.layer_kind }}</span>
+          <span class="text-xs rounded-full px-2 py-0.5
+            {% if source.status == 'active' %}bg-emerald-100 text-emerald-800
+            {% elif source.status == 'error' %}bg-red-100 text-red-800
+            {% elif source.status == 'pending' %}bg-amber-100 text-amber-800
+            {% else %}bg-slate-100 text-slate-600{% endif %}">
+            {{ status_choices|get_item:source.status|default:source.status }}
+          </span>
+        </div>
+        <div class="text-xs text-slate-400 mt-0.5">
+          {% if source.record_count %}{{ source.record_count }} {% trans "records" %} · {% endif %}
+          {% if source.last_synced_at %}{% trans "Last synced:" %} {{ source.last_synced_at|date:"Y-m-d H:i" }}{% else %}{% trans "Never synced" %}{% endif %}
+          {% if source.attribution %} · {{ source.attribution }}{% endif %}
+        </div>
+        {% if source.error_message %}
+        <p class="mt-1 text-xs text-red-600">{{ source.error_message|truncatewords:20 }}</p>
+        {% endif %}
+      </div>
+      {% if is_admin %}
+      <div class="flex gap-2 shrink-0">
+        <form method="post" action="{% url 'data_source_sync' workspace.slug source.pk %}">
+          {% csrf_token %}
+          <button class="rounded border px-2 py-1 text-xs hover:bg-slate-50">{% trans "Sync" %}</button>
+        </form>
+        <a href="{% url 'data_source_detail' workspace.slug source.pk %}" class="rounded border px-2 py-1 text-xs hover:bg-slate-50">{% trans "Edit" %}</a>
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="rounded-lg border-2 border-dashed bg-white p-10 text-center text-slate-400">
+    {% trans "No data sources yet." %}
+    {% if is_admin %}<br>
+    <a href="{% url 'data_source_add' workspace.slug %}" class="underline mt-2 inline-block">{% trans "Add the first data source" %}</a>
+    {% endif %}
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

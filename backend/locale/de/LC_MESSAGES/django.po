@@ -1,0 +1,1111 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-04-19 16:00+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+#: backend/core/decorators.py:14
+msgid "Admin token required. Set ADMIN_TOKEN in .env and sign in."
+msgstr ""
+
+#: backend/core/views.py:26
+msgid "OpenMobility OS — Open Platform for Municipal Mobility"
+msgstr ""
+
+#: backend/core/views.py:32 backend/templates/core/about.html:6
+msgid "About OpenMobility OS"
+msgstr ""
+
+#: backend/core/views.py:37 backend/templates/core/methodology.html:6
+msgid "Methodology & Transparency"
+msgstr ""
+
+#: backend/datasets/models.py:16
+msgid "CSV (upload or URL)"
+msgstr ""
+
+#: backend/datasets/models.py:17
+msgid "GeoJSON URL"
+msgstr ""
+
+#: backend/datasets/models.py:18
+msgid "OpenStreetMap (Overpass API)"
+msgstr ""
+
+#: backend/datasets/models.py:19
+msgid "Manual KPI entry"
+msgstr ""
+
+#: backend/datasets/models.py:20
+msgid "GTFS static (planned)"
+msgstr ""
+
+#: backend/datasets/models.py:21
+msgid "CKAN open-data portal (planned)"
+msgstr ""
+
+#: backend/datasets/models.py:22
+msgid "WFS geo-service (planned)"
+msgstr ""
+
+#: backend/datasets/models.py:23
+msgid "Generic REST JSON (planned)"
+msgstr ""
+
+#: backend/datasets/models.py:26
+msgid "Streets"
+msgstr ""
+
+#: backend/datasets/models.py:27
+msgid "Streets with speed limits"
+msgstr ""
+
+#: backend/datasets/models.py:28
+msgid "Bike network"
+msgstr ""
+
+#: backend/datasets/models.py:29
+msgid "Transit stops"
+msgstr ""
+
+#: backend/datasets/models.py:30
+msgid "Transit routes"
+msgstr ""
+
+#: backend/datasets/models.py:31
+msgid "Accidents"
+msgstr ""
+
+#: backend/datasets/models.py:32
+msgid "Parking"
+msgstr ""
+
+#: backend/datasets/models.py:33
+msgid "Districts / neighborhoods"
+msgstr ""
+
+#: backend/datasets/models.py:34
+msgid "Schools"
+msgstr ""
+
+#: backend/datasets/models.py:35
+msgid "Air quality stations"
+msgstr ""
+
+#: backend/datasets/models.py:36
+msgid "Land use"
+msgstr ""
+
+#: backend/datasets/models.py:37
+msgid "Tree cadastre"
+msgstr ""
+
+#: backend/datasets/models.py:38
+msgid "Green areas / parks"
+msgstr ""
+
+#: backend/datasets/models.py:39
+msgid "Sealed surfaces"
+msgstr ""
+
+#: backend/datasets/models.py:40
+msgid "Heat / fresh-air corridors"
+msgstr ""
+
+#: backend/datasets/models.py:41
+msgid "Water bodies / retention areas"
+msgstr ""
+
+#: backend/datasets/models.py:42
+msgid "Custom / other"
+msgstr ""
+
+#: backend/datasets/models.py:45 backend/templates/datasets/data_hub.html:33
+msgid "Never synced"
+msgstr ""
+
+#: backend/datasets/models.py:46
+msgid "Sync pending"
+msgstr ""
+
+#: backend/datasets/models.py:47
+msgid "Active"
+msgstr ""
+
+#: backend/datasets/models.py:48
+msgid "Error"
+msgstr ""
+
+#: backend/datasets/views.py:37
+#, python-format
+msgid "Data hub — %(name)s"
+msgstr ""
+
+#: backend/datasets/views.py:59
+msgid "Config must be valid JSON."
+msgstr ""
+
+#: backend/datasets/views.py:72
+#, python-format
+msgid "Data source added: %(n)s"
+msgstr ""
+
+#: backend/datasets/views.py:84
+#: backend/templates/datasets/data_source_add.html:10
+#: backend/templates/datasets/data_source_add.html:13
+#: backend/templates/datasets/data_source_add.html:69
+msgid "Add data source"
+msgstr ""
+
+#: backend/datasets/views.py:145
+msgid "Data source deleted."
+msgstr ""
+
+#: backend/datasets/views.py:198
+#, python-format
+msgid "Synced %(n)d records."
+msgstr ""
+
+#: backend/goals/models.py:12
+msgid "Short identifier, e.g. 'modal_shift_2030'"
+msgstr ""
+
+#: backend/goals/models.py:19
+msgid "e.g. %, km, t CO2"
+msgstr ""
+
+#: backend/measures/models.py:16
+msgid "Bike infrastructure"
+msgstr ""
+
+#: backend/measures/models.py:17
+msgid "Pedestrian / walkability"
+msgstr ""
+
+#: backend/measures/models.py:18
+msgid "Public transit"
+msgstr ""
+
+#: backend/measures/models.py:19
+msgid "Parking management"
+msgstr ""
+
+#: backend/measures/models.py:20
+msgid "Speed / traffic calming"
+msgstr ""
+
+#: backend/measures/models.py:21
+msgid "Accessibility / barrier-free"
+msgstr ""
+
+#: backend/measures/models.py:22
+msgid "School routes"
+msgstr ""
+
+#: backend/measures/models.py:23
+msgid "Mobility hub"
+msgstr ""
+
+#: backend/measures/models.py:24
+msgid "Public space reclamation"
+msgstr ""
+
+#: backend/measures/models.py:25 backend/templates/workspaces/wizard.html:52
+#: backend/workspaces/models.py:24
+msgid "Other"
+msgstr ""
+
+#: backend/measures/models.py:28
+msgid "Quick win"
+msgstr ""
+
+#: backend/measures/models.py:29
+msgid "Medium effort"
+msgstr ""
+
+#: backend/measures/models.py:30
+msgid "Major project"
+msgstr ""
+
+#: backend/measures/models.py:33
+msgid "Proposed"
+msgstr ""
+
+#: backend/measures/models.py:34
+msgid "Planned"
+msgstr ""
+
+#: backend/measures/models.py:35
+msgid "In progress"
+msgstr ""
+
+#: backend/measures/models.py:36
+msgid "Done"
+msgstr ""
+
+#: backend/measures/models.py:37
+msgid "Rejected"
+msgstr ""
+
+#: backend/measures/models.py:72
+msgid "Raw indicators and debug info supporting this measure."
+msgstr ""
+
+#: backend/measures/models.py:103 backend/templates/core/methodology.html:20
+#: backend/templates/workspaces/methodology.html:25
+msgid "Climate impact"
+msgstr ""
+
+#: backend/measures/models.py:104 backend/templates/core/methodology.html:21
+#: backend/templates/workspaces/methodology.html:26
+msgid "Traffic safety"
+msgstr ""
+
+#: backend/measures/models.py:105 backend/templates/core/methodology.html:22
+#: backend/templates/workspaces/methodology.html:27
+msgid "Quality of life"
+msgstr ""
+
+#: backend/measures/models.py:106 backend/templates/core/methodology.html:23
+#: backend/templates/workspaces/methodology.html:28
+msgid "Social equity / accessibility"
+msgstr ""
+
+#: backend/measures/models.py:107 backend/templates/core/methodology.html:24
+#: backend/templates/workspaces/methodology.html:29
+msgid "Feasibility"
+msgstr ""
+
+#: backend/measures/models.py:108 backend/templates/core/methodology.html:25
+#: backend/templates/workspaces/methodology.html:30
+msgid "Cost indicator"
+msgstr ""
+
+#: backend/measures/models.py:109 backend/templates/core/methodology.html:26
+#: backend/templates/workspaces/methodology.html:31
+msgid "Public visibility"
+msgstr ""
+
+#: backend/measures/models.py:110 backend/templates/core/methodology.html:27
+#: backend/templates/workspaces/methodology.html:32
+msgid "Political viability"
+msgstr ""
+
+#: backend/measures/models.py:111 backend/templates/core/methodology.html:28
+#: backend/templates/workspaces/methodology.html:33
+msgid "Alignment with local goals"
+msgstr ""
+
+#: backend/measures/models.py:114
+msgid "Low"
+msgstr ""
+
+#: backend/measures/models.py:115
+msgid "Medium"
+msgstr ""
+
+#: backend/measures/models.py:116
+msgid "High"
+msgstr ""
+
+#: backend/measures/models.py:121
+msgid "Normalized 0.0–1.0"
+msgstr ""
+
+#: backend/measures/models.py:122
+msgid "Display-friendly 0–100"
+msgstr ""
+
+#: backend/measures/views.py:22
+#, python-format
+msgid "Generated %(g)d new, updated %(u)d."
+msgstr ""
+
+#: backend/templates/base.html:7
+msgid ""
+"Open operating system between mobility data and political decisions. Any "
+"municipality. Any country."
+msgstr ""
+
+#: backend/templates/base.html:22 backend/templates/core/landing.html:25
+msgid "Workspaces"
+msgstr ""
+
+#: backend/templates/base.html:23 backend/templates/base.html:69
+#: backend/templates/workspaces/_subnav.html:13
+#: backend/templates/workspaces/base_workspace.html:13
+#: backend/templates/workspaces/methodology.html:7
+msgid "Methodology"
+msgstr ""
+
+#: backend/templates/base.html:24
+msgid "About"
+msgstr ""
+
+#: backend/templates/base.html:26
+msgid "+ New workspace"
+msgstr ""
+
+#: backend/templates/base.html:40
+msgid "Sign out"
+msgstr ""
+
+#: backend/templates/base.html:42
+msgid "Admin"
+msgstr ""
+
+#: backend/templates/base.html:66
+msgid "Open platform for municipal mobility transition"
+msgstr ""
+
+#: backend/templates/base.html:70 backend/templates/core/about.html:19
+msgid "Self-hosting"
+msgstr ""
+
+#: backend/templates/core/about.html:9
+msgid ""
+"OpenMobility OS is an open, free, self-hostable platform for the mobility "
+"transition. It is not a consumer routing tool — it is a decision, "
+"prioritization, and transparency platform for municipalities, city planners, "
+"local politics, NGOs, journalists, and citizens."
+msgstr ""
+
+#: backend/templates/core/about.html:12
+msgid "Deployment modes"
+msgstr ""
+
+#: backend/templates/core/about.html:14
+msgid "landing page lists all workspaces"
+msgstr ""
+
+#: backend/templates/core/about.html:15
+msgid "one municipality; landing redirects to that workspace"
+msgstr ""
+
+#: backend/templates/core/about.html:16
+msgid "county, region, or state; one installation hosts many workspaces"
+msgstr ""
+
+#: backend/templates/core/about.html:26
+msgid "Current version"
+msgstr ""
+
+#: backend/templates/core/about.html:28
+msgid "Deployment mode:"
+msgstr ""
+
+#: backend/templates/core/about.html:32
+msgid "Principles"
+msgstr ""
+
+#: backend/templates/core/about.html:34
+msgid "City-agnostic — Leipzig is just a demo."
+msgstr ""
+
+#: backend/templates/core/about.html:35
+msgid "API-first and connector-based."
+msgstr ""
+
+#: backend/templates/core/about.html:36
+msgid "Transparent scoring — every value traceable to its source."
+msgstr ""
+
+#: backend/templates/core/about.html:37
+msgid "Self-hosting first — Docker Compose is the entry point."
+msgstr ""
+
+#: backend/templates/core/about.html:38
+msgid "Open public layer — read access is always free and login-less."
+msgstr ""
+
+#: backend/templates/core/about.html:39
+msgid "Internationalized from day one."
+msgstr ""
+
+#: backend/templates/core/landing.html:7
+msgid "Open, free, self-hostable"
+msgstr ""
+
+#: backend/templates/core/landing.html:9
+msgid ""
+"The operating system between open mobility data and political decisions."
+msgstr ""
+
+#: backend/templates/core/landing.html:12
+msgid ""
+"OpenMobility OS helps municipalities, planners, local politics, NGOs, and "
+"journalists prioritize mobility measures — transparently, based on open "
+"data, and usable for any city or region worldwide."
+msgstr ""
+
+#: backend/templates/core/landing.html:15
+msgid "How scoring works"
+msgstr ""
+
+#: backend/templates/core/landing.html:16
+msgid "Self-hosting guide"
+msgstr ""
+
+#: backend/templates/core/landing.html:18
+msgid "+ Add workspace"
+msgstr ""
+
+#: backend/templates/core/landing.html:37
+#: backend/templates/workspaces/_subnav.html:8
+#: backend/templates/workspaces/base_workspace.html:8
+msgid "Demo"
+msgstr ""
+
+#: backend/templates/core/landing.html:45
+msgid "goals"
+msgstr ""
+
+#: backend/templates/core/landing.html:46
+msgid "measures"
+msgstr ""
+
+#: backend/templates/core/landing.html:51
+msgid ""
+"No workspaces yet. Seed the demo data or create a workspace via the admin "
+"wizard."
+msgstr ""
+
+#: backend/templates/core/landing.html:60
+msgid "City-agnostic"
+msgstr ""
+
+#: backend/templates/core/landing.html:61
+msgid ""
+"Leipzig is just one demo — any city in any country can be added as a "
+"workspace via APIs, open data, or configuration."
+msgstr ""
+
+#: backend/templates/core/landing.html:65
+msgid "Transparent scoring"
+msgstr ""
+
+#: backend/templates/core/landing.html:66
+msgid ""
+"Every recommendation exposes its sources, formula, and uncertainty. No black "
+"boxes."
+msgstr ""
+
+#: backend/templates/core/landing.html:70
+msgid "Self-hostable"
+msgstr ""
+
+#: backend/templates/core/landing.html:71
+msgid ""
+"Runs via Docker Compose. Single city, region, or public demo — same "
+"codebase, different configuration."
+msgstr ""
+
+#: backend/templates/core/methodology.html:9
+msgid ""
+"OpenMobility OS scores every measure across nine dimensions. Every score "
+"exposes its source, calculation, and uncertainty. No black boxes."
+msgstr ""
+
+#: backend/templates/core/methodology.html:12
+#: backend/templates/workspaces/methodology.html:11
+msgid "Scoring formula"
+msgstr ""
+
+#: backend/templates/core/methodology.html:14
+msgid "Default weights:"
+msgstr ""
+
+#: backend/templates/core/methodology.html:17
+#: backend/templates/workspaces/methodology.html:17
+msgid "Dimension"
+msgstr ""
+
+#: backend/templates/core/methodology.html:17
+#: backend/templates/workspaces/methodology.html:18
+msgid "Weight"
+msgstr ""
+
+#: backend/templates/core/methodology.html:31
+msgid "Weights can be overridden per workspace via the scoring_weights field."
+msgstr ""
+
+#: backend/templates/core/methodology.html:33
+msgid "Strategy presets"
+msgstr ""
+
+#: backend/templates/core/methodology.html:35
+msgid "weights feasibility and cost higher"
+msgstr ""
+
+#: backend/templates/core/methodology.html:36
+msgid "weights traffic safety and social equity higher"
+msgstr ""
+
+#: backend/templates/core/methodology.html:37
+msgid "weights climate and goal alignment higher"
+msgstr ""
+
+#: backend/templates/core/methodology.html:38
+msgid "weights social and quality of life higher"
+msgstr ""
+
+#: backend/templates/core/methodology.html:41
+msgid "Connectors"
+msgstr ""
+
+#: backend/templates/core/methodology.html:43
+#: backend/templates/core/methodology.html:44
+msgid "fully implemented"
+msgstr ""
+
+#: backend/templates/core/methodology.html:45
+msgid "fully implemented with six built-in query templates"
+msgstr ""
+
+#: backend/templates/core/methodology.html:46
+msgid "fully implemented; accepts pre-normalized GeoJSON from config"
+msgstr ""
+
+#: backend/templates/core/methodology.html:47
+#: backend/templates/core/methodology.html:48
+#: backend/templates/core/methodology.html:49
+#: backend/templates/core/methodology.html:50
+msgid "planned"
+msgstr ""
+
+#: backend/templates/datasets/data_hub.html:8
+#: backend/templates/datasets/data_source_add.html:8
+#: backend/templates/datasets/data_source_detail.html:8
+#: backend/templates/workspaces/_subnav.html:12
+#: backend/templates/workspaces/base_workspace.html:12
+#: backend/templates/workspaces/dashboard.html:25
+#: backend/templates/workspaces/dashboard.html:138
+msgid "Data hub"
+msgstr ""
+
+#: backend/templates/datasets/data_hub.html:10
+msgid "+ Add source"
+msgstr ""
+
+#: backend/templates/datasets/data_hub.html:32
+#: backend/templates/workspaces/methodology.html:52
+msgid "records"
+msgstr ""
+
+#: backend/templates/datasets/data_hub.html:33
+msgid "Last synced:"
+msgstr ""
+
+#: backend/templates/datasets/data_hub.html:44
+msgid "Sync"
+msgstr ""
+
+#: backend/templates/datasets/data_hub.html:46
+msgid "Edit"
+msgstr ""
+
+#: backend/templates/datasets/data_hub.html:54
+msgid "No data sources yet."
+msgstr ""
+
+#: backend/templates/datasets/data_hub.html:56
+msgid "Add the first data source"
+msgstr ""
+
+#: backend/templates/datasets/data_source_add.html:19
+#: backend/templates/workspaces/wizard.html:17
+msgid "Name"
+msgstr ""
+
+#: backend/templates/datasets/data_source_add.html:20
+msgid "e.g. OSM bike network"
+msgstr ""
+
+#: backend/templates/datasets/data_source_add.html:24
+msgid "Connector type"
+msgstr ""
+
+#: backend/templates/datasets/data_source_add.html:27
+msgid "— select —"
+msgstr ""
+
+#: backend/templates/datasets/data_source_add.html:35
+msgid "Layer kind"
+msgstr ""
+
+#: backend/templates/datasets/data_source_add.html:44
+msgid "Configuration (JSON)"
+msgstr ""
+
+#: backend/templates/datasets/data_source_add.html:48
+msgid "See the"
+msgstr ""
+
+#: backend/templates/datasets/data_source_add.html:48
+msgid "methodology page"
+msgstr ""
+
+#: backend/templates/datasets/data_source_add.html:48
+msgid "for config schema examples."
+msgstr ""
+
+#: backend/templates/datasets/data_source_add.html:54
+#: backend/templates/datasets/data_source_detail.html:59
+msgid "License"
+msgstr ""
+
+#: backend/templates/datasets/data_source_add.html:58
+#: backend/templates/datasets/data_source_detail.html:61
+msgid "Attribution"
+msgstr ""
+
+#: backend/templates/datasets/data_source_add.html:64
+msgid "Source URL (optional)"
+msgstr ""
+
+#: backend/templates/datasets/data_source_add.html:70
+#: backend/templates/workspaces/wizard.html:97
+msgid "Cancel"
+msgstr ""
+
+#: backend/templates/datasets/data_source_detail.html:35
+msgid "Test connection"
+msgstr ""
+
+#: backend/templates/datasets/data_source_detail.html:39
+msgid "Sync now"
+msgstr ""
+
+#: backend/templates/datasets/data_source_detail.html:45
+msgid "Testing…"
+msgstr ""
+
+#: backend/templates/datasets/data_source_detail.html:55
+msgid "Records"
+msgstr ""
+
+#: backend/templates/datasets/data_source_detail.html:57
+msgid "Last synced"
+msgstr ""
+
+#: backend/templates/datasets/data_source_detail.html:64
+msgid "Source URL"
+msgstr ""
+
+#: backend/templates/datasets/data_source_detail.html:72
+msgid "Configuration"
+msgstr ""
+
+#: backend/templates/datasets/data_source_detail.html:79
+msgid "Normalized feature set"
+msgstr ""
+
+#: backend/templates/datasets/data_source_detail.html:80
+msgid "features"
+msgstr ""
+
+#: backend/templates/datasets/data_source_detail.html:80
+msgid "synced"
+msgstr ""
+
+#: backend/templates/datasets/data_source_detail.html:88
+msgid "Danger zone"
+msgstr ""
+
+#: backend/templates/datasets/data_source_detail.html:90
+msgid "Delete this data source?"
+msgstr ""
+
+#: backend/templates/datasets/data_source_detail.html:92
+msgid "Delete data source"
+msgstr ""
+
+#: backend/templates/workspaces/_measures_list.html:42
+msgid "No measures match the current filters."
+msgstr ""
+
+#: backend/templates/workspaces/_measures_list.html:43
+msgid "Clear filters"
+msgstr ""
+
+#: backend/templates/workspaces/_subnav.html:9
+#: backend/templates/workspaces/base_workspace.html:9
+msgid "Dashboard"
+msgstr ""
+
+#: backend/templates/workspaces/_subnav.html:10
+#: backend/templates/workspaces/base_workspace.html:10
+#: backend/templates/workspaces/dashboard.html:124
+#: backend/templates/workspaces/map.html:16
+#: backend/templates/workspaces/measure_detail.html:118
+msgid "Map"
+msgstr ""
+
+#: backend/templates/workspaces/_subnav.html:11
+#: backend/templates/workspaces/base_workspace.html:11
+#: backend/templates/workspaces/dashboard.html:33
+#: backend/templates/workspaces/dashboard.html:131
+#: backend/templates/workspaces/map.html:39
+#: backend/templates/workspaces/measure_detail.html:9
+#: backend/templates/workspaces/measures.html:8
+msgid "Measures"
+msgstr ""
+
+#: backend/templates/workspaces/admin_login.html:6
+#: backend/workspaces/views_wizard.py:31
+msgid "Admin sign-in"
+msgstr ""
+
+#: backend/templates/workspaces/admin_login.html:7
+msgid "Enter the admin token configured in your .env file (ADMIN_TOKEN)."
+msgstr ""
+
+#: backend/templates/workspaces/admin_login.html:16
+msgid "Admin token"
+msgstr ""
+
+#: backend/templates/workspaces/admin_login.html:21
+msgid "Sign in"
+msgstr ""
+
+#: backend/templates/workspaces/dashboard.html:13
+msgid "residents"
+msgstr ""
+
+#: backend/templates/workspaces/dashboard.html:23
+msgid "Generate measures"
+msgstr ""
+
+#: backend/templates/workspaces/dashboard.html:37
+#: backend/templates/workspaces/dashboard.html:57
+msgid "Goals"
+msgstr ""
+
+#: backend/templates/workspaces/dashboard.html:41
+#: backend/templates/workspaces/methodology.html:40
+msgid "Data sources"
+msgstr ""
+
+#: backend/templates/workspaces/dashboard.html:43
+#: backend/templates/workspaces/dashboard.html:139
+msgid "active"
+msgstr ""
+
+#: backend/templates/workspaces/dashboard.html:47
+msgid "Residents"
+msgstr ""
+
+#: backend/templates/workspaces/dashboard.html:70
+msgid "Target:"
+msgstr ""
+
+#: backend/templates/workspaces/dashboard.html:81
+msgid "No goals configured for this workspace."
+msgstr ""
+
+#: backend/templates/workspaces/dashboard.html:88
+msgid "Top measures"
+msgstr ""
+
+#: backend/templates/workspaces/dashboard.html:89
+msgid "View all"
+msgstr ""
+
+#: backend/templates/workspaces/dashboard.html:112
+msgid ""
+"No measures yet. Sync data sources, then generate measures from the button "
+"above."
+msgstr ""
+
+#: backend/templates/workspaces/dashboard.html:125
+msgid "Layers: streets, bike network, transit, schools, …"
+msgstr ""
+
+#: backend/templates/workspaces/dashboard.html:132
+msgid "Filter by strategy, category, and effort level"
+msgstr ""
+
+#: backend/templates/workspaces/dashboard.html:139
+msgid "sources"
+msgstr ""
+
+#: backend/templates/workspaces/map.html:17
+msgid "Back to dashboard"
+msgstr ""
+
+#: backend/templates/workspaces/map.html:25
+msgid "Layers"
+msgstr ""
+
+#: backend/templates/workspaces/map.html:35
+msgid "No layers available. Sync data sources first."
+msgstr ""
+
+#: backend/templates/workspaces/measure_detail.html:33
+msgid "Shareable URL:"
+msgstr ""
+
+#: backend/templates/workspaces/measure_detail.html:40
+msgid "Priority score"
+msgstr ""
+
+#: backend/templates/workspaces/measure_detail.html:43
+msgid "Weighted across 9 dimensions."
+msgstr ""
+
+#: backend/templates/workspaces/measure_detail.html:44
+msgid "Explain formula"
+msgstr ""
+
+#: backend/templates/workspaces/measure_detail.html:50
+msgid "Scoring breakdown"
+msgstr ""
+
+#: backend/templates/workspaces/measure_detail.html:85
+msgid "No scores yet."
+msgstr ""
+
+#: backend/templates/workspaces/measure_detail.html:93
+msgid "Details"
+msgstr ""
+
+#: backend/templates/workspaces/measure_detail.html:103
+msgid "Raw evidence"
+msgstr ""
+
+#: backend/templates/workspaces/measure_detail.html:117
+msgid "All measures"
+msgstr ""
+
+#: backend/templates/workspaces/measures.html:12
+msgid "↻ Generate"
+msgstr ""
+
+#: backend/templates/workspaces/measures.html:21
+msgid "Strategy"
+msgstr ""
+
+#: backend/templates/workspaces/measures.html:29
+msgid "Category"
+msgstr ""
+
+#: backend/templates/workspaces/measures.html:31
+#: backend/templates/workspaces/measures.html:40
+msgid "All"
+msgstr ""
+
+#: backend/templates/workspaces/measures.html:38
+msgid "Effort"
+msgstr ""
+
+#: backend/templates/workspaces/methodology.html:13
+msgid "Each dimension score is 0–100. Weights for this workspace:"
+msgstr ""
+
+#: backend/templates/workspaces/methodology.html:51
+msgid "not synced"
+msgstr ""
+
+#: backend/templates/workspaces/methodology.html:59
+msgid "No data sources configured."
+msgstr ""
+
+#: backend/templates/workspaces/methodology.html:63
+msgid "→ Global methodology"
+msgstr ""
+
+#: backend/templates/workspaces/wizard.html:7
+#: backend/workspaces/views_wizard.py:47
+msgid "Add a new workspace"
+msgstr ""
+
+#: backend/templates/workspaces/wizard.html:9
+msgid ""
+"Any city, town, municipality, or region worldwide can become a workspace. "
+"Fill in the basics — you can refine everything later."
+msgstr ""
+
+#: backend/templates/workspaces/wizard.html:19
+msgid "City or municipality name"
+msgstr ""
+
+#: backend/templates/workspaces/wizard.html:22
+msgid "Slug"
+msgstr ""
+
+#: backend/templates/workspaces/wizard.html:25
+msgid "URL-safe identifier"
+msgstr ""
+
+#: backend/templates/workspaces/wizard.html:31
+msgid "Country code"
+msgstr ""
+
+#: backend/templates/workspaces/wizard.html:35
+msgid "Language"
+msgstr ""
+
+#: backend/templates/workspaces/wizard.html:45
+msgid "Kind"
+msgstr ""
+
+#: backend/templates/workspaces/wizard.html:47 backend/workspaces/models.py:18
+msgid "City"
+msgstr ""
+
+#: backend/templates/workspaces/wizard.html:48 backend/workspaces/models.py:19
+msgid "Town"
+msgstr ""
+
+#: backend/templates/workspaces/wizard.html:49 backend/workspaces/models.py:20
+msgid "Municipality"
+msgstr ""
+
+#: backend/templates/workspaces/wizard.html:50 backend/workspaces/models.py:22
+msgid "County / Region"
+msgstr ""
+
+#: backend/templates/workspaces/wizard.html:51 backend/workspaces/models.py:23
+msgid "State / Federal State"
+msgstr ""
+
+#: backend/templates/workspaces/wizard.html:58
+msgid "Timezone"
+msgstr ""
+
+#: backend/templates/workspaces/wizard.html:63
+msgid "Bounding box (for map + Overpass queries)"
+msgstr ""
+
+#: backend/templates/workspaces/wizard.html:66
+msgid "West (lon min)"
+msgstr ""
+
+#: backend/templates/workspaces/wizard.html:70
+msgid "East (lon max)"
+msgstr ""
+
+#: backend/templates/workspaces/wizard.html:74
+msgid "South (lat min)"
+msgstr ""
+
+#: backend/templates/workspaces/wizard.html:78
+msgid "North (lat max)"
+msgstr ""
+
+#: backend/templates/workspaces/wizard.html:85
+msgid "Description (German)"
+msgstr ""
+
+#: backend/templates/workspaces/wizard.html:89
+msgid "Description (English)"
+msgstr ""
+
+#: backend/templates/workspaces/wizard.html:95
+msgid "Create workspace"
+msgstr ""
+
+#: backend/workspaces/models.py:21
+msgid "District / Neighborhood"
+msgstr ""
+
+#: backend/workspaces/models.py:32
+msgid "ISO 3166-1 alpha-2 (e.g. DE, AT, FR, NL)"
+msgstr ""
+
+#: backend/workspaces/models.py:37
+msgid "Federal state, province, département, canton, etc."
+msgstr ""
+
+#: backend/workspaces/models.py:42
+msgid "Default UI language for this workspace"
+msgstr ""
+
+#: backend/workspaces/models.py:54
+msgid "Showcase workspace — not a production deployment"
+msgstr ""
+
+#: backend/workspaces/models.py:62
+msgid "Rough bounding box for map centering and Overpass queries"
+msgstr ""
+
+#: backend/workspaces/models.py:69
+msgid "Default map center for this workspace"
+msgstr ""
+
+#: backend/workspaces/models.py:76
+msgid "Dimension → weight mapping. Defaults used if empty."
+msgstr ""
+
+#: backend/workspaces/views.py:51
+#, python-format
+msgid "Map — %(name)s"
+msgstr ""
+
+#: backend/workspaces/views.py:83
+msgid "Default weighting"
+msgstr ""
+
+#: backend/workspaces/views.py:84
+msgid "Quick Wins"
+msgstr ""
+
+#: backend/workspaces/views.py:85
+msgid "Vision Zero"
+msgstr ""
+
+#: backend/workspaces/views.py:86
+msgid "Maximum climate impact"
+msgstr ""
+
+#: backend/workspaces/views.py:87
+msgid "Fair citywide distribution"
+msgstr ""
+
+#: backend/workspaces/views.py:89
+#, python-format
+msgid "Measures — %(name)s"
+msgstr ""
+
+#: backend/workspaces/views.py:124
+#, python-format
+msgid "Methodology — %(name)s"
+msgstr ""
+
+#: backend/workspaces/views_wizard.py:24
+msgid "Signed in as administrator."
+msgstr ""
+
+#: backend/workspaces/views_wizard.py:26
+msgid "Invalid admin token."
+msgstr ""
+
+#: backend/workspaces/views_wizard.py:37
+msgid "Signed out."
+msgstr ""
+
+#: backend/workspaces/views_wizard.py:59
+msgid "Name is required."
+msgstr ""
+
+#: backend/workspaces/views_wizard.py:64
+msgid "A workspace with this slug already exists."
+msgstr ""
+
+#: backend/workspaces/views_wizard.py:101
+#, python-format
+msgid "Workspace %(name)s created. Next step: add data sources."
+msgstr ""

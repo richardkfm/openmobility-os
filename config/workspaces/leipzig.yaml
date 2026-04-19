@@ -1,0 +1,254 @@
+slug: leipzig
+name: Leipzig
+kind: city
+country_code: DE
+region: Sachsen
+language_code: de
+timezone: Europe/Berlin
+population: 616093
+area_km2: 297.80
+is_demo: true
+default_zoom: 12
+
+# Rough Leipzig bounding box (EPSG:4326)
+bounds:
+  west: 12.295
+  south: 51.236
+  east: 12.549
+  north: 51.443
+
+center:
+  lon: 12.3731
+  lat: 51.3397
+
+description_de: |
+  Leipzig ist die erste Demo-Instanz von OpenMobility OS und zeigt, wie offene
+  Daten, strategische Ziele und datenbasierte Priorisierung zusammenwirken können.
+  Alle Inhalte sind Beispieldaten. Für eine produktive Nutzung müssen Quellen,
+  Gewichtungen und Maßnahmen von der Kommune validiert werden.
+description_en: |
+  Leipzig is the first demo workspace of OpenMobility OS. It illustrates how
+  open data, strategic goals, and data-driven prioritization fit together. All
+  content is illustrative — for production use, sources, weights, and measures
+  must be validated by the municipality.
+
+goals:
+  - code: modal_shift_2030
+    title_de: Modal-Split Umweltverbund bis 2030
+    title_en: Sustainable transport modal split by 2030
+    target_value: 70
+    current_value: 60
+    unit: "%"
+    deadline_year: 2030
+    rationale_de: Strategisches Ziel aus kommunalen Mobilitätsdokumenten.
+    rationale_en: Strategic target from municipal mobility documents.
+
+  - code: vision_zero_2030
+    title_de: Vision Zero — keine Verkehrstoten bis 2030
+    title_en: Vision Zero — no road fatalities by 2030
+    target_value: 0
+    current_value: 6
+    unit: "pro Jahr / per year"
+    deadline_year: 2030
+
+  - code: bike_share_2030
+    title_de: Radverkehrsanteil 25% bis 2030
+    title_en: Bike mode share 25% by 2030
+    target_value: 25
+    current_value: 19
+    unit: "%"
+    deadline_year: 2030
+
+data_sources:
+  - name: OSM — Radnetz
+    source_type: osm_overpass
+    layer_kind: bike_network
+    license: ODbL
+    attribution: "© OpenStreetMap contributors"
+    source_url: https://www.openstreetmap.org/
+    config:
+      template: bike_network
+
+  - name: OSM — Hauptstraßen mit Tempolimit
+    source_type: osm_overpass
+    layer_kind: streets_with_speed
+    license: ODbL
+    attribution: "© OpenStreetMap contributors"
+    config:
+      template: streets_with_speed
+
+  - name: OSM — Haltestellen
+    source_type: osm_overpass
+    layer_kind: transit_stops
+    license: ODbL
+    config:
+      template: transit_stops
+
+  - name: OSM — Schulen
+    source_type: osm_overpass
+    layer_kind: schools
+    license: ODbL
+    config:
+      template: schools
+
+  - name: Beispiel — Stadtbezirke (statisch)
+    source_type: manual
+    layer_kind: districts
+    license: "CC0 (example data)"
+    config:
+      feature_collection:
+        type: FeatureCollection
+        features:
+          - type: Feature
+            properties:
+              name: Zentrum
+            geometry:
+              type: Polygon
+              coordinates:
+                - [[12.365, 51.333], [12.395, 51.333], [12.395, 51.349], [12.365, 51.349], [12.365, 51.333]]
+          - type: Feature
+            properties:
+              name: Plagwitz
+            geometry:
+              type: Polygon
+              coordinates:
+                - [[12.318, 51.328], [12.348, 51.328], [12.348, 51.345], [12.318, 51.345], [12.318, 51.328]]
+          - type: Feature
+            properties:
+              name: Connewitz
+            geometry:
+              type: Polygon
+              coordinates:
+                - [[12.365, 51.306], [12.395, 51.306], [12.395, 51.322], [12.365, 51.322], [12.365, 51.306]]
+
+measures:
+  - slug: promenadenring-protected-lane
+    category: bike_infra
+    title_de: Geschützter Radweg auf dem Promenadenring
+    title_en: Protected bike lane on the Promenadenring
+    summary_de: Durchgehender geschützter Radweg als sichtbares Leuchtturmprojekt im Zentrum.
+    summary_en: Continuous protected bike lane as a visible lighthouse project in the city center.
+    effort_level: major
+    status: proposed
+    description_de_md: |
+      ## Vorschlag
+      Der Promenadenring umschließt die Leipziger Innenstadt und ist eine zentrale
+      Nord-Süd- und Ost-West-Achse für den Radverkehr. Ein durchgehender, baulich
+      geschützter Radweg würde Sicherheit erhöhen und das Rückgrat des Radnetzes stärken.
+
+      ## Datenbasis
+      - OSM Radnetz (Überpass)
+      - Hauptverkehrsstraßen mit Tempolimit
+
+      ## Unsicherheiten
+      - Konkrete Flächenaufteilung hängt von Beteiligungsprozessen ab.
+    description_en_md: |
+      ## Proposal
+      The Promenadenring surrounds the Leipzig city center and is a central
+      cycling axis. A continuous, physically protected bike lane would improve
+      safety and form the backbone of the bike network.
+    scores:
+      climate: { raw: 0.75, rationale_de: "Verschiebung vom MIV zum Rad.", rationale_en: "Shift from car to bike." }
+      safety: { raw: 0.85, confidence: high }
+      quality_of_life: { raw: 0.75 }
+      social: { raw: 0.6 }
+      feasibility: { raw: 0.5 }
+      cost: { raw: 0.4 }
+      visibility: { raw: 0.9, confidence: high }
+      political: { raw: 0.55 }
+      goal_alignment: { raw: 0.8 }
+
+  - slug: school-street-pilot-grunau
+    category: school_routes
+    title_de: Schulstraßen-Pilot in Grünau
+    title_en: School streets pilot in Grünau
+    summary_de: Zeitweise Sperrung der Zufahrtsstraßen ausgewählter Schulen vor Unterrichtsbeginn.
+    summary_en: Temporary closure of access streets to selected schools at start/end times.
+    effort_level: quick_win
+    status: proposed
+    description_de_md: |
+      ## Vorschlag
+      Pilotprojekt an drei Schulen in Grünau mit zeitweiser Sperrung zu Schulbeginn/-ende.
+      Nach Auswertung: Ausrollen auf weitere Standorte.
+    description_en_md: |
+      ## Proposal
+      Pilot at three schools in Grünau with timed closures at start/end of school.
+    scores:
+      climate: { raw: 0.4 }
+      safety: { raw: 0.9, confidence: high }
+      quality_of_life: { raw: 0.75 }
+      social: { raw: 0.8, confidence: high }
+      feasibility: { raw: 0.8 }
+      cost: { raw: 0.9 }
+      visibility: { raw: 0.75 }
+      political: { raw: 0.6 }
+      goal_alignment: { raw: 0.65 }
+
+  - slug: tram-frequency-densification
+    category: transit
+    title_de: Taktverdichtung Straßenbahn in Tangentialachsen
+    title_en: Tram frequency densification on tangential axes
+    summary_de: 5-Minuten-Takt in der Hauptverkehrszeit auf tangentialen Linien prüfen.
+    summary_en: Evaluate 5-minute frequency during peak hours on tangential tram lines.
+    effort_level: major
+    status: proposed
+    description_de_md: |
+      ## Vorschlag
+      Die Taktung auf tangentialen Straßenbahnlinien prüfen, um das radiale Netz zu entlasten
+      und Quartiere besser miteinander zu verbinden.
+    scores:
+      climate: { raw: 0.7 }
+      safety: { raw: 0.5 }
+      quality_of_life: { raw: 0.7 }
+      social: { raw: 0.75 }
+      feasibility: { raw: 0.45 }
+      cost: { raw: 0.35 }
+      visibility: { raw: 0.6 }
+      political: { raw: 0.5 }
+      goal_alignment: { raw: 0.75 }
+
+  - slug: parking-management-zentrum
+    category: parking
+    title_de: Parkraumbewirtschaftung Zentrum erweitern
+    title_en: Expand paid parking management in the center
+    summary_de: Erweiterung und konsequente Kontrolle der Parkraumbewirtschaftung.
+    summary_en: Expanded and strictly enforced paid parking management.
+    effort_level: medium
+    status: proposed
+    description_de_md: |
+      ## Vorschlag
+      Ausweitung der bewirtschafteten Flächen und stärkere Kontrolle. Ertrag
+      fließt zweckgebunden in Umweltverbund.
+    scores:
+      climate: { raw: 0.6 }
+      safety: { raw: 0.45 }
+      quality_of_life: { raw: 0.65 }
+      social: { raw: 0.5 }
+      feasibility: { raw: 0.7 }
+      cost: { raw: 0.8 }
+      visibility: { raw: 0.55 }
+      political: { raw: 0.4 }
+      goal_alignment: { raw: 0.6 }
+
+  - slug: tempo30-corridors
+    category: speed
+    title_de: Tempo-30-Korridore auf Hauptachsen prüfen
+    title_en: Assess 30 km/h corridors on main axes
+    summary_de: In lärm- und unfallbelasteten Abschnitten Tempo 30 als Regelgeschwindigkeit prüfen.
+    summary_en: In noise- and accident-heavy segments, assess 30 km/h as default.
+    effort_level: quick_win
+    status: proposed
+    description_de_md: |
+      ## Vorschlag
+      Einrichtung oder Erweiterung von Tempo-30-Zonen auf Abschnitten mit hohem
+      Lärm- oder Unfallaufkommen. Basis: OSM-Geschwindigkeitsdaten.
+    scores:
+      climate: { raw: 0.4 }
+      safety: { raw: 0.85, confidence: high }
+      quality_of_life: { raw: 0.75 }
+      social: { raw: 0.6 }
+      feasibility: { raw: 0.75 }
+      cost: { raw: 0.9 }
+      visibility: { raw: 0.6 }
+      political: { raw: 0.5 }
+      goal_alignment: { raw: 0.7 }

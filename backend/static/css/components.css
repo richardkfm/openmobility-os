@@ -1,0 +1,42 @@
+/* OpenMobility OS — custom component styles
+   Only add things here that Tailwind utility classes cannot express.
+   Keep this file small. */
+
+/* MapLibre popup override */
+.maplibregl-popup-content {
+  border-radius: 8px;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  max-width: 240px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+}
+
+/* Prose code blocks inside measure descriptions */
+.prose pre {
+  background: #f1f5f9;
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  font-size: 0.8rem;
+  overflow-x: auto;
+}
+
+/* HTMX loading indicator */
+.htmx-indicator {
+  display: none;
+}
+.htmx-request .htmx-indicator {
+  display: inline;
+}
+
+/* Score bars (in case JS is not available, bars render via inline style anyway) */
+.score-bar {
+  height: 6px;
+  border-radius: 9999px;
+  background: #e2e8f0;
+  overflow: hidden;
+}
+.score-bar-fill {
+  height: 100%;
+  border-radius: 9999px;
+  transition: width 0.4s ease;
+}

@@ -1,0 +1,37 @@
+slug: muster-landkreis
+name: Muster-Landkreis
+kind: county
+country_code: DE
+region: "— Beispielregion —"
+language_code: de
+timezone: Europe/Berlin
+population: 145000
+area_km2: 890.0
+is_demo: true
+default_zoom: 10
+
+bounds:
+  west: 9.80
+  south: 51.80
+  east: 10.30
+  north: 52.20
+
+description_de: |
+  Muster-Landkreis zeigt den Multi-Ort-Betrieb: ein Betreiber verwaltet mehrere
+  Gemeinden und Regionen als getrennte Workspaces in derselben Installation.
+  Dieses Workspace ist bewusst leer, damit sichtbar wird, wie ein regionaler
+  Träger Orte schrittweise aufnimmt.
+description_en: |
+  Muster-Landkreis demonstrates multi-city operations: one operator manages
+  multiple towns and regions as separate workspaces within a single install.
+  This workspace is deliberately empty to illustrate staged onboarding by a
+  regional operator.
+
+goals:
+  - code: regional_modal_shift
+    title_de: Regionaler Modal Shift — 50% Umweltverbund bis 2035
+    title_en: Regional modal shift — 50% sustainable transport by 2035
+    target_value: 50
+    current_value: 32
+    unit: "%"
+    deadline_year: 2035

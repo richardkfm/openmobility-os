@@ -1,0 +1,174 @@
+{% extends "workspaces/base_workspace.html" %}
+{% load i18n omos_extras %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.5.2/dist/maplibre-gl.css">
+<script src="https://unpkg.com/maplibre-gl@4.5.2/dist/maplibre-gl.js"></script>
+<style>
+  #map { height: calc(100vh - 220px); min-height: 480px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="flex flex-col gap-4">
+
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <h1 class="text-xl font-bold">{% trans "Map" %} — {{ workspace.name }}</h1>
+    <a href="{% url 'workspace_dashboard' workspace.slug %}" class="text-sm text-slate-600 hover:underline">← {% trans "Back to dashboard" %}</a>
+  </div>
+
+  <div class="flex flex-col lg:flex-row gap-4">
+
+    {# Layer panel #}
+    <div class="lg:w-60 shrink-0 rounded-lg border bg-white p-4" x-data="{ open: true }">
+      <button @click="open = !open" class="flex items-center justify-between w-full font-semibold text-sm">
+        {% trans "Layers" %}
+        <span x-text="open ? '▲' : '▼'" class="text-slate-400 text-xs"></span>
+      </button>
+      <div x-show="open" class="mt-3 flex flex-col gap-2 text-sm" id="layer-controls">
+        {% for lk in layer_kinds %}
+        <label class="flex items-center gap-2 cursor-pointer">
+          <input type="checkbox" checked class="layer-toggle" data-layer="{{ lk }}">
+          <span class="capitalize">{{ lk|lower|replace:"_: " }}</span>
+        </label>
+        {% empty %}
+        <p class="text-xs text-slate-400">{% trans "No layers available. Sync data sources first." %}</p>
+        {% endfor %}
+        <label class="flex items-center gap-2 cursor-pointer mt-2 pt-2 border-t">
+          <input type="checkbox" id="toggle-measures">
+          <span>{% trans "Measures" %}</span>
+        </label>
+      </div>
+    </div>
+
+    {# Map container #}
+    <div class="flex-1 rounded-lg overflow-hidden border">
+      <div id="map"></div>
+    </div>
+
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const WORKSPACE_SLUG = "{{ workspace.slug }}";
+const MAP_TILE_URL = "{{ map_tile_url }}";
+const MAP_TILE_ATTR = "{{ map_tile_attribution }}";
+const LAYER_KINDS = {{ layer_kinds|pprint|safe }};
+const CENTER_LON = {% if workspace.center %}{{ workspace.center.x }}{% else %}12.37{% endif %};
+const CENTER_LAT = {% if workspace.center %}{{ workspace.center.y }}{% else %}51.34{% endif %};
+const DEFAULT_ZOOM = {{ workspace.default_zoom }};
+
+const LAYER_COLORS = {
+  bike_network: "#22c55e",
+  transit_stops: "#3b82f6",
+  schools: "#f59e0b",
+  parking: "#8b5cf6",
+  streets: "#94a3b8",
+  streets_with_speed: "#f97316",
+  districts: "#64748b",
+  accidents: "#ef4444",
+  trees: "#16a34a",
+  green_areas: "#4ade80",
+  heat_corridors: "#f97316",
+  sealed_surfaces: "#94a3b8",
+};
+
+const map = new maplibregl.Map({
+  container: "map",
+  style: {
+    version: 8,
+    sources: {
+      osm: {
+        type: "raster",
+        tiles: [MAP_TILE_URL],
+        tileSize: 256,
+        attribution: MAP_TILE_ATTR,
+      },
+    },
+    layers: [{ id: "osm-tiles", type: "raster", source: "osm" }],
+  },
+  center: [CENTER_LON, CENTER_LAT],
+  zoom: DEFAULT_ZOOM,
+});
+
+map.addControl(new maplibregl.NavigationControl(), "top-right");
+map.addControl(new maplibregl.ScaleControl({ unit: "metric" }), "bottom-left");
+
+function layerColor(kind) {
+  return LAYER_COLORS[kind] || "#64748b";
+}
+
+function addGeoJsonLayer(id, url, color) {
+  fetch(url)
+    .then(r => r.json())
+    .then(fc => {
+      if (!map.getSource(id)) {
+        map.addSource(id, { type: "geojson", data: fc });
+      }
+
+      const types = new Set((fc.features || []).map(f => f.geometry?.type));
+
+      if (types.has("LineString") || types.has("MultiLineString")) {
+        map.addLayer({ id: id + "-line", type: "line", source: id,
+          paint: { "line-color": color, "line-width": 2.5, "line-opacity": 0.85 } });
+      }
+      if (types.has("Polygon") || types.has("MultiPolygon")) {
+        map.addLayer({ id: id + "-fill", type: "fill", source: id,
+          paint: { "fill-color": color, "fill-opacity": 0.25 } });
+        map.addLayer({ id: id + "-outline", type: "line", source: id,
+          paint: { "line-color": color, "line-width": 1, "line-opacity": 0.6 } });
+      }
+      if (types.has("Point") || types.has("MultiPoint")) {
+        map.addLayer({ id: id + "-circle", type: "circle", source: id,
+          paint: { "circle-radius": 5, "circle-color": color, "circle-opacity": 0.8 } });
+      }
+
+      // Popup on click for point layers
+      map.on("click", id + "-circle", (e) => {
+        const props = e.features[0].properties;
+        const content = Object.entries(props).slice(0, 8)
+          .map(([k, v]) => `<dt class="font-medium">${k}</dt><dd class="ml-2 text-slate-600">${v}</dd>`)
+          .join("");
+        new maplibregl.Popup()
+          .setLngLat(e.lngLat)
+          .setHTML(`<dl class="text-xs grid gap-0.5">${content}</dl>`)
+          .addTo(map);
+      });
+    })
+    .catch(() => console.warn("Layer failed to load:", id));
+}
+
+map.on("load", () => {
+  LAYER_KINDS.forEach(kind => {
+    const url = `/api/v1/workspaces/${WORKSPACE_SLUG}/features/${kind}/`;
+    addGeoJsonLayer(kind, url, layerColor(kind));
+  });
+
+  // Load measures GeoJSON
+  const measuresUrl = `/api/v1/workspaces/${WORKSPACE_SLUG}/measures.geojson`;
+  addGeoJsonLayer("measures", measuresUrl, "#6366f1");
+
+  // Toggle measures checkbox
+  document.getElementById("toggle-measures")?.addEventListener("change", (e) => {
+    const vis = e.target.checked ? "visible" : "none";
+    ["measures-circle", "measures-fill", "measures-line"].forEach(id => {
+      if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", vis);
+    });
+  });
+
+  // Layer checkboxes
+  document.querySelectorAll(".layer-toggle").forEach(checkbox => {
+    checkbox.addEventListener("change", (e) => {
+      const kind = e.target.dataset.layer;
+      const vis = e.target.checked ? "visible" : "none";
+      ["-line", "-fill", "-outline", "-circle"].forEach(suffix => {
+        if (map.getLayer(kind + suffix)) map.setLayoutProperty(kind + suffix, "visibility", vis);
+      });
+    });
+  });
+});
+</script>
+{% endblock %}

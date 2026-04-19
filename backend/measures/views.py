@@ -1,0 +1,24 @@
+"""Measures app views — currently just the engine trigger."""
+
+from django.contrib import messages
+from django.shortcuts import get_object_or_404, redirect
+from django.urls import reverse
+from django.utils.translation import gettext as _
+from django.views.decorators.http import require_POST
+
+from core.decorators import admin_required
+from workspaces.models import Workspace
+
+from .engine import run_engine
+
+
+@admin_required
+@require_POST
+def generate_measures_view(request, workspace_slug):
+    ws = get_object_or_404(Workspace, slug=workspace_slug, is_active=True)
+    report = run_engine(ws)
+    messages.success(
+        request,
+        _("Generated %(g)d new, updated %(u)d.") % {"g": report.generated, "u": report.updated},
+    )
+    return redirect(reverse("measures_list", kwargs={"workspace_slug": ws.slug}))

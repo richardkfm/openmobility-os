@@ -1,0 +1,54 @@
+{% extends "workspaces/base_workspace.html" %}
+{% load i18n %}
+
+{% block content %}
+<div class="flex flex-col gap-6">
+
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <h1 class="text-2xl font-bold">{% trans "Measures" %} — {{ workspace.name }}</h1>
+    {% if is_admin %}
+    <form method="post" action="{% url 'measures_generate' workspace.slug %}">
+      {% csrf_token %}
+      <button class="rounded border px-3 py-1.5 text-sm hover:bg-slate-100">{% trans "↻ Generate" %}</button>
+    </form>
+    {% endif %}
+  </div>
+
+  {# Filter bar #}
+  <form method="get" class="flex flex-wrap items-end gap-3 bg-white border rounded-lg p-4"
+        hx-get="" hx-target="#measures-list" hx-push-url="true">
+    <div>
+      <label class="block text-xs text-slate-500 mb-1">{% trans "Strategy" %}</label>
+      <select name="strategy" class="rounded border px-2 py-1.5 text-sm bg-white" onchange="this.form.submit()">
+        {% for val, label in strategies %}
+          <option value="{{ val }}" {% if val == strategy %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="block text-xs text-slate-500 mb-1">{% trans "Category" %}</label>
+      <select name="category" class="rounded border px-2 py-1.5 text-sm bg-white" onchange="this.form.submit()">
+        <option value="">{% trans "All" %}</option>
+        {% for val, label in categories %}
+          <option value="{{ val }}" {% if val == category %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="block text-xs text-slate-500 mb-1">{% trans "Effort" %}</label>
+      <select name="effort" class="rounded border px-2 py-1.5 text-sm bg-white" onchange="this.form.submit()">
+        <option value="">{% trans "All" %}</option>
+        {% for val, label in efforts %}
+          <option value="{{ val }}" {% if val == effort %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </form>
+
+  {# Measures list (also target for HTMX partial) #}
+  <div id="measures-list">
+    {% include "workspaces/_measures_list.html" %}
+  </div>
+
+</div>
+{% endblock %}

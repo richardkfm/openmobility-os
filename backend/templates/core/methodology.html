@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block content %}
+<article class="prose max-w-3xl">
+  <h1 class="text-3xl font-bold mb-4">{% trans "Methodology & Transparency" %}</h1>
+
+  <p class="text-slate-700">
+    {% trans "OpenMobility OS scores every measure across nine dimensions. Every score exposes its source, calculation, and uncertainty. No black boxes." %}
+  </p>
+
+  <h2 class="text-xl font-semibold mt-8 mb-2">{% trans "Scoring formula" %}</h2>
+  <pre class="bg-slate-900 text-slate-100 rounded p-4 text-sm overflow-x-auto">priority_score = Σ(dimension_score × weight) / Σ(weights)</pre>
+  <p class="text-slate-700">{% trans "Default weights:" %}</p>
+  <table class="text-sm border w-full mt-2">
+    <thead class="bg-slate-100 text-left">
+      <tr><th class="px-3 py-2">{% trans "Dimension" %}</th><th class="px-3 py-2">{% trans "Weight" %}</th></tr>
+    </thead>
+    <tbody>
+      <tr class="border-t"><td class="px-3 py-2">{% trans "Climate impact" %}</td><td class="px-3 py-2">1.5</td></tr>
+      <tr class="border-t"><td class="px-3 py-2">{% trans "Traffic safety" %}</td><td class="px-3 py-2">1.5</td></tr>
+      <tr class="border-t"><td class="px-3 py-2">{% trans "Quality of life" %}</td><td class="px-3 py-2">1.2</td></tr>
+      <tr class="border-t"><td class="px-3 py-2">{% trans "Social equity / accessibility" %}</td><td class="px-3 py-2">1.2</td></tr>
+      <tr class="border-t"><td class="px-3 py-2">{% trans "Feasibility" %}</td><td class="px-3 py-2">1.0</td></tr>
+      <tr class="border-t"><td class="px-3 py-2">{% trans "Cost indicator" %}</td><td class="px-3 py-2">1.0</td></tr>
+      <tr class="border-t"><td class="px-3 py-2">{% trans "Public visibility" %}</td><td class="px-3 py-2">0.6</td></tr>
+      <tr class="border-t"><td class="px-3 py-2">{% trans "Political viability" %}</td><td class="px-3 py-2">0.8</td></tr>
+      <tr class="border-t"><td class="px-3 py-2">{% trans "Alignment with local goals" %}</td><td class="px-3 py-2">1.3</td></tr>
+    </tbody>
+  </table>
+  <p class="text-xs text-slate-500 mt-2">{% trans "Weights can be overridden per workspace via the scoring_weights field." %}</p>
+
+  <h2 class="text-xl font-semibold mt-8 mb-2">{% trans "Strategy presets" %}</h2>
+  <ul class="text-slate-700 space-y-1">
+    <li><strong>Quick Wins</strong> — {% trans "weights feasibility and cost higher" %}</li>
+    <li><strong>Vision Zero</strong> — {% trans "weights traffic safety and social equity higher" %}</li>
+    <li><strong>Maximum climate impact</strong> — {% trans "weights climate and goal alignment higher" %}</li>
+    <li><strong>Fair distribution</strong> — {% trans "weights social and quality of life higher" %}</li>
+  </ul>
+
+  <h2 class="text-xl font-semibold mt-8 mb-2">{% trans "Connectors" %}</h2>
+  <ul class="text-slate-700 space-y-1">
+    <li><strong>CSV</strong> — {% trans "fully implemented" %}</li>
+    <li><strong>GeoJSON URL</strong> — {% trans "fully implemented" %}</li>
+    <li><strong>OpenStreetMap via Overpass</strong> — {% trans "fully implemented with six built-in query templates" %}</li>
+    <li><strong>Manual</strong> — {% trans "fully implemented; accepts pre-normalized GeoJSON from config" %}</li>
+    <li><strong>GTFS static</strong> — {% trans "planned" %}</li>
+    <li><strong>CKAN</strong> — {% trans "planned" %}</li>
+    <li><strong>WFS</strong> — {% trans "planned" %}</li>
+    <li><strong>Generic REST</strong> — {% trans "planned" %}</li>
+  </ul>
+</article>
+{% endblock %}

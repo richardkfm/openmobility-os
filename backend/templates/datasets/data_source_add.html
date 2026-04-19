@@ -1,0 +1,75 @@
+{% extends "workspaces/base_workspace.html" %}
+{% load i18n %}
+
+{% block content %}
+<div class="max-w-2xl flex flex-col gap-6" x-data="{ sourceType: '' }">
+
+  <nav class="text-sm text-slate-500">
+    <a href="{% url 'data_hub' workspace.slug %}" class="hover:underline">{% trans "Data hub" %}</a>
+    <span class="mx-2">›</span>
+    <span>{% trans "Add data source" %}</span>
+  </nav>
+
+  <h1 class="text-2xl font-bold">{% trans "Add data source" %}</h1>
+
+  <form method="post" class="rounded-lg border bg-white p-6 flex flex-col gap-4">
+    {% csrf_token %}
+
+    <div>
+      <label class="block text-sm font-medium mb-1">{% trans "Name" %}</label>
+      <input name="name" type="text" required class="w-full rounded border px-3 py-2 text-sm" placeholder="{% trans 'e.g. OSM bike network' %}">
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium mb-1">{% trans "Connector type" %}</label>
+      <select name="source_type" required x-model="sourceType"
+              class="w-full rounded border px-3 py-2 text-sm bg-white">
+        <option value="">{% trans "— select —" %}</option>
+        {% for c in connectors %}
+        <option value="{{ c.id }}">{{ c.display_name_de }}{% if "geplant" in c.display_name_de %} ⏳{% endif %}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium mb-1">{% trans "Layer kind" %}</label>
+      <select name="layer_kind" class="w-full rounded border px-3 py-2 text-sm bg-white">
+        {% for val, label in layer_choices %}
+        <option value="{{ val }}">{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium mb-1">{% trans "Configuration (JSON)" %}</label>
+      <textarea name="config" rows="6" class="w-full rounded border px-3 py-2 text-sm font-mono"
+        placeholder='{"template": "bike_network"}'></textarea>
+      <p class="text-xs text-slate-400 mt-1">
+        {% trans "See the" %} <a href="{% url 'workspace_methodology' workspace.slug %}" class="underline">{% trans "methodology page" %}</a> {% trans "for config schema examples." %}
+      </p>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium mb-1">{% trans "License" %}</label>
+        <input name="license" type="text" class="w-full rounded border px-3 py-2 text-sm" placeholder="ODbL, CC0, ...">
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">{% trans "Attribution" %}</label>
+        <input name="attribution" type="text" class="w-full rounded border px-3 py-2 text-sm" placeholder="© OpenStreetMap contributors">
+      </div>
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium mb-1">{% trans "Source URL (optional)" %}</label>
+      <input name="source_url" type="url" class="w-full rounded border px-3 py-2 text-sm" placeholder="https://…">
+    </div>
+
+    <div class="flex gap-3 pt-2">
+      <button type="submit" class="rounded bg-slate-900 text-white px-4 py-2 text-sm hover:bg-slate-700">{% trans "Add data source" %}</button>
+      <a href="{% url 'data_hub' workspace.slug %}" class="rounded border px-4 py-2 text-sm hover:bg-slate-50">{% trans "Cancel" %}</a>
+    </div>
+  </form>
+
+</div>
+{% endblock %}

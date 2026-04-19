@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block content %}
+<section class="mb-10">
+  <div class="max-w-3xl">
+    <div class="inline-block text-xs uppercase tracking-widest text-slate-500 mb-2">{% trans "Open, free, self-hostable" %}</div>
+    <h1 class="text-3xl sm:text-4xl font-bold leading-tight text-slate-950">
+      {% trans "The operating system between open mobility data and political decisions." %}
+    </h1>
+    <p class="mt-3 text-slate-600 text-lg">
+      {% trans "OpenMobility OS helps municipalities, planners, local politics, NGOs, and journalists prioritize mobility measures — transparently, based on open data, and usable for any city or region worldwide." %}
+    </p>
+    <div class="mt-4 flex flex-wrap gap-3 text-sm">
+      <a href="{% url 'methodology' %}" class="rounded border px-3 py-1.5 hover:bg-white">{% trans "How scoring works" %}</a>
+      <a href="{% url 'about' %}" class="rounded border px-3 py-1.5 hover:bg-white">{% trans "Self-hosting guide" %}</a>
+      {% if is_admin %}
+        <a href="{% url 'workspace_new' %}" class="rounded bg-slate-900 text-white px-3 py-1.5 hover:bg-slate-700">{% trans "+ Add workspace" %}</a>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2 class="text-xl font-semibold mb-4">{% trans "Workspaces" %} <span class="text-sm font-normal text-slate-500">({{ workspaces|length }})</span></h2>
+  <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    {% for ws in workspaces %}
+      <a href="{% url 'workspace_dashboard' workspace_slug=ws.slug %}" class="block rounded-lg border bg-white p-5 hover:border-slate-400 hover:shadow-sm transition">
+        <div class="flex items-start justify-between gap-2">
+          <div>
+            <div class="text-lg font-semibold text-slate-950">{{ ws.name }}</div>
+            <div class="text-xs text-slate-500 mt-0.5">
+              {{ ws.get_kind_display }} · {{ ws.country_code }}{% if ws.region %} · {{ ws.region }}{% endif %}
+            </div>
+          </div>
+          {% if ws.is_demo %}
+            <span class="shrink-0 rounded-full bg-amber-100 text-amber-800 text-xs px-2 py-0.5 font-medium">{% trans "Demo" %}</span>
+          {% endif %}
+        </div>
+        <p class="mt-3 text-sm text-slate-600 line-clamp-3">
+          {{ ws.description_de|default:ws.description_en|truncatewords:30 }}
+        </p>
+        <div class="mt-4 flex items-center gap-4 text-xs text-slate-500">
+          {% if ws.population %}<span>👥 {{ ws.population|stringformat:"d" }}</span>{% endif %}
+          <span>🎯 {{ ws.goals.count }} {% trans "goals" %}</span>
+          <span>🧭 {{ ws.measures.count }} {% trans "measures" %}</span>
+        </div>
+      </a>
+    {% empty %}
+      <div class="col-span-full rounded-lg border-2 border-dashed bg-white p-10 text-center text-slate-500">
+        {% trans "No workspaces yet. Seed the demo data or create a workspace via the admin wizard." %}
+      </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+  <div class="rounded-lg bg-white p-5 border">
+    <div class="text-xs uppercase tracking-widest text-slate-500">1.</div>
+    <div class="font-semibold mt-1">{% trans "City-agnostic" %}</div>
+    <p class="text-sm text-slate-600 mt-1">{% trans "Leipzig is just one demo — any city in any country can be added as a workspace via APIs, open data, or configuration." %}</p>
+  </div>
+  <div class="rounded-lg bg-white p-5 border">
+    <div class="text-xs uppercase tracking-widest text-slate-500">2.</div>
+    <div class="font-semibold mt-1">{% trans "Transparent scoring" %}</div>
+    <p class="text-sm text-slate-600 mt-1">{% trans "Every recommendation exposes its sources, formula, and uncertainty. No black boxes." %}</p>
+  </div>
+  <div class="rounded-lg bg-white p-5 border">
+    <div class="text-xs uppercase tracking-widest text-slate-500">3.</div>
+    <div class="font-semibold mt-1">{% trans "Self-hostable" %}</div>
+    <p class="text-sm text-slate-600 mt-1">{% trans "Runs via Docker Compose. Single city, region, or public demo — same codebase, different configuration." %}</p>
+  </div>
+</section>
+{% endblock %}
