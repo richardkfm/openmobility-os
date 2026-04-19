@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - README: replaced ASCII header logo that rendered as "SMOS" with a correct "OMOS" wordmark
+- Custom domains now work: `ALLOWED_HOSTS` and `CSRF_TRUSTED_ORIGINS` are both configurable via `.env`, preventing `DisallowedHost` 400 errors when deployed behind a reverse proxy on a public domain
 
 ### Added
 - `ROADMAP.md` — public phased development plan covering Phases 0–11
