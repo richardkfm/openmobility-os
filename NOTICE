@@ -1,0 +1,125 @@
+OpenMobility OS
+Copyright (C) 2024–present OpenMobility OS contributors
+
+This project is licensed under the GNU General Public License v3.0.
+See LICENSE for the full license text.
+
+---
+
+## Third-Party Software
+
+OpenMobility OS incorporates or links to the following open-source components.
+Each is used in accordance with its respective license.
+
+### Backend dependencies
+
+**Django** — https://www.djangoproject.com/
+License: BSD 3-Clause
+Copyright (c) Django Software Foundation and individual contributors
+
+**GeoDjango** (part of Django)
+License: BSD 3-Clause
+
+**Django REST Framework** — https://www.django-rest-framework.org/
+License: BSD 2-Clause
+Copyright (c) 2011–present, Encode OSS Ltd.
+
+**djangorestframework-gis** — https://github.com/openwisp/django-rest-framework-gis
+License: MIT
+Copyright (c) 2013–present, Douglas Meehan, openwisp contributors
+
+**django-environ** — https://github.com/joke2k/django-environ
+License: MIT
+Copyright (c) 2013–present, Daniele Faraglia and contributors
+
+**django-htmx** — https://github.com/adamchainz/django-htmx
+License: MIT
+Copyright (c) 2020–present, Adam Johnson
+
+**Gunicorn** — https://gunicorn.org/
+License: MIT
+Copyright (c) 2009–present, Benoît Chesneau; Paul J. Davis
+
+**Whitenoise** — https://whitenoise.readthedocs.io/
+License: MIT
+Copyright (c) 2013–present, David Evans
+
+**psycopg** — https://www.psycopg.org/
+License: LGPL-3.0
+Copyright (c) 2001–present, Federico Di Gregorio, Daniele Varrazzo, and contributors
+
+**PyYAML** — https://pyyaml.org/
+License: MIT
+Copyright (c) 2006–present, Kirill Simonov
+
+**Requests** — https://requests.readthedocs.io/
+License: Apache 2.0
+Copyright (c) 2019, Kenneth Reitz
+
+**pyproj** — https://pyproj4.github.io/pyproj/
+License: MIT
+Copyright (c) 2006–present, Jeff Whitaker and contributors
+(wraps PROJ — https://proj.org/, MIT License)
+
+**python-dateutil** — https://dateutil.readthedocs.io/
+License: Apache 2.0 / BSD
+Copyright (c) 2003–present, Gustavo Niemeyer and contributors
+
+**GDAL** — https://gdal.org/
+License: MIT
+Copyright (c) 1998–present, Frank Warmerdam and contributors
+
+**PostGIS** — https://postgis.net/
+License: GPL-2.0
+Copyright (c) 2001–present, PostGIS contributors
+
+**PostgreSQL** — https://www.postgresql.org/
+License: PostgreSQL License (similar to BSD/MIT)
+Copyright (c) 1996–present, The PostgreSQL Global Development Group
+
+---
+
+### Frontend libraries (served from CDN or bundled)
+
+**MapLibre GL JS** — https://maplibre.org/
+License: BSD 3-Clause
+Copyright (c) 2020–present, MapLibre contributors
+(forked from Mapbox GL JS, which was BSD 3-Clause prior to December 2020)
+
+**HTMX** — https://htmx.org/
+License: BSD 2-Clause ("Simplified BSD License")
+Copyright (c) 2020–present, Big Sky Software
+
+**Alpine.js** — https://alpinejs.dev/
+License: MIT
+Copyright (c) 2019–present, Caleb Porzio
+
+**Tailwind CSS** — https://tailwindcss.com/
+License: MIT
+Copyright (c) 2017–present, Tailwind Labs, Inc.
+
+**Chart.js** — https://www.chartjs.org/
+License: MIT
+Copyright (c) 2014–present, Chart.js Contributors
+
+---
+
+### Data sources used in demo workspaces
+
+**OpenStreetMap** — https://www.openstreetmap.org/
+License: Open Data Commons Open Database License (ODbL) v1.0
+© OpenStreetMap contributors
+Any map tiles or geodata derived from OpenStreetMap must carry the attribution
+"© OpenStreetMap contributors" and comply with the ODbL.
+
+**Overpass API** — https://overpass-api.de/
+License: LGPL-3.0
+Data from OpenStreetMap, licensed under ODbL.
+
+Map tiles shown by default use OpenStreetMap raster tiles.
+Tile URL is configurable via the `MAP_TILE_URL` environment variable to allow
+self-hosted or alternative tile providers.
+
+---
+
+All trademarks are the property of their respective owners.
