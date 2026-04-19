@@ -6,7 +6,7 @@
   <title>{% block title %}{{ page_title }}{% endblock %} · OpenMobility OS</title>
   <meta name="description" content="{% trans 'Open operating system between mobility data and political decisions. Any municipality. Any country.' %}">
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="{% static 'css/components.css' %}">>
+  <link rel="stylesheet" href="{% static 'css/components.css' %}">
   <script defer src="https://unpkg.com/alpinejs@3.13.10/dist/cdn.min.js"></script>
   <script src="https://unpkg.com/htmx.org@1.9.12"></script>
   {% block extra_head %}{% endblock %}
@@ -63,12 +63,18 @@
   <footer class="mt-16 border-t bg-white">
     <div class="mx-auto max-w-7xl px-4 py-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-slate-500">
       <div>
-        <strong>OpenMobility OS</strong> v{{ platform_version }} · {% trans "Open platform for municipal mobility transition" %}
+        <strong>OpenMobility OS</strong>
+        <a href="{{ project_release_url }}"
+           target="_blank" rel="noopener noreferrer"
+           class="hover:underline"
+           title="{% blocktrans %}View v{{ platform_version }} release on GitHub{% endblocktrans %}">v{{ platform_version }}</a>
+        · {% trans "Open platform for municipal mobility transition" %}
       </div>
       <div class="flex items-center gap-4">
         <a href="{% url 'methodology' %}" class="hover:underline">{% trans "Methodology" %}</a>
         <a href="{% url 'about' %}" class="hover:underline">{% trans "Self-hosting" %}</a>
         <a href="/api/v1/meta/" class="hover:underline">API</a>
+        <a href="{{ project_repo_url }}" target="_blank" rel="noopener noreferrer" class="hover:underline">GitHub</a>
       </div>
     </div>
   </footer>

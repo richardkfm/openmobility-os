@@ -1,0 +1,25 @@
+{% extends "admin/base.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block branding %}
+<h1 id="site-name">
+  <a href="{% url 'admin:index' %}">{{ site_header|default:_('Django administration') }}</a>
+</h1>
+<p style="margin: 0; padding: 0 40px 10px; font-size: 11px; color: #999;">
+  <a href="{{ project_release_url }}" target="_blank" rel="noopener noreferrer"
+     style="color: #79aec8;"
+     title="{% blocktrans %}View v{{ platform_version }} release on GitHub{% endblocktrans %}">
+    v{{ platform_version }}
+  </a>
+  ·
+  <a href="{{ project_repo_url }}" target="_blank" rel="noopener noreferrer" style="color: #79aec8;">
+    {% trans "Source on GitHub" %}
+  </a>
+  ·
+  <span>{{ deployment_mode }}</span>
+</p>
+{% endblock %}
+
+{% block nav-global %}{% endblock %}

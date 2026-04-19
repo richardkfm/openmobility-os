@@ -23,6 +23,7 @@ env = environ.Env(
     MAP_TILE_ATTRIBUTION=(str, "© OpenStreetMap contributors"),
     OSM_OVERPASS_API=(str, "https://overpass-api.de/api/interpreter"),
     AUTO_SEED_DEMO=(bool, True),
+    PROJECT_REPO_URL=(str, "https://github.com/richardkfm/openmobility-os"),
 )
 
 env_file = REPO_ROOT / ".env"
@@ -34,6 +35,9 @@ try:
     PLATFORM_VERSION = (REPO_ROOT / "VERSION").read_text().strip()
 except OSError:
     PLATFORM_VERSION = "0.0.0"
+
+PROJECT_REPO_URL = env("PROJECT_REPO_URL").rstrip("/")
+PROJECT_RELEASE_URL = f"{PROJECT_REPO_URL}/releases/tag/v{PLATFORM_VERSION}"
 
 # --- Security ---
 SECRET_KEY = env("SECRET_KEY", default="dev-insecure-key-do-not-use-in-prod")

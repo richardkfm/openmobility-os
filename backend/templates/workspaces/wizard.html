@@ -14,13 +14,13 @@
 
     <div class="grid gap-4 sm:grid-cols-2">
       <div>
-        <label class="block text-sm font-medium mb-1">{% trans "Name" %} *</label>
-        <input name="name" required type="text" class="w-full rounded border px-3 py-2 text-sm"
+        <label for="ws-name" class="block text-sm font-medium mb-1">{% trans "Name" %} *</label>
+        <input id="ws-name" name="name" required type="text" class="w-full rounded border px-3 py-2 text-sm"
           @input="updateSlug($event.target.value)" placeholder="{% trans 'City or municipality name' %}">
       </div>
       <div>
-        <label class="block text-sm font-medium mb-1">{% trans "Slug" %} *</label>
-        <input name="slug" required type="text" class="w-full rounded border px-3 py-2 text-sm font-mono"
+        <label for="ws-slug" class="block text-sm font-medium mb-1">{% trans "Slug" %} *</label>
+        <input id="ws-slug" name="slug" required type="text" class="w-full rounded border px-3 py-2 text-sm font-mono"
           :value="slug" @input="slug = $event.target.value" placeholder="city-name">
         <p class="text-xs text-slate-400 mt-0.5">{% trans "URL-safe identifier" %}</p>
       </div>
@@ -28,12 +28,12 @@
 
     <div class="grid gap-4 sm:grid-cols-3">
       <div>
-        <label class="block text-sm font-medium mb-1">{% trans "Country code" %}</label>
-        <input name="country_code" type="text" maxlength="2" class="w-full rounded border px-3 py-2 text-sm uppercase" placeholder="DE" value="DE">
+        <label for="ws-country" class="block text-sm font-medium mb-1">{% trans "Country code" %}</label>
+        <input id="ws-country" name="country_code" type="text" maxlength="2" class="w-full rounded border px-3 py-2 text-sm uppercase" placeholder="{% trans 'e.g. DE, FR, NL' %}" value="DE">
       </div>
       <div>
-        <label class="block text-sm font-medium mb-1">{% trans "Language" %}</label>
-        <select name="language_code" class="w-full rounded border px-3 py-2 text-sm bg-white">
+        <label for="ws-language" class="block text-sm font-medium mb-1">{% trans "Language" %}</label>
+        <select id="ws-language" name="language_code" class="w-full rounded border px-3 py-2 text-sm bg-white">
           <option value="de">Deutsch (de)</option>
           <option value="en">English (en)</option>
           <option value="fr">Français (fr)</option>
@@ -42,8 +42,8 @@
         </select>
       </div>
       <div>
-        <label class="block text-sm font-medium mb-1">{% trans "Kind" %}</label>
-        <select name="kind" class="w-full rounded border px-3 py-2 text-sm bg-white">
+        <label for="ws-kind" class="block text-sm font-medium mb-1">{% trans "Kind" %}</label>
+        <select id="ws-kind" name="kind" class="w-full rounded border px-3 py-2 text-sm bg-white">
           <option value="city">{% trans "City" %}</option>
           <option value="town">{% trans "Town" %}</option>
           <option value="municipality">{% trans "Municipality" %}</option>
@@ -55,43 +55,43 @@
     </div>
 
     <div>
-      <label class="block text-sm font-medium mb-1">{% trans "Timezone" %}</label>
-      <input name="timezone" type="text" class="w-full rounded border px-3 py-2 text-sm" value="Europe/Berlin" placeholder="Europe/Berlin">
+      <label for="ws-timezone" class="block text-sm font-medium mb-1">{% trans "Timezone" %}</label>
+      <input id="ws-timezone" name="timezone" type="text" class="w-full rounded border px-3 py-2 text-sm" value="Europe/Berlin" placeholder="{% trans 'IANA timezone, e.g. Europe/Paris' %}">
     </div>
 
     <fieldset class="border rounded-lg p-4">
       <legend class="text-sm font-medium px-1">{% trans "Bounding box (for map + Overpass queries)" %}</legend>
       <div class="grid grid-cols-2 gap-3 mt-2">
         <div>
-          <label class="block text-xs text-slate-500 mb-1">{% trans "West (lon min)" %}</label>
-          <input name="bbox_minx" type="number" step="0.001" class="w-full rounded border px-2 py-1.5 text-sm" placeholder="12.29">
+          <label for="ws-bbox-minx" class="block text-xs text-slate-500 mb-1">{% trans "West (lon min)" %}</label>
+          <input id="ws-bbox-minx" name="bbox_minx" type="number" step="0.001" class="w-full rounded border px-2 py-1.5 text-sm" placeholder="{% trans 'e.g. 12.29' %}">
         </div>
         <div>
-          <label class="block text-xs text-slate-500 mb-1">{% trans "East (lon max)" %}</label>
-          <input name="bbox_maxx" type="number" step="0.001" class="w-full rounded border px-2 py-1.5 text-sm" placeholder="12.55">
+          <label for="ws-bbox-maxx" class="block text-xs text-slate-500 mb-1">{% trans "East (lon max)" %}</label>
+          <input id="ws-bbox-maxx" name="bbox_maxx" type="number" step="0.001" class="w-full rounded border px-2 py-1.5 text-sm" placeholder="{% trans 'e.g. 12.55' %}">
         </div>
         <div>
-          <label class="block text-xs text-slate-500 mb-1">{% trans "South (lat min)" %}</label>
-          <input name="bbox_miny" type="number" step="0.001" class="w-full rounded border px-2 py-1.5 text-sm" placeholder="51.23">
+          <label for="ws-bbox-miny" class="block text-xs text-slate-500 mb-1">{% trans "South (lat min)" %}</label>
+          <input id="ws-bbox-miny" name="bbox_miny" type="number" step="0.001" class="w-full rounded border px-2 py-1.5 text-sm" placeholder="{% trans 'e.g. 51.23' %}">
         </div>
         <div>
-          <label class="block text-xs text-slate-500 mb-1">{% trans "North (lat max)" %}</label>
-          <input name="bbox_maxy" type="number" step="0.001" class="w-full rounded border px-2 py-1.5 text-sm" placeholder="51.45">
+          <label for="ws-bbox-maxy" class="block text-xs text-slate-500 mb-1">{% trans "North (lat max)" %}</label>
+          <input id="ws-bbox-maxy" name="bbox_maxy" type="number" step="0.001" class="w-full rounded border px-2 py-1.5 text-sm" placeholder="{% trans 'e.g. 51.45' %}">
         </div>
       </div>
     </fieldset>
 
     <div>
-      <label class="block text-sm font-medium mb-1">{% trans "Description (German)" %}</label>
-      <textarea name="description_de" rows="3" class="w-full rounded border px-3 py-2 text-sm"></textarea>
+      <label for="ws-desc-de" class="block text-sm font-medium mb-1">{% trans "Description (German)" %}</label>
+      <textarea id="ws-desc-de" name="description_de" rows="3" class="w-full rounded border px-3 py-2 text-sm"></textarea>
     </div>
     <div>
-      <label class="block text-sm font-medium mb-1">{% trans "Description (English)" %}</label>
-      <textarea name="description_en" rows="3" class="w-full rounded border px-3 py-2 text-sm"></textarea>
+      <label for="ws-desc-en" class="block text-sm font-medium mb-1">{% trans "Description (English)" %}</label>
+      <textarea id="ws-desc-en" name="description_en" rows="3" class="w-full rounded border px-3 py-2 text-sm"></textarea>
     </div>
 
     <div class="flex gap-3 pt-2">
-      <button type="submit" class="rounded bg-slate-900 text-white px-4 py-2 text-sm hover:bg-slate-700">
+      <button type="submit" class="rounded bg-slate-900 text-white px-4 py-2 text-sm hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-400">
         {% trans "Create workspace" %}
       </button>
       <a href="{% url 'platform_landing' %}" class="rounded border px-4 py-2 text-sm hover:bg-slate-50">{% trans "Cancel" %}</a>

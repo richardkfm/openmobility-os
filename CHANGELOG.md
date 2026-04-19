@@ -7,12 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Version badge in the public footer and on `/about/` now links directly to the matching GitHub release (`…/releases/tag/v<version>`); footer also gains a persistent "GitHub" link to the source repository
+- Django admin screens now display the OpenMobility OS version below the branding, linked to the matching GitHub release, plus a "Source on GitHub" shortcut and the current deployment mode
+- `PROJECT_REPO_URL` setting (overridable via `.env`) exposes the canonical source repository URL to templates and the public meta API
+- `/api/v1/meta/` now returns `repo_url` and `release_url` so downstream dashboards can link back to the running version's source
+
 ### Changed
-- README quickstart: automatic `SECRET_KEY` and `ADMIN_TOKEN` generation via Python one-liner
-- README: expanded step-by-step setup guide for novice users (Docker installation, each step explained)
+- Django admin: localized site title and header ("OpenMobility OS · Administration") replace the default "Django administration" chrome
+- `README` quickstart: automatic `SECRET_KEY` and `ADMIN_TOKEN` generation via Python one-liner
+- `README`: expanded step-by-step setup guide for novice users (Docker installation, each step explained)
+- Extracted a shared `core.utils.get_active_workspace` helper; `datasets`, `workspaces`, `measures`, `maps`, and `api` views now use it instead of each app maintaining its own copy of the lookup
+- Simplified the scoring strategy override logic into a single `STRATEGY_OVERRIDES` dict instead of an if/if/if chain
+- Hardcoded GitHub URL removed from the `/about/` self-hosting snippet — it now interpolates `PROJECT_REPO_URL` so forks and mirrors render the correct clone command
 
 ### Fixed
-- README: replaced ASCII header logo that rendered as "SMOS" with a correct "OMOS" wordmark
+- Stray `>>` characters after the global stylesheet `<link>` in the base template (visible as duplicate markup in some browsers)
+- Workspace wizard form: labels now use `for=` bindings to their inputs, and static placeholder examples (`"DE"`, `"Europe/Berlin"`, bounding-box coordinates) are either translated or wrapped in `{% trans %}` so they stay city-agnostic in every locale
+- Data source detail screen: action buttons (test, sync, delete) now carry `aria-label`s, explicit `type="submit"`/`"button"`, and visible focus rings; result + spinner regions use `role="status"` + `aria-live="polite"` for screen readers
+- `README`: replaced ASCII header logo that rendered as "SMOS" with a correct "OMOS" wordmark
 - Custom domains now work: `ALLOWED_HOSTS` and `CSRF_TRUSTED_ORIGINS` are both configurable via `.env`, preventing `DisallowedHost` 400 errors when deployed behind a reverse proxy on a public domain
 - Added `.dockerignore` so the host `.env` file is no longer baked into the Docker image; environment variables are now exclusively supplied at runtime via `env_file` in `docker-compose.yml`
 

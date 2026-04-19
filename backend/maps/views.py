@@ -3,18 +3,17 @@
 import json
 
 from django.http import JsonResponse
-from django.shortcuts import get_object_or_404
 from django.views.decorators.cache import cache_page
 from django.views.decorators.http import require_GET
 
+from core.utils import get_active_workspace
 from datasets.models import NormalizedFeatureSet
-from workspaces.models import Workspace
 
 
 @require_GET
 @cache_page(30)
 def workspace_layer(request, workspace_slug: str, layer_kind: str):
-    ws = get_object_or_404(Workspace, slug=workspace_slug, is_active=True)
+    ws = get_active_workspace(workspace_slug)
     try:
         fs = NormalizedFeatureSet.objects.get(workspace=ws, layer_kind=layer_kind)
     except NormalizedFeatureSet.DoesNotExist:
@@ -24,7 +23,7 @@ def workspace_layer(request, workspace_slug: str, layer_kind: str):
 
 @require_GET
 def workspace_measures_geojson(request, workspace_slug: str):
-    ws = get_object_or_404(Workspace, slug=workspace_slug, is_active=True)
+    ws = get_active_workspace(workspace_slug)
     features = []
     for m in ws.measures.exclude(geometry__isnull=True):
         features.append(

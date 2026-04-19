@@ -17,7 +17,7 @@
   </ul>
 
   <h2 class="text-xl font-semibold mt-8 mb-2">{% trans "Self-hosting" %}</h2>
-  <pre class="bg-slate-900 text-slate-100 rounded p-4 text-sm overflow-x-auto">git clone https://github.com/richardkfm/openmobility-os.git
+  <pre class="bg-slate-900 text-slate-100 rounded p-4 text-sm overflow-x-auto">git clone {{ project_repo_url }}.git
 cd openmobility-os
 cp .env.example .env
 # edit .env — set SECRET_KEY and ADMIN_TOKEN
@@ -25,8 +25,12 @@ docker compose up --build</pre>
 
   <h2 class="text-xl font-semibold mt-8 mb-2">{% trans "Current version" %}</h2>
   <p class="text-slate-700">
-    <code class="bg-slate-100 rounded px-2 py-0.5">v{{ platform_version }}</code> · {% trans "Deployment mode:" %}
+    <a href="{{ project_release_url }}" target="_blank" rel="noopener noreferrer" class="no-underline">
+      <code class="bg-slate-100 rounded px-2 py-0.5 hover:bg-slate-200">v{{ platform_version }}</code>
+    </a>
+    · {% trans "Deployment mode:" %}
     <code class="bg-slate-100 rounded px-2 py-0.5">{{ deployment_mode }}</code>
+    · <a href="{{ project_repo_url }}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">{% trans "Source on GitHub" %}</a>
   </p>
 
   <h2 class="text-xl font-semibold mt-8 mb-2">{% trans "Principles" %}</h2>
