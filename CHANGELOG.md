@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - README quickstart: automatic `SECRET_KEY` and `ADMIN_TOKEN` generation via Python one-liner
 - README: expanded step-by-step setup guide for novice users (Docker installation, each step explained)
 
+### Fixed
+- README: replaced ASCII header logo that rendered as "SMOS" with a correct "OMOS" wordmark
+
 ### Added
 - `ROADMAP.md` — public phased development plan covering Phases 0–11
 - `CONTRIBUTING.md` — first-contribution guide with quickstart, PR checklist, and project structure overview
