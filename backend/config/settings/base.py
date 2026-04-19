@@ -15,6 +15,7 @@ REPO_ROOT = BACKEND_DIR.parent
 env = environ.Env(
     DEBUG=(bool, False),
     ALLOWED_HOSTS=(list, ["localhost", "127.0.0.1"]),
+    CSRF_TRUSTED_ORIGINS=(list, []),
     DEPLOYMENT_MODE=(str, "public-demo"),
     DEFAULT_WORKSPACE_SLUG=(str, ""),
     DEFAULT_LOCALE=(str, "de"),
@@ -38,6 +39,7 @@ except OSError:
 SECRET_KEY = env("SECRET_KEY", default="dev-insecure-key-do-not-use-in-prod")
 DEBUG = env("DEBUG")
 ALLOWED_HOSTS = env("ALLOWED_HOSTS")
+CSRF_TRUSTED_ORIGINS = env("CSRF_TRUSTED_ORIGINS")
 
 # --- Deployment / tenancy ---
 DEPLOYMENT_MODE = env("DEPLOYMENT_MODE")
