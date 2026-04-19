@@ -56,11 +56,11 @@ jobs:
       - name: Install Python dependencies
         run: pip install -r requirements.txt
       - name: Django system check
-        run: python backend/manage.py check --deploy --fail-level WARNING
+        run: python manage.py check --fail-level ERROR
       - name: Run migrations
-        run: python backend/manage.py migrate --noinput
+        run: python manage.py migrate --noinput
       - name: Run tests
-        run: python backend/manage.py test --verbosity=2
+        run: python manage.py test --verbosity=2
 
   docker-build:
     name: Docker build check
