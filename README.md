@@ -140,6 +140,227 @@ three demo workspaces: **Leipzig**, **Musterstadt**, and **Muster-Landkreis**.
   to any language
 - **Admin-token protection** for write actions
 
+## Using the Platform
+
+### Landing page
+
+When you open the platform you land on the workspace list. Each card shows the
+city name, kind (city / town / county / …), country, population, the number of
+active data sources, and the number of generated measures. Click a card to open
+that workspace.
+
+**Deployment-mode variations:**
+
+| Mode | Landing behaviour |
+|---|---|
+| `public-demo` | All workspaces listed; "New workspace" button visible to admins |
+| `multi-city` | All workspaces listed |
+| `single-city` | Redirects immediately to the workspace set in `DEFAULT_WORKSPACE_SLUG` |
+
+At the bottom of the page you can reach `/methodology/` (scoring formulas and
+connector reference) and `/about/` (self-hosting guide, current version).
+
+---
+
+### Workspace dashboard
+
+Clicking a workspace takes you to its dashboard at `/<slug>/`. You will see:
+
+- **KPI strip** — number of measures, goals, active data sources, and population.
+- **Goals** — each policy goal shows its target value, current value, unit, and
+  a progress bar. Goals are loaded from the workspace configuration (YAML seed
+  or the Django admin).
+- **Top measures** — the five highest-priority interventions, ranked by a
+  weighted score across nine dimensions (climate, safety, quality of life,
+  social equity, feasibility, cost, visibility, political viability, and goal
+  alignment). Click any row to open the full measure detail.
+- **Quick-access cards** — direct links to the interactive map, the full
+  measures list, and the data hub.
+
+---
+
+### Interactive map
+
+The map at `/<slug>/map/` uses MapLibre GL JS with OSM vector tiles (or any
+XYZ tile server you configure via `MAP_TILE_URL`).
+
+**Layer panel (left sidebar):**
+
+Toggle individual data layers on and off. Available layer kinds include:
+
+| Category | Layers |
+|---|---|
+| Infrastructure | Streets, streets with speed limits, bike network, transit stops, parking |
+| Safety | Accidents |
+| Community | Schools, districts |
+| Environment | Trees, green areas, parks, heat corridors, water bodies, air quality, sealed surfaces, land use |
+
+Each layer is fetched as GeoJSON from `/api/v1/workspaces/<slug>/features/<layer_kind>/`
+and cached for 30 seconds on the server.
+
+**Measures overlay:**
+
+Toggle "Show measures" to display auto-generated interventions as point or
+polygon markers on the map. Clicking a marker opens the measure detail.
+
+---
+
+### Measures list and detail
+
+**List (`/<slug>/measures/`):**
+
+All generated and hand-curated measures are shown in a filterable table. Use
+the filter bar to narrow by:
+
+- **Strategy** — changes the weighting applied to the priority score:
+  - *Default* — balanced weights
+  - *Quick wins* — boosts feasibility and low cost
+  - *Vision Zero* — triples safety weight
+  - *Max climate* — triples climate weight
+  - *Fair distribution* — emphasises social equity
+- **Category** — e.g. bike infrastructure, transit, traffic calming
+- **Effort level** — low / medium / high
+
+Filters update the list in place via HTMX without a full page reload.
+
+**Detail (`/<slug>/measures/<measure-slug>/`):**
+
+Each measure page shows:
+
+- Title, summary, full description (markdown)
+- Category, effort level, current status
+- **Scoring table** — all nine dimensions with raw value (0–1), display value
+  (0–100), confidence level, rationale, and the data sources each score is
+  derived from. Nothing is hidden; every number is traceable.
+- The priority score formula: `Σ(display_value × weight) / Σ(weights)`, where
+  weights come from the active strategy.
+- A permanent URL suitable for sharing with stakeholders or the public.
+
+---
+
+### Admin: logging in
+
+All write actions require the `ADMIN_TOKEN` from your `.env` file.
+
+1. Visit `/workspaces/admin-login/` (or click "Admin login" in the nav).
+2. Enter your `ADMIN_TOKEN`.
+3. Click **Log in** — a session cookie is set and you are redirected back.
+
+To log out, visit `/workspaces/admin-logout/`.
+
+Alternatively, pass the token as a Bearer header for API calls:
+
+```
+Authorization: Bearer <your-ADMIN_TOKEN>
+```
+
+---
+
+### Admin: adding a workspace
+
+1. On the landing page, click **New workspace** (visible only when logged in as admin).
+2. Fill in the wizard form:
+   - **Name** (required) and **Slug** (auto-derived from name, must be unique)
+   - **Kind** — city, town, municipality, county, or state
+   - **Country code** (ISO 3166-1 alpha-2, e.g. `DE`, `FR`, `US`)
+   - **Language code** (BCP-47, e.g. `de`, `en`, `fr`)
+   - **Timezone** (e.g. `Europe/Berlin`)
+   - **Bounding box** (optional) — `minx`, `miny`, `maxx`, `maxy` in WGS 84.
+     Used by the OSM connector to scope Overpass queries.
+   - Short descriptions in German and/or English (optional)
+3. Click **Create workspace**. You are taken straight to the data hub to add
+   your first data sources.
+
+You can also create a workspace from the command line by adding a YAML file
+under `config/workspaces/` and running:
+
+```bash
+docker compose exec web python manage.py seed_demo --only your-city-slug
+```
+
+---
+
+### Admin: data hub and syncing data
+
+The data hub at `/<slug>/data/` is the control centre for all data sources.
+
+**Adding a data source:**
+
+1. Click **Add data source**.
+2. Choose the **connector type**:
+   - **CSV** — provide a URL, delimiter, encoding, and the column names for
+     latitude/longitude (or a WKT geometry column).
+   - **GeoJSON URL** — provide a URL to any GeoJSON FeatureCollection.
+     Optionally remap or filter properties.
+   - **OSM Overpass** — pick one of six built-in templates (streets,
+     bike network, transit stops, schools, parking, trees/parks) or write a
+     custom Overpass QL query. The workspace bounding box is injected
+     automatically.
+   - **Manual** — for hand-entered KPI values (no network fetch).
+3. Select the **layer kind** that best describes what this data represents
+   (e.g. `bike_network`, `schools`, `accidents`).
+4. Click **Save**.
+
+**Testing a connection:**
+
+On the data source detail page click **Test connection**. The platform fetches a
+small preview from the source and reports the number of features found, any
+errors, and a sample of the returned properties. No data is written to the
+database during a test.
+
+**Syncing:**
+
+Click **Sync** (or run `python manage.py sync_datasources <slug>` from the
+command line) to pull fresh data. The platform:
+
+1. Calls the connector's `fetch()` method.
+2. Writes the returned GeoJSON into a `NormalizedFeatureSet` record linked to
+   this data source.
+3. Updates the status badge:
+   - `active` — sync succeeded
+   - `error` — sync failed; the error message is shown in red below the row
+   - `pending` — sync is in progress
+
+The status table shows record count and the timestamp of the last successful
+sync for each source.
+
+**Bulk sync from the command line:**
+
+```bash
+# Sync all sources for one workspace
+docker compose exec web python manage.py sync_datasources your-city-slug
+
+# Sync all workspaces
+docker compose exec web python manage.py sync_datasources
+```
+
+---
+
+### Admin: generating measures
+
+Once at least one data source has been synced, click **Generate measures** on
+the workspace dashboard (admin only). The rule engine:
+
+1. Loads all `NormalizedFeatureSet` records for the workspace.
+2. Runs each built-in rule against the data:
+   - *Missing protected bike lane* — high-speed streets without adjacent bike
+     infrastructure
+   - *Transit coverage gap* — areas more than a set distance from any transit
+     stop
+   - *Accident cluster* — spatial hotspots with elevated accident frequency
+   - *Unsafe school route* — schools lacking a safe pedestrian/cycle approach
+3. Creates or updates `Measure` records, each with a full set of nine
+   `MeasureScore` entries and the raw evidence used to calculate them.
+4. Reports the number of measures generated, updated, and skipped.
+
+From the command line:
+
+```bash
+docker compose exec web python manage.py generate_measures your-city-slug
+```
+
+---
+
 ## Architecture
 
 - **Backend:** Django 5 + GeoDjango + PostGIS + Django REST Framework
