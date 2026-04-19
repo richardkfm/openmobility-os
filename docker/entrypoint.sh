@@ -4,7 +4,7 @@ set -euo pipefail
 export DJANGO_SETTINGS_MODULE="${DJANGO_SETTINGS_MODULE:-config.settings.production}"
 export PYTHONPATH=/app/backend
 
-cd /app/backend
+cd /app
 
 echo "[OpenMobility OS] Applying database migrations..."
 python manage.py migrate --noinput
