@@ -119,18 +119,18 @@ See [CHANGELOG.md](CHANGELOG.md) for what has already shipped.
 
 ---
 
-### 🔲 Phase 7 — Open-Source Release Readiness
+### ✅ Phase 7 — Open-Source Release Readiness
 > Repo is ready for public discovery and contributions.
 
-- [ ] `CONTRIBUTING.md` with first-contribution guide
-- [ ] `CODE_OF_CONDUCT.md`
-- [ ] `SECURITY.md` — responsible disclosure process
-- [ ] GitHub Actions CI: lint (Ruff), `manage.py check`, Docker build check
-- [ ] Issue templates (bug report, feature request, new-connector proposal)
-- [ ] PR template referencing CLAUDE.md governance rules
-- [ ] License attribution for third-party dependencies (OSM, MapLibre, Tailwind, HTMX, ...)
-- [ ] Screenshots / demo GIF in README
-- [ ] Public demo deployment guide
+- [x] `CONTRIBUTING.md` with first-contribution guide
+- [x] `CODE_OF_CONDUCT.md`
+- [x] `SECURITY.md` — responsible disclosure process
+- [x] GitHub Actions CI: lint (Ruff), `manage.py check`, Docker build check
+- [x] Issue templates (bug report, feature request, new-connector proposal)
+- [x] PR template referencing CLAUDE.md governance rules
+- [x] License attribution for third-party dependencies (OSM, MapLibre, Tailwind, HTMX, ...) — `NOTICE` file
+- [x] Screenshots placeholder in README (to be replaced with real screenshots on first public deployment)
+- [x] Public demo deployment guide in README
 
 ---
 
