@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block subnav %}
+<div class="border-t bg-white">
+  <div class="mx-auto max-w-7xl px-4 py-2 flex items-center gap-6 text-sm overflow-x-auto">
+    <span class="font-medium text-slate-900 whitespace-nowrap">{{ workspace.name }}</span>
+    {% if workspace.is_demo %}<span class="rounded-full bg-amber-100 text-amber-800 text-xs px-2 py-0.5 shrink-0">{% trans "Demo" %}</span>{% endif %}
+    <a href="{% url 'workspace_dashboard' workspace.slug %}" class="text-slate-600 hover:text-slate-900 whitespace-nowrap">{% trans "Dashboard" %}</a>
+    <a href="{% url 'workspace_map' workspace.slug %}" class="text-slate-600 hover:text-slate-900 whitespace-nowrap">{% trans "Map" %}</a>
+    <a href="{% url 'measures_list' workspace.slug %}" class="text-slate-600 hover:text-slate-900 whitespace-nowrap">{% trans "Measures" %}</a>
+    <a href="{% url 'data_hub' workspace.slug %}" class="text-slate-600 hover:text-slate-900 whitespace-nowrap">{% trans "Data hub" %}</a>
+    <a href="{% url 'workspace_methodology' workspace.slug %}" class="text-slate-600 hover:text-slate-900 whitespace-nowrap">{% trans "Methodology" %}</a>
+  </div>
+</div>
+{% endblock %}

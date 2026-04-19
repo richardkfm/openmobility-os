@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block content %}
+<div class="max-w-sm mx-auto flex flex-col gap-6">
+  <h1 class="text-2xl font-bold">{% trans "Admin sign-in" %}</h1>
+  <p class="text-slate-600 text-sm">{% trans "Enter the admin token configured in your .env file (ADMIN_TOKEN)." %}</p>
+
+  {% if error %}
+  <div class="rounded bg-red-50 border border-red-200 p-3 text-sm text-red-800">{{ error }}</div>
+  {% endif %}
+
+  <form method="post" class="rounded-lg border bg-white p-6 flex flex-col gap-4">
+    {% csrf_token %}
+    <div>
+      <label class="block text-sm font-medium mb-1">{% trans "Admin token" %}</label>
+      <input name="token" type="password" required autofocus
+             class="w-full rounded border px-3 py-2 text-sm">
+    </div>
+    <button type="submit" class="rounded bg-slate-900 text-white px-4 py-2 text-sm hover:bg-slate-700">
+      {% trans "Sign in" %}
+    </button>
+  </form>
+</div>
+{% endblock %}

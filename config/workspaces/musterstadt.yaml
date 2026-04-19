@@ -1,0 +1,84 @@
+slug: musterstadt
+name: Musterstadt
+kind: town
+country_code: DE
+region: "— Beispielregion —"
+language_code: de
+timezone: Europe/Berlin
+population: 12500
+area_km2: 24.3
+is_demo: true
+default_zoom: 13
+
+bounds:
+  west: 10.00
+  south: 52.00
+  east: 10.10
+  north: 52.06
+
+center:
+  lon: 10.05
+  lat: 52.03
+
+description_de: |
+  Musterstadt ist ein fiktives Beispiel für eine Kleinstadt mit nur manuell
+  gepflegten Indikatoren. Zeigt, dass OpenMobility OS auch ohne API-Datenquellen
+  einsetzbar ist — z.B. wenn keine offenen Portale oder OSM-Daten in der nötigen
+  Dichte vorliegen.
+description_en: |
+  Musterstadt is a fictional small-town example with manually maintained
+  indicators only. It demonstrates that OpenMobility OS works without API data
+  sources — for places without open data portals or dense OSM coverage.
+
+goals:
+  - code: safe_schools_2028
+    title_de: Alle Grundschulen an sichere Radwege angebunden bis 2028
+    title_en: All primary schools connected to safe bike routes by 2028
+    target_value: 100
+    current_value: 40
+    unit: "%"
+    deadline_year: 2028
+
+measures:
+  - slug: ortsdurchfahrt-tempo30
+    category: speed
+    title_de: Tempo 30 auf der Ortsdurchfahrt
+    title_en: 30 km/h on the through-road
+    summary_de: Die Hauptdurchgangsstraße durchgehend auf 30 km/h drosseln.
+    summary_en: Set the main through-road to 30 km/h throughout the town.
+    effort_level: quick_win
+    status: proposed
+    description_de_md: |
+      Einfache, kostengünstige Maßnahme mit hohem Sicherheitsgewinn in kleinen Orten.
+    scores:
+      climate: { raw: 0.3 }
+      safety: { raw: 0.8 }
+      quality_of_life: { raw: 0.75 }
+      social: { raw: 0.55 }
+      feasibility: { raw: 0.85 }
+      cost: { raw: 0.95, confidence: high }
+      visibility: { raw: 0.7 }
+      political: { raw: 0.45 }
+      goal_alignment: { raw: 0.6 }
+
+  - slug: dorfbus-taktverdichtung
+    category: transit
+    title_de: Dorfbus — Taktverdichtung auf Stundentakt
+    title_en: Village bus — densify to hourly service
+    summary_de: Nachmittags- und Wochenendtakt für den Dorfbus einführen.
+    summary_en: Introduce afternoon and weekend frequency for the village bus.
+    effort_level: medium
+    status: proposed
+    description_de_md: |
+      Regelmäßiger Stundentakt verbessert die Anbindung wesentlich, insbesondere
+      für ältere Menschen und Jugendliche ohne Führerschein.
+    scores:
+      climate: { raw: 0.5 }
+      safety: { raw: 0.35 }
+      quality_of_life: { raw: 0.7 }
+      social: { raw: 0.85, confidence: high }
+      feasibility: { raw: 0.5 }
+      cost: { raw: 0.3 }
+      visibility: { raw: 0.5 }
+      political: { raw: 0.5 }
+      goal_alignment: { raw: 0.55 }

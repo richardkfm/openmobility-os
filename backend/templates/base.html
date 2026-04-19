@@ -1,0 +1,78 @@
+{% load i18n static %}<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ page_title }}{% endblock %} · OpenMobility OS</title>
+  <meta name="description" content="{% trans 'Open operating system between mobility data and political decisions. Any municipality. Any country.' %}">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="{% static 'css/components.css' %}">>
+  <script defer src="https://unpkg.com/alpinejs@3.13.10/dist/cdn.min.js"></script>
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  {% block extra_head %}{% endblock %}
+</head>
+<body class="min-h-screen bg-slate-50 text-slate-900 antialiased">
+  <header class="border-b bg-white">
+    <div class="mx-auto max-w-7xl px-4 py-4 flex items-center justify-between gap-6">
+      <a href="{% url 'platform_landing' %}" class="flex items-center gap-2">
+        <span class="h-8 w-8 rounded bg-slate-900 text-white flex items-center justify-center font-bold">O</span>
+        <span class="font-semibold text-lg tracking-tight">OpenMobility <span class="text-slate-500">OS</span></span>
+      </a>
+      <nav class="flex items-center gap-5 text-sm">
+        <a href="{% url 'platform_landing' %}" class="hover:text-slate-950 text-slate-600">{% trans "Workspaces" %}</a>
+        <a href="{% url 'methodology' %}" class="hover:text-slate-950 text-slate-600">{% trans "Methodology" %}</a>
+        <a href="{% url 'about' %}" class="hover:text-slate-950 text-slate-600">{% trans "About" %}</a>
+        {% if deployment_mode != 'single-city' and is_admin %}
+          <a href="{% url 'workspace_new' %}" class="rounded bg-slate-900 text-white px-3 py-1.5 hover:bg-slate-700">{% trans "+ New workspace" %}</a>
+        {% endif %}
+        <form method="post" action="{% url 'set_language' %}" class="flex items-center gap-1">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.path }}">
+          <select name="language" onchange="this.form.submit()" class="text-xs border rounded px-1 py-0.5 bg-white">
+            {% get_current_language as LANGUAGE_CODE %}
+            {% get_available_languages as LANGUAGES %}
+            {% for lang_code, lang_name in LANGUAGES %}
+              <option value="{{ lang_code }}" {% if lang_code == LANGUAGE_CODE %}selected{% endif %}>{{ lang_code|upper }}</option>
+            {% endfor %}
+          </select>
+        </form>
+        {% if is_admin %}
+          <a href="{% url 'admin_logout' %}" class="text-xs text-slate-500 hover:underline">{% trans "Sign out" %}</a>
+        {% else %}
+          <a href="{% url 'admin_login' %}?next={{ request.path }}" class="text-xs text-slate-500 hover:underline">{% trans "Admin" %}</a>
+        {% endif %}
+      </nav>
+    </div>
+    {% block subnav %}{% endblock %}
+  </header>
+
+  {% if messages %}
+    <div class="mx-auto max-w-7xl px-4 pt-4">
+      {% for message in messages %}
+        <div class="mb-2 rounded border px-3 py-2 text-sm {% if message.tags == 'error' %}bg-red-50 border-red-200 text-red-800{% elif message.tags == 'success' %}bg-emerald-50 border-emerald-200 text-emerald-800{% else %}bg-blue-50 border-blue-200 text-blue-800{% endif %}">
+          {{ message }}
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <main class="mx-auto max-w-7xl px-4 py-8">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="mt-16 border-t bg-white">
+    <div class="mx-auto max-w-7xl px-4 py-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-slate-500">
+      <div>
+        <strong>OpenMobility OS</strong> v{{ platform_version }} · {% trans "Open platform for municipal mobility transition" %}
+      </div>
+      <div class="flex items-center gap-4">
+        <a href="{% url 'methodology' %}" class="hover:underline">{% trans "Methodology" %}</a>
+        <a href="{% url 'about' %}" class="hover:underline">{% trans "Self-hosting" %}</a>
+        <a href="/api/v1/meta/" class="hover:underline">API</a>
+      </div>
+    </div>
+  </footer>
+
+  {% block extra_js %}{% endblock %}
+</body>
+</html>
