@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `ROADMAP.md` — public phased development plan covering Phases 0–11
+- `CONTRIBUTING.md` — first-contribution guide with quickstart, PR checklist, and project structure overview
+- `CODE_OF_CONDUCT.md` — Contributor Covenant v2.1
+- `SECURITY.md` — responsible disclosure process and self-hosting hardening checklist
+- GitHub Actions CI workflow: Ruff lint, Django system check + test suite, Docker build check
+- GitHub issue templates: bug report, feature request, new connector proposal
+- GitHub pull request template referencing CLAUDE.md governance rules
+
+### Added (initial prototype)
 - Initial project scaffold for OpenMobility OS — an open, free, self-hostable
   decision platform for municipal mobility transition.
 - `CLAUDE.md` with binding contributor guidelines, project philosophy, and

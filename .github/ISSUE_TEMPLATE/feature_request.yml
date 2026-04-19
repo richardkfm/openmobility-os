@@ -1,0 +1,51 @@
+name: Feature Request
+description: Propose a new feature or enhancement
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before opening a feature request, check [ROADMAP.md](../../ROADMAP.md) —
+        your idea may already be planned for a future phase.
+
+  - type: textarea
+    id: use_case
+    attributes:
+      label: Use case
+      description: |
+        Describe the municipality or user workflow this feature would support.
+        Remember: all features must work for any city worldwide, not just one specific place.
+      placeholder: "A transport planner in a mid-sized city without GTFS data needs to…"
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What does the current platform not do?
+      description: Explain the gap or limitation.
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: Describe what you'd like to happen. A rough sketch is fine.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: phase
+    attributes:
+      label: Which roadmap phase does this relate to?
+      options:
+        - Phase 7 — Open-Source Release Readiness
+        - Phase 8 — Accidents layer
+        - Phase 9 — Public transit / GTFS
+        - Phase 10 — Admin visibility
+        - Phase 10b — Climate adaptation (sponge city, heat resilience)
+        - Phase 11 — Further extensions
+        - New / not on the roadmap
+    validations:
+      required: false
