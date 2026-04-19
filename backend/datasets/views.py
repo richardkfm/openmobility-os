@@ -13,19 +13,15 @@ from django.views.decorators.http import require_POST
 
 from connectors.registry import get_connector, list_connectors
 from core.decorators import admin_required
-from workspaces.models import Workspace
+from core.utils import get_active_workspace
 
 from .models import DataSource, NormalizedFeatureSet
 
 logger = logging.getLogger(__name__)
 
 
-def _get_workspace(slug):
-    return get_object_or_404(Workspace, slug=slug, is_active=True)
-
-
 def data_hub(request, workspace_slug):
-    ws = _get_workspace(workspace_slug)
+    ws = get_active_workspace(workspace_slug)
     sources = ws.data_sources.all().order_by("layer_kind", "name")
     return render(
         request,
@@ -41,7 +37,7 @@ def data_hub(request, workspace_slug):
 
 @admin_required
 def add_data_source(request, workspace_slug):
-    ws = _get_workspace(workspace_slug)
+    ws = get_active_workspace(workspace_slug)
     connectors = list_connectors()
 
     if request.method == "POST":
@@ -87,7 +83,7 @@ def add_data_source(request, workspace_slug):
 
 
 def data_source_detail(request, workspace_slug, pk):
-    ws = _get_workspace(workspace_slug)
+    ws = get_active_workspace(workspace_slug)
     source = get_object_or_404(DataSource, workspace=ws, pk=pk)
     normalized = getattr(source, "normalized", None)
     return render(
@@ -105,7 +101,7 @@ def data_source_detail(request, workspace_slug, pk):
 @admin_required
 @require_POST
 def sync_data_source(request, workspace_slug, pk):
-    ws = _get_workspace(workspace_slug)
+    ws = get_active_workspace(workspace_slug)
     source = get_object_or_404(DataSource, workspace=ws, pk=pk)
     success, message = _run_sync(source)
     if success:
@@ -119,7 +115,7 @@ def sync_data_source(request, workspace_slug, pk):
 
 @admin_required
 def test_data_source(request, workspace_slug, pk):
-    ws = _get_workspace(workspace_slug)
+    ws = get_active_workspace(workspace_slug)
     source = get_object_or_404(DataSource, workspace=ws, pk=pk)
     try:
         connector = get_connector(source.source_type)
@@ -139,7 +135,7 @@ def test_data_source(request, workspace_slug, pk):
 @admin_required
 @require_POST
 def delete_data_source(request, workspace_slug, pk):
-    ws = _get_workspace(workspace_slug)
+    ws = get_active_workspace(workspace_slug)
     source = get_object_or_404(DataSource, workspace=ws, pk=pk)
     source.delete()
     messages.success(request, _("Data source deleted."))

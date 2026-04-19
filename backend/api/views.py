@@ -2,9 +2,9 @@
 
 from django.conf import settings
 from django.http import JsonResponse
-from django.shortcuts import get_object_or_404
 from django.views.decorators.http import require_GET
 
+from core.utils import get_active_workspace
 from workspaces.models import Workspace
 
 
@@ -15,6 +15,8 @@ def meta_view(request):
             "platform": "OpenMobility OS",
             "version": settings.PLATFORM_VERSION,
             "deployment_mode": settings.DEPLOYMENT_MODE,
+            "repo_url": settings.PROJECT_REPO_URL,
+            "release_url": settings.PROJECT_RELEASE_URL,
             "workspaces_count": Workspace.objects.filter(is_active=True).count(),
         }
     )
@@ -38,7 +40,7 @@ def workspace_list(request):
 
 @require_GET
 def workspace_detail(request, slug):
-    w = get_object_or_404(Workspace, slug=slug, is_active=True)
+    w = get_active_workspace(slug)
     return JsonResponse(
         {
             "slug": w.slug,
@@ -67,7 +69,7 @@ def workspace_detail(request, slug):
 
 @require_GET
 def measures_list(request, slug):
-    w = get_object_or_404(Workspace, slug=slug, is_active=True)
+    w = get_active_workspace(slug)
     data = [
         {
             "slug": m.slug,

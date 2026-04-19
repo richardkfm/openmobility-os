@@ -3,19 +3,14 @@
 from django.shortcuts import get_object_or_404, render
 from django.utils.translation import gettext as _
 
+from core.utils import get_active_workspace
 from datasets.models import DataSource, NormalizedFeatureSet
 from measures.models import Measure, MeasureScore
 from measures.scoring import compute_priority_score
 
-from .models import Workspace
-
-
-def _get_workspace(slug: str) -> Workspace:
-    return get_object_or_404(Workspace, slug=slug, is_active=True)
-
 
 def dashboard(request, workspace_slug: str):
-    ws = _get_workspace(workspace_slug)
+    ws = get_active_workspace(workspace_slug)
     goals = ws.goals.all()
     measures = list(ws.measures.all())
     ranked = sorted(
@@ -38,7 +33,7 @@ def dashboard(request, workspace_slug: str):
 
 
 def workspace_map(request, workspace_slug: str):
-    ws = _get_workspace(workspace_slug)
+    ws = get_active_workspace(workspace_slug)
     feature_sets = NormalizedFeatureSet.objects.filter(workspace=ws)
     layer_kinds = list(feature_sets.values_list("layer_kind", flat=True).distinct())
     return render(
@@ -53,7 +48,7 @@ def workspace_map(request, workspace_slug: str):
 
 
 def measures_list(request, workspace_slug: str):
-    ws = _get_workspace(workspace_slug)
+    ws = get_active_workspace(workspace_slug)
     strategy = request.GET.get("strategy", "default")
     category = request.GET.get("category", "")
     effort = request.GET.get("effort", "")
@@ -93,7 +88,7 @@ def measures_list(request, workspace_slug: str):
 
 
 def measure_detail(request, workspace_slug: str, measure_slug: str):
-    ws = _get_workspace(workspace_slug)
+    ws = get_active_workspace(workspace_slug)
     measure = get_object_or_404(Measure, workspace=ws, slug=measure_slug)
     scores = measure.scores.all()
     priority = compute_priority_score(measure, ws.scoring_weights)
@@ -112,7 +107,7 @@ def measure_detail(request, workspace_slug: str, measure_slug: str):
 
 
 def workspace_methodology(request, workspace_slug: str):
-    ws = _get_workspace(workspace_slug)
+    ws = get_active_workspace(workspace_slug)
     return render(
         request,
         "workspaces/methodology.html",
@@ -125,17 +120,17 @@ def workspace_methodology(request, workspace_slug: str):
     )
 
 
+STRATEGY_OVERRIDES = {
+    "quick_wins": {"feasibility": 3.0, "cost": 2.0},
+    "vision_zero": {"safety": 3.0, "social": 1.5},
+    "max_climate": {"climate": 3.0, "goal_alignment": 2.0},
+    "fair_distribution": {"social": 2.0, "quality_of_life": 2.0},
+}
+
+
 def _strategy_weights(strategy: str, base_weights: dict) -> dict:
-    """Map a strategy preset onto dimension weights."""
+    """Overlay a strategy preset onto the workspace's base dimension weights."""
     from measures.scoring import DEFAULT_WEIGHTS
 
     base = {**DEFAULT_WEIGHTS, **(base_weights or {})}
-    if strategy == "quick_wins":
-        return {**base, "feasibility": 3.0, "cost": 2.0}
-    if strategy == "vision_zero":
-        return {**base, "safety": 3.0, "social": 1.5}
-    if strategy == "max_climate":
-        return {**base, "climate": 3.0, "goal_alignment": 2.0}
-    if strategy == "fair_distribution":
-        return {**base, "social": 2.0, "quality_of_life": 2.0}
-    return base
+    return {**base, **STRATEGY_OVERRIDES.get(strategy, {})}
