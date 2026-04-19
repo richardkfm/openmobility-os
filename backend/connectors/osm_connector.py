@@ -5,8 +5,6 @@ plus a custom Overpass QL query escape hatch. Always workspace-agnostic: the
 bbox is derived from the workspace bounds.
 """
 
-import json
-from typing import Any
 
 import requests
 from django.conf import settings

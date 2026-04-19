@@ -8,7 +8,6 @@ from django.views.decorators.cache import cache_page
 from django.views.decorators.http import require_GET
 
 from datasets.models import NormalizedFeatureSet
-from measures.models import Measure
 from workspaces.models import Workspace
 
 

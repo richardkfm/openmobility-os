@@ -4,7 +4,6 @@ from django.shortcuts import get_object_or_404, render
 from django.utils.translation import gettext as _
 
 from datasets.models import DataSource, NormalizedFeatureSet
-from goals.models import WorkspaceGoal
 from measures.models import Measure, MeasureScore
 from measures.scoring import compute_priority_score
 

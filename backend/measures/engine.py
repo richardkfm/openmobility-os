@@ -7,7 +7,6 @@ stores its inputs as `Measure.evidence` so reviewers can reproduce the logic.
 """
 
 from dataclasses import dataclass, field
-from typing import Callable
 
 from datasets.models import NormalizedFeatureSet
 from workspaces.models import Workspace

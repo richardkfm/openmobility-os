@@ -8,7 +8,7 @@ Plan: full implementations in post-MVP phases. See the project plan for the
 full roadmap (GTFS in Phase 9, CKAN and others in Phase 11).
 """
 
-from .base import BaseConnector, ConnectorTestResult, FetchResult
+from .base import BaseConnector, ConnectorTestResult
 
 
 class GTFSConnector(BaseConnector):

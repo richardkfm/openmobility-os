@@ -166,7 +166,6 @@ REST_FRAMEWORK = {
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # GDAL — auto-detect path for common Linux library locations
-import ctypes.util as _cu
 
 GDAL_LIBRARY_PATH = env("GDAL_LIBRARY_PATH", default=None)
 if not GDAL_LIBRARY_PATH:
