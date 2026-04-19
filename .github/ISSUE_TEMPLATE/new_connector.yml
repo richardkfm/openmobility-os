@@ -1,0 +1,69 @@
+name: New Connector Proposal
+description: Propose a new data connector (CSV variant, CKAN portal, WFS, etc.)
+labels: [connector, enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        New connectors bring new classes of open data into the platform.
+        Read the [BaseConnector interface](../../backend/connectors/base.py)
+        before submitting.
+
+  - type: input
+    id: connector_name
+    attributes:
+      label: Connector name
+      placeholder: "e.g. CKANConnector, UnfallatlasConnector"
+    validations:
+      required: true
+
+  - type: textarea
+    id: data_source
+    attributes:
+      label: What data source does it connect to?
+      description: Include a public URL or example endpoint if available.
+    validations:
+      required: true
+
+  - type: textarea
+    id: coverage
+    attributes:
+      label: Geographic coverage
+      description: |
+        Is this a global standard (GeoJSON, WFS, CKAN), a national standard
+        (Unfallatlas DE, INSPIRE EU), or city-specific? City-specific connectors
+        should be implemented as a specialised subclass of a generic standard.
+    validations:
+      required: true
+
+  - type: textarea
+    id: layer_kinds
+    attributes:
+      label: Which layer kinds would this connector produce?
+      description: |
+        e.g. `streets`, `bike_network`, `accidents`, `transit_stops`,
+        `trees`, `green_areas`, `custom`, …
+    validations:
+      required: true
+
+  - type: textarea
+    id: sample_data
+    attributes:
+      label: Sample data or test fixture
+      description: |
+        A URL to sample data, a small inline sample, or a description of
+        how to obtain test data without network access.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Contributor checklist
+      options:
+        - label: I have read `backend/connectors/base.py`
+          required: true
+        - label: The connector works for any city (not just one specific place)
+          required: true
+        - label: I can provide sample fixture data for unit tests
+          required: false

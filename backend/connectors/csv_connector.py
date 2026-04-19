@@ -6,7 +6,6 @@ auto-detection of common coordinate column names, and WKT geometry column.
 
 import csv
 import io
-from typing import Any
 
 import requests
 

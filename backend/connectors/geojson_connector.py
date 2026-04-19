@@ -1,6 +1,5 @@
 """GeoJSON URL connector — fetches and normalizes a FeatureCollection."""
 
-from typing import Any
 
 import requests
 
