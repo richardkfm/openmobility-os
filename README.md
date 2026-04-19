@@ -53,18 +53,63 @@ codebase:
 
 ## Quickstart
 
-Requirements: Docker and Docker Compose.
+**Requirements:** Docker and Docker Compose (see
+[docker.com](https://www.docker.com/products/docker-desktop) for installation).
+
+### One-command setup (automatic secrets)
 
 ```bash
 git clone https://github.com/richardkfm/openmobility-os.git
 cd openmobility-os
 cp .env.example .env
-# edit .env — at minimum set ADMIN_TOKEN and SECRET_KEY to random values
+# Auto-generate secure random values for SECRET_KEY and ADMIN_TOKEN
+python3 -c "import secrets; print(f'SECRET_KEY={secrets.token_hex(50)}'); print(f'ADMIN_TOKEN={secrets.token_hex(32)}')" >> .env
 docker compose up --build
 ```
 
-Open http://localhost:8000 — you should see the platform landing page with
+Open **http://localhost:8000** — you should see the platform landing page with
 three demo workspaces: **Leipzig**, **Musterstadt**, and **Muster-Landkreis**.
+
+### Step-by-step (for novice users)
+
+1. **Install Docker** (if not already installed)
+   - Download [Docker Desktop](https://www.docker.com/products/docker-desktop)
+   - Run it and follow the installer
+
+2. **Clone the repository**
+   ```bash
+   git clone https://github.com/richardkfm/openmobility-os.git
+   cd openmobility-os
+   ```
+
+3. **Create `.env` with secure secrets**
+   ```bash
+   cp .env.example .env
+   ```
+
+4. **Fill in random values** (copy-paste the entire command below)
+   ```bash
+   python3 << 'EOF'
+   import secrets
+   with open('.env', 'a') as f:
+       f.write(f'\nSECRET_KEY={secrets.token_hex(50)}\n')
+       f.write(f'ADMIN_TOKEN={secrets.token_hex(32)}\n')
+   print("✓ Secrets added to .env")
+   EOF
+   ```
+
+5. **Start the platform**
+   ```bash
+   docker compose up --build
+   ```
+
+6. **Open in your browser**
+   - Visit http://localhost:8000
+   - You should see three demo workspaces immediately
+   - To add a new workspace: click "New workspace" (requires ADMIN_TOKEN from `.env`)
+
+7. **To stop**, press `Ctrl+C` in the terminal. Data persists in the
+   `postgres_data` volume until you run `docker compose down -v`.
 
 ## Core Features (MVP)
 
