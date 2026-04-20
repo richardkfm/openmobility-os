@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- Workspace map view now sets `Referrer-Policy: strict-origin-when-cross-origin`
+  on its response. Django's project-wide default of `same-origin` strips the
+  `Referer` header from cross-origin tile requests, which the OpenStreetMap
+  volunteer tile servers reject with an "access blocked" tile (per their
+  [tile usage policy](https://operations.osmfoundation.org/policies/tiles/)).
+  Sending the origin (no path or query) on cross-origin requests satisfies the
+  check without leaking the workspace URL to the tile provider.
 - Workspace map page now renders correctly under non-English locales (e.g. German).
   Map center coordinates and default zoom embedded in the inline `<script>` are now
   passed through Django's `unlocalize` filter, so floats like `12.3731` are no longer
