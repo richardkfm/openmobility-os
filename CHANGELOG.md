@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- Workspace map page now renders correctly under non-English locales (e.g. German).
+  Map center coordinates and default zoom embedded in the inline `<script>` are now
+  passed through Django's `unlocalize` filter, so floats like `12.3731` are no longer
+  formatted as `12,3731` — which previously produced a JavaScript `SyntaxError`
+  (`const CENTER_LON = 12,3731;`) and prevented MapLibre from initializing, leaving
+  `/<workspace>/map/` blank.
 - `OSMOverpassConnector` now sends a descriptive `User-Agent` header
   (`OpenMobilityOS/<version> (+<repo-url>)`) and an explicit `Accept: application/json`
   header when calling the Overpass API. The public Overpass endpoint rejects requests
