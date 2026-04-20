@@ -36,7 +36,7 @@ def workspace_map(request, workspace_slug: str):
     ws = get_active_workspace(workspace_slug)
     feature_sets = NormalizedFeatureSet.objects.filter(workspace=ws)
     layer_kinds = list(feature_sets.values_list("layer_kind", flat=True).distinct())
-    return render(
+    response = render(
         request,
         "workspaces/map.html",
         {
@@ -45,6 +45,14 @@ def workspace_map(request, workspace_slug: str):
             "page_title": _("Map — %(name)s") % {"name": ws.name},
         },
     )
+    # Tile providers (notably the OpenStreetMap volunteer servers) reject
+    # cross-origin requests that arrive without a Referer header. Django's
+    # default Referrer-Policy is "same-origin", which strips the Referer on
+    # cross-origin tile fetches. Send the origin only (no path or query) on
+    # cross-origin requests so the policy check passes without leaking the
+    # workspace URL to the tile provider.
+    response["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    return response
 
 
 def measures_list(request, workspace_slug: str):
