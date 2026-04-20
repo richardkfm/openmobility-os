@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- `OSMOverpassConnector` now sends a descriptive `User-Agent` header
+  (`OpenMobilityOS/<version> (+<repo-url>)`) and an explicit `Accept: application/json`
+  header when calling the Overpass API. The public Overpass endpoint rejects requests
+  with the default `python-requests` User-Agent with `HTTP 406 Not Acceptable`,
+  which broke all OSM dataset syncs.
+
 ### Added (Phase 8 — Accidents as a First-Class Layer)
 - `UnfallatlasConnector` (`unfallat`) — reads German Destatis Unfallatlas CSV format
   (semicolon-delimited, UKATEGORIE severity key, XGCSWGS84/YGCSWGS84 coordinates) and
