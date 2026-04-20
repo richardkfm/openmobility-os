@@ -55,7 +55,6 @@ def _is_vru(feature):
 
 def _hotspot_measure(workspace, accidents, fatal, serious, severity_score):
     n = len(accidents)
-    n_severe = len(fatal) + len(serious)
     safety_val = min(0.95, 0.6 + severity_score / (n * 10))
 
     return MeasureCandidate(
