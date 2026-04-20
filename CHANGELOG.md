@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (Phase 8 — Accidents as a First-Class Layer)
+- `UnfallatlasConnector` (`unfallat`) — reads German Destatis Unfallatlas CSV format
+  (semicolon-delimited, UKATEGORIE severity key, XGCSWGS84/YGCSWGS84 coordinates) and
+  normalizes to the standard accident schema
+- `AccidentCSVConnector` (`accident_csv`) — generic international accident CSV importer
+  with freely configurable column mapping for severity, involved modes, date, and coordinates
+- Standard accident property schema enforced by both connectors:
+  `severity` (fatal/serious/minor), `date`, `time_of_day`, `weather`, `involved_modes`,
+  `vulnerable_road_user`, `speed_limit`, `intersection_type`
+- Map: accident layer rendered with severity-coded circle markers
+  (dark red = fatal, orange = serious, yellow = minor) using MapLibre GL JS paint expressions
+- Map: accident filter panel — filter visible accidents by severity level and involved mode
+  (cyclist, pedestrian, car, truck) without a page reload
+- Extended `accident_hotspot` measure rule: weighted severity scoring (fatal×3, serious×2,
+  minor×1); generates a second VRU-specific measure candidate when ≥3 accidents involve
+  cyclists or pedestrians
+
 ### Added
 - Version badge in the public footer and on `/about/` now links directly to the matching GitHub release (`…/releases/tag/v<version>`); footer also gains a persistent "GitHub" link to the source repository
 - Django admin screens now display the OpenMobility OS version below the branding, linked to the matching GitHub release, plus a "Source on GitHub" shortcut and the current deployment mode

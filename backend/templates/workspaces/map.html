@@ -20,25 +20,89 @@
   <div class="flex flex-col lg:flex-row gap-4">
 
     {# Layer panel #}
-    <div class="lg:w-60 shrink-0 rounded-lg border bg-white p-4" x-data="{ open: true }">
-      <button @click="open = !open" class="flex items-center justify-between w-full font-semibold text-sm">
-        {% trans "Layers" %}
-        <span x-text="open ? '▲' : '▼'" class="text-slate-400 text-xs"></span>
-      </button>
-      <div x-show="open" class="mt-3 flex flex-col gap-2 text-sm" id="layer-controls">
-        {% for lk in layer_kinds %}
-        <label class="flex items-center gap-2 cursor-pointer">
-          <input type="checkbox" checked class="layer-toggle" data-layer="{{ lk }}">
-          <span class="capitalize">{{ lk|lower|replace:"_: " }}</span>
-        </label>
-        {% empty %}
-        <p class="text-xs text-slate-400">{% trans "No layers available. Sync data sources first." %}</p>
-        {% endfor %}
-        <label class="flex items-center gap-2 cursor-pointer mt-2 pt-2 border-t">
-          <input type="checkbox" id="toggle-measures">
-          <span>{% trans "Measures" %}</span>
-        </label>
+    <div class="lg:w-64 shrink-0 flex flex-col gap-3">
+
+      {# Layer toggles #}
+      <div class="rounded-lg border bg-white p-4" x-data="{ open: true }">
+        <button @click="open = !open" class="flex items-center justify-between w-full font-semibold text-sm">
+          {% trans "Layers" %}
+          <span x-text="open ? '▲' : '▼'" class="text-slate-400 text-xs"></span>
+        </button>
+        <div x-show="open" class="mt-3 flex flex-col gap-2 text-sm" id="layer-controls">
+          {% for lk in layer_kinds %}
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" checked class="layer-toggle" data-layer="{{ lk }}">
+            <span class="capitalize">{{ lk|lower|replace:"_: " }}</span>
+          </label>
+          {% empty %}
+          <p class="text-xs text-slate-400">{% trans "No layers available. Sync data sources first." %}</p>
+          {% endfor %}
+          <label class="flex items-center gap-2 cursor-pointer mt-2 pt-2 border-t">
+            <input type="checkbox" id="toggle-measures">
+            <span>{% trans "Measures" %}</span>
+          </label>
+        </div>
       </div>
+
+      {# Accident filter panel — only shown when accidents layer is present #}
+      {% if "accidents" in layer_kinds %}
+      <div class="rounded-lg border bg-white p-4 text-sm" x-data="accidentFilter()" x-init="init()">
+        <div class="font-semibold mb-3 flex items-center gap-2">
+          <span class="inline-block w-3 h-3 rounded-full bg-red-500"></span>
+          {% trans "Accident filters" %}
+        </div>
+
+        <p class="text-xs text-slate-500 mb-2 font-medium uppercase tracking-wide">{% trans "Severity" %}</p>
+        <div class="flex flex-col gap-1 mb-3">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" x-model="severity.fatal" @change="applyFilter()" class="accent-red-700">
+            <span class="flex items-center gap-1.5">
+              <span class="inline-block w-2.5 h-2.5 rounded-full bg-red-700"></span>
+              {% trans "Fatal" %}
+            </span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" x-model="severity.serious" @change="applyFilter()" class="accent-orange-500">
+            <span class="flex items-center gap-1.5">
+              <span class="inline-block w-2.5 h-2.5 rounded-full bg-orange-500"></span>
+              {% trans "Serious" %}
+            </span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" x-model="severity.minor" @change="applyFilter()" class="accent-yellow-400">
+            <span class="flex items-center gap-1.5">
+              <span class="inline-block w-2.5 h-2.5 rounded-full bg-yellow-400"></span>
+              {% trans "Minor" %}
+            </span>
+          </label>
+        </div>
+
+        <p class="text-xs text-slate-500 mb-2 font-medium uppercase tracking-wide">{% trans "Involved modes" %}</p>
+        <div class="flex flex-col gap-1">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" x-model="modes.cyclist" @change="applyFilter()">
+            {% trans "Cyclists" %}
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" x-model="modes.pedestrian" @change="applyFilter()">
+            {% trans "Pedestrians" %}
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" x-model="modes.car" @change="applyFilter()">
+            {% trans "Cars" %}
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" x-model="modes.truck" @change="applyFilter()">
+            {% trans "Trucks" %}
+          </label>
+        </div>
+
+        <button @click="resetFilter()" class="mt-3 w-full text-xs text-slate-500 hover:text-slate-800 underline text-left">
+          {% trans "Reset filters" %}
+        </button>
+      </div>
+      {% endif %}
+
     </div>
 
     {# Map container #}
@@ -111,32 +175,61 @@ function addGeoJsonLayer(id, url, color) {
 
       const types = new Set((fc.features || []).map(f => f.geometry?.type));
 
-      if (types.has("LineString") || types.has("MultiLineString")) {
-        map.addLayer({ id: id + "-line", type: "line", source: id,
-          paint: { "line-color": color, "line-width": 2.5, "line-opacity": 0.85 } });
-      }
-      if (types.has("Polygon") || types.has("MultiPolygon")) {
-        map.addLayer({ id: id + "-fill", type: "fill", source: id,
-          paint: { "fill-color": color, "fill-opacity": 0.25 } });
-        map.addLayer({ id: id + "-outline", type: "line", source: id,
-          paint: { "line-color": color, "line-width": 1, "line-opacity": 0.6 } });
-      }
-      if (types.has("Point") || types.has("MultiPoint")) {
-        map.addLayer({ id: id + "-circle", type: "circle", source: id,
-          paint: { "circle-radius": 5, "circle-color": color, "circle-opacity": 0.8 } });
+      if (id === "accidents") {
+        // Severity-coded circles for accident layer
+        map.addLayer({
+          id: "accidents-circle",
+          type: "circle",
+          source: "accidents",
+          paint: {
+            "circle-radius": [
+              "match", ["get", "severity"],
+              "fatal", 9,
+              "serious", 6,
+              4
+            ],
+            "circle-color": [
+              "match", ["get", "severity"],
+              "fatal",   "#991b1b",
+              "serious", "#f97316",
+              "#fbbf24"
+            ],
+            "circle-opacity": 0.85,
+            "circle-stroke-width": 1,
+            "circle-stroke-color": "#fff",
+          },
+        });
+      } else {
+        if (types.has("LineString") || types.has("MultiLineString")) {
+          map.addLayer({ id: id + "-line", type: "line", source: id,
+            paint: { "line-color": color, "line-width": 2.5, "line-opacity": 0.85 } });
+        }
+        if (types.has("Polygon") || types.has("MultiPolygon")) {
+          map.addLayer({ id: id + "-fill", type: "fill", source: id,
+            paint: { "fill-color": color, "fill-opacity": 0.25 } });
+          map.addLayer({ id: id + "-outline", type: "line", source: id,
+            paint: { "line-color": color, "line-width": 1, "line-opacity": 0.6 } });
+        }
+        if (types.has("Point") || types.has("MultiPoint")) {
+          map.addLayer({ id: id + "-circle", type: "circle", source: id,
+            paint: { "circle-radius": 5, "circle-color": color, "circle-opacity": 0.8 } });
+        }
       }
 
       // Popup on click for point layers
-      map.on("click", id + "-circle", (e) => {
-        const props = e.features[0].properties;
-        const content = Object.entries(props).slice(0, 8)
-          .map(([k, v]) => `<dt class="font-medium">${k}</dt><dd class="ml-2 text-slate-600">${v}</dd>`)
-          .join("");
-        new maplibregl.Popup()
-          .setLngLat(e.lngLat)
-          .setHTML(`<dl class="text-xs grid gap-0.5">${content}</dl>`)
-          .addTo(map);
-      });
+      const circleLayer = id === "accidents" ? "accidents-circle" : id + "-circle";
+      if (map.getLayer(circleLayer)) {
+        map.on("click", circleLayer, (e) => {
+          const props = e.features[0].properties;
+          const content = Object.entries(props).slice(0, 8)
+            .map(([k, v]) => `<dt class="font-medium">${k}</dt><dd class="ml-2 text-slate-600">${v}</dd>`)
+            .join("");
+          new maplibregl.Popup()
+            .setLngLat(e.lngLat)
+            .setHTML(`<dl class="text-xs grid gap-0.5">${content}</dl>`)
+            .addTo(map);
+        });
+      }
     })
     .catch(() => console.warn("Layer failed to load:", id));
 }
@@ -167,8 +260,62 @@ map.on("load", () => {
       ["-line", "-fill", "-outline", "-circle"].forEach(suffix => {
         if (map.getLayer(kind + suffix)) map.setLayoutProperty(kind + suffix, "visibility", vis);
       });
+      // accidents layer uses a different layer id
+      if (kind === "accidents" && map.getLayer("accidents-circle")) {
+        map.setLayoutProperty("accidents-circle", "visibility", vis);
+      }
     });
   });
 });
+
+// Alpine.js component for the accident filter panel
+function accidentFilter() {
+  return {
+    severity: { fatal: true, serious: true, minor: true },
+    modes: { cyclist: false, pedestrian: false, car: false, truck: false },
+
+    init() {
+      // Wait for the map source to be ready before applying filters
+      map.on("idle", () => this.applyFilter());
+    },
+
+    applyFilter() {
+      if (!map.getLayer("accidents-circle")) return;
+
+      const activeSeverities = Object.entries(this.severity)
+        .filter(([, on]) => on)
+        .map(([k]) => k);
+
+      const activeModes = Object.entries(this.modes)
+        .filter(([, on]) => on)
+        .map(([k]) => k);
+
+      if (activeSeverities.length === 0) {
+        // Nothing selected → hide all
+        map.setFilter("accidents-circle", ["==", "severity", "__none__"]);
+        return;
+      }
+
+      let filter = ["in", ["get", "severity"], ["literal", activeSeverities]];
+
+      if (activeModes.length > 0) {
+        // Keep only accidents where involved_modes contains at least one active mode.
+        // involved_modes is stored as a JSON string in GeoJSON properties.
+        const modeConditions = activeModes.map(m => [
+          "in", m, ["coalesce", ["get", "involved_modes"], ""]
+        ]);
+        filter = ["all", filter, ["any", ...modeConditions]];
+      }
+
+      map.setFilter("accidents-circle", filter);
+    },
+
+    resetFilter() {
+      this.severity = { fatal: true, serious: true, minor: true };
+      this.modes = { cyclist: false, pedestrian: false, car: false, truck: false };
+      this.applyFilter();
+    },
+  };
+}
 </script>
 {% endblock %}

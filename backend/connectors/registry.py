@@ -1,11 +1,13 @@
 """Connector registry — maps source_type ids to connector instances."""
 
+from .accident_connector import AccidentCSVConnector
 from .base import BaseConnector
 from .csv_connector import CSVConnector
 from .geojson_connector import GeoJSONConnector
 from .manual_connector import ManualConnector
 from .osm_connector import OSMOverpassConnector
 from .stubs import CKANConnector, GTFSConnector, RESTConnector, WFSConnector
+from .unfallat_connector import UnfallatlasConnector
 
 _REGISTRY: dict[str, BaseConnector] = {}
 
@@ -27,6 +29,8 @@ for _connector in [
     GeoJSONConnector(),
     OSMOverpassConnector(),
     ManualConnector(),
+    AccidentCSVConnector(),
+    UnfallatlasConnector(),
     GTFSConnector(),
     CKANConnector(),
     WFSConnector(),

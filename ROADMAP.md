@@ -140,10 +140,10 @@ These features are **not in the MVP**, but the architecture is already prepared 
 
 ---
 
-### Phase 8 — Accidents as a First-Class Layer
+### 🚧 Phase 8 — Accidents as a First-Class Layer
 > Full accident data with mode classification.
 
-- [ ] `accidents` layer kind with standardized property schema:
+- [x] `accidents` layer kind with standardized property schema:
   ```json
   {
     "severity": "fatal|serious|minor",
@@ -157,11 +157,13 @@ These features are **not in the MVP**, but the architecture is already prepared 
     "street_category": "residential|main|highway|..."
   }
   ```
-- [ ] Admin filter UI: "show only accidents involving cyclists at junctions"
-- [ ] Map layer with color-coded cluster markers by mode and severity
-- [ ] Extended `accident_hotspot` rule — weighted by severity and involved modes
-- [ ] `UnfallatlasConnector` — Germany-specific; reads Destatis CSV format
-- [ ] Generic accident CSV importer for international use
+- [x] Admin filter UI: severity + involved-mode checkboxes on the map page
+- [x] Map layer with severity color-coded circle markers (fatal=dark red, serious=orange, minor=yellow)
+- [x] Extended `accident_hotspot` rule — weighted by severity (fatal×3, serious×2, minor×1)
+      and generates a second VRU-specific measure when cyclist/pedestrian involvement is high
+- [x] `UnfallatlasConnector` — Germany-specific; reads Destatis Unfallatlas CSV format
+- [x] `AccidentCSVConnector` — generic international accident CSV importer with configurable column mapping
+- [ ] Cluster heatmap / density visualization (planned for follow-up)
 
 ---
 
