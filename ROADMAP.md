@@ -140,7 +140,7 @@ These features are **not in the MVP**, but the architecture is already prepared 
 
 ---
 
-### 🚧 Phase 8 — Accidents as a First-Class Layer
+### ✅ Phase 8 — Accidents as a First-Class Layer
 > Full accident data with mode classification.
 
 - [x] `accidents` layer kind with standardized property schema:
@@ -163,7 +163,7 @@ These features are **not in the MVP**, but the architecture is already prepared 
       and generates a second VRU-specific measure when cyclist/pedestrian involvement is high
 - [x] `UnfallatlasConnector` — Germany-specific; reads Destatis Unfallatlas CSV format
 - [x] `AccidentCSVConnector` — generic international accident CSV importer with configurable column mapping
-- [ ] Cluster heatmap / density visualization (planned for follow-up)
+- [x] Cluster heatmap / density visualization — severity-weighted heatmap layer with Circles/Heatmap toggle
 
 ---
 

@@ -52,6 +52,24 @@
           {% trans "Accident filters" %}
         </div>
 
+        {# View mode toggle #}
+        <p class="text-xs text-slate-500 mb-1.5 font-medium uppercase tracking-wide">{% trans "View" %}</p>
+        <div class="flex rounded overflow-hidden border text-xs mb-4">
+          <button
+            @click="setViewMode('circles')"
+            :class="viewMode === 'circles' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'"
+            class="flex-1 px-2 py-1.5 transition-colors">
+            {% trans "Circles" %}
+          </button>
+          <button
+            @click="setViewMode('heatmap')"
+            :class="viewMode === 'heatmap' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'"
+            class="flex-1 px-2 py-1.5 border-l transition-colors">
+            {% trans "Heatmap" %}
+          </button>
+        </div>
+
+        {# Severity filters #}
         <p class="text-xs text-slate-500 mb-2 font-medium uppercase tracking-wide">{% trans "Severity" %}</p>
         <div class="flex flex-col gap-1 mb-3">
           <label class="flex items-center gap-2 cursor-pointer">
@@ -77,8 +95,9 @@
           </label>
         </div>
 
+        {# Mode filters (circles only — heatmap uses weight, not per-point filter) #}
         <p class="text-xs text-slate-500 mb-2 font-medium uppercase tracking-wide">{% trans "Involved modes" %}</p>
-        <div class="flex flex-col gap-1">
+        <div class="flex flex-col gap-1" :class="viewMode === 'heatmap' ? 'opacity-40 pointer-events-none' : ''">
           <label class="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" x-model="modes.cyclist" @change="applyFilter()">
             {% trans "Cyclists" %}
@@ -96,6 +115,7 @@
             {% trans "Trucks" %}
           </label>
         </div>
+        <p x-show="viewMode === 'heatmap'" class="text-xs text-slate-400 mt-1">{% trans "Mode filter applies in circles view." %}</p>
 
         <button @click="resetFilter()" class="mt-3 w-full text-xs text-slate-500 hover:text-slate-800 underline text-left">
           {% trans "Reset filters" %}
@@ -176,7 +196,47 @@ function addGeoJsonLayer(id, url, color) {
       const types = new Set((fc.features || []).map(f => f.geometry?.type));
 
       if (id === "accidents") {
-        // Severity-coded circles for accident layer
+        // Heatmap layer — severity-weighted density, shown at low zoom
+        map.addLayer({
+          id: "accidents-heat",
+          type: "heatmap",
+          source: "accidents",
+          layout: { visibility: "none" },
+          paint: {
+            // Weight: fatal counts 3×, serious 2×, minor 1×
+            "heatmap-weight": [
+              "match", ["get", "severity"],
+              "fatal",   1.0,
+              "serious", 0.67,
+              0.33
+            ],
+            // Boost density signal as zoom increases
+            "heatmap-intensity": [
+              "interpolate", ["linear"], ["zoom"],
+              0, 1,
+              14, 4
+            ],
+            // Colour ramp: transparent → yellow → orange → dark red
+            "heatmap-color": [
+              "interpolate", ["linear"], ["heatmap-density"],
+              0,   "rgba(0,0,0,0)",
+              0.15, "rgba(251,191,36,0.5)",
+              0.4,  "rgba(249,115,22,0.75)",
+              0.7,  "rgba(220,38,38,0.9)",
+              1.0,  "rgba(127,29,29,1)"
+            ],
+            // Radius grows with zoom for smooth blending
+            "heatmap-radius": [
+              "interpolate", ["linear"], ["zoom"],
+              0, 18,
+              10, 32,
+              14, 50
+            ],
+            "heatmap-opacity": 0.85,
+          },
+        });
+
+        // Severity-coded circle layer — shown at high zoom / circles mode
         map.addLayer({
           id: "accidents-circle",
           type: "circle",
@@ -199,6 +259,19 @@ function addGeoJsonLayer(id, url, color) {
             "circle-stroke-color": "#fff",
           },
         });
+
+        // Popup on circle click
+        map.on("click", "accidents-circle", (e) => {
+          const props = e.features[0].properties;
+          const content = Object.entries(props).slice(0, 8)
+            .map(([k, v]) => `<dt class="font-medium">${k}</dt><dd class="ml-2 text-slate-600">${v}</dd>`)
+            .join("");
+          new maplibregl.Popup()
+            .setLngLat(e.lngLat)
+            .setHTML(`<dl class="text-xs grid gap-0.5">${content}</dl>`)
+            .addTo(map);
+        });
+
       } else {
         if (types.has("LineString") || types.has("MultiLineString")) {
           map.addLayer({ id: id + "-line", type: "line", source: id,
@@ -214,21 +287,20 @@ function addGeoJsonLayer(id, url, color) {
           map.addLayer({ id: id + "-circle", type: "circle", source: id,
             paint: { "circle-radius": 5, "circle-color": color, "circle-opacity": 0.8 } });
         }
-      }
 
-      // Popup on click for point layers
-      const circleLayer = id === "accidents" ? "accidents-circle" : id + "-circle";
-      if (map.getLayer(circleLayer)) {
-        map.on("click", circleLayer, (e) => {
-          const props = e.features[0].properties;
-          const content = Object.entries(props).slice(0, 8)
-            .map(([k, v]) => `<dt class="font-medium">${k}</dt><dd class="ml-2 text-slate-600">${v}</dd>`)
-            .join("");
-          new maplibregl.Popup()
-            .setLngLat(e.lngLat)
-            .setHTML(`<dl class="text-xs grid gap-0.5">${content}</dl>`)
-            .addTo(map);
-        });
+        const circleLayer = id + "-circle";
+        if (map.getLayer(circleLayer)) {
+          map.on("click", circleLayer, (e) => {
+            const props = e.features[0].properties;
+            const content = Object.entries(props).slice(0, 8)
+              .map(([k, v]) => `<dt class="font-medium">${k}</dt><dd class="ml-2 text-slate-600">${v}</dd>`)
+              .join("");
+            new maplibregl.Popup()
+              .setLngLat(e.lngLat)
+              .setHTML(`<dl class="text-xs grid gap-0.5">${content}</dl>`)
+              .addTo(map);
+          });
+        }
       }
     })
     .catch(() => console.warn("Layer failed to load:", id));
@@ -240,11 +312,9 @@ map.on("load", () => {
     addGeoJsonLayer(kind, url, layerColor(kind));
   });
 
-  // Load measures GeoJSON
   const measuresUrl = `/api/v1/workspaces/${WORKSPACE_SLUG}/measures.geojson`;
   addGeoJsonLayer("measures", measuresUrl, "#6366f1");
 
-  // Toggle measures checkbox
   document.getElementById("toggle-measures")?.addEventListener("change", (e) => {
     const vis = e.target.checked ? "visible" : "none";
     ["measures-circle", "measures-fill", "measures-line"].forEach(id => {
@@ -252,7 +322,6 @@ map.on("load", () => {
     });
   });
 
-  // Layer checkboxes
   document.querySelectorAll(".layer-toggle").forEach(checkbox => {
     checkbox.addEventListener("change", (e) => {
       const kind = e.target.dataset.layer;
@@ -260,9 +329,10 @@ map.on("load", () => {
       ["-line", "-fill", "-outline", "-circle"].forEach(suffix => {
         if (map.getLayer(kind + suffix)) map.setLayoutProperty(kind + suffix, "visibility", vis);
       });
-      // accidents layer uses a different layer id
-      if (kind === "accidents" && map.getLayer("accidents-circle")) {
-        map.setLayoutProperty("accidents-circle", "visibility", vis);
+      if (kind === "accidents") {
+        // Keep the currently active accident view in sync with the toggle
+        if (map.getLayer("accidents-circle")) map.setLayoutProperty("accidents-circle", "visibility", vis);
+        if (map.getLayer("accidents-heat")) map.setLayoutProperty("accidents-heat", "visibility", "none");
       }
     });
   });
@@ -271,43 +341,56 @@ map.on("load", () => {
 // Alpine.js component for the accident filter panel
 function accidentFilter() {
   return {
+    viewMode: "circles",
     severity: { fatal: true, serious: true, minor: true },
     modes: { cyclist: false, pedestrian: false, car: false, truck: false },
 
     init() {
-      // Wait for the map source to be ready before applying filters
       map.on("idle", () => this.applyFilter());
     },
 
-    applyFilter() {
-      if (!map.getLayer("accidents-circle")) return;
+    setViewMode(mode) {
+      this.viewMode = mode;
+      if (!map.getLayer("accidents-circle") || !map.getLayer("accidents-heat")) return;
+      if (mode === "heatmap") {
+        map.setLayoutProperty("accidents-circle", "visibility", "none");
+        map.setLayoutProperty("accidents-heat", "visibility", "visible");
+      } else {
+        map.setLayoutProperty("accidents-heat", "visibility", "none");
+        map.setLayoutProperty("accidents-circle", "visibility", "visible");
+      }
+      this.applyFilter();
+    },
 
+    applyFilter() {
       const activeSeverities = Object.entries(this.severity)
         .filter(([, on]) => on)
         .map(([k]) => k);
 
-      const activeModes = Object.entries(this.modes)
-        .filter(([, on]) => on)
-        .map(([k]) => k);
-
       if (activeSeverities.length === 0) {
-        // Nothing selected → hide all
-        map.setFilter("accidents-circle", ["==", "severity", "__none__"]);
+        const noneFilter = ["==", "severity", "__none__"];
+        if (map.getLayer("accidents-circle")) map.setFilter("accidents-circle", noneFilter);
+        if (map.getLayer("accidents-heat")) map.setFilter("accidents-heat", noneFilter);
         return;
       }
 
-      let filter = ["in", ["get", "severity"], ["literal", activeSeverities]];
+      const severityFilter = ["in", ["get", "severity"], ["literal", activeSeverities]];
 
-      if (activeModes.length > 0) {
-        // Keep only accidents where involved_modes contains at least one active mode.
-        // involved_modes is stored as a JSON string in GeoJSON properties.
+      // Circle mode: also apply mode filter if any modes are selected
+      let circleFilter = severityFilter;
+      const activeModes = Object.entries(this.modes)
+        .filter(([, on]) => on)
+        .map(([k]) => k);
+      if (activeModes.length > 0 && this.viewMode === "circles") {
         const modeConditions = activeModes.map(m => [
           "in", m, ["coalesce", ["get", "involved_modes"], ""]
         ]);
-        filter = ["all", filter, ["any", ...modeConditions]];
+        circleFilter = ["all", severityFilter, ["any", ...modeConditions]];
       }
 
-      map.setFilter("accidents-circle", filter);
+      if (map.getLayer("accidents-circle")) map.setFilter("accidents-circle", circleFilter);
+      // Heatmap respects severity filter; mode filter is not applied (density view)
+      if (map.getLayer("accidents-heat")) map.setFilter("accidents-heat", severityFilter);
     },
 
     resetFilter() {
