@@ -13,6 +13,7 @@ from django.contrib.gis.geos import Point, Polygon
 from django.core.management.base import BaseCommand
 
 from datasets.models import DataSource
+from datasets.views import _run_sync
 from goals.models import WorkspaceGoal
 from measures.models import Measure, MeasureScore
 from workspaces.models import Workspace
@@ -99,7 +100,7 @@ class Command(BaseCommand):
             )
 
         for ds in data.get("data_sources", []):
-            DataSource.objects.update_or_create(
+            source, _ = DataSource.objects.update_or_create(
                 workspace=ws,
                 name=ds["name"],
                 defaults={
@@ -111,6 +112,12 @@ class Command(BaseCommand):
                     "source_url": ds.get("source_url", ""),
                 },
             )
+            # Auto-sync offline (manual) sources so their data is immediately
+            # available on the map without a manual sync step.
+            if source.source_type == DataSource.SourceType.MANUAL:
+                success, msg = _run_sync(source)
+                style = self.style.SUCCESS if success else self.style.WARNING
+                self.stdout.write(style(f"     sync {source.name}: {msg}"))
 
         for m in data.get("measures", []):
             measure, _ = Measure.objects.update_or_create(
