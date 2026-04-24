@@ -1,5 +1,5 @@
 {% extends "workspaces/base_workspace.html" %}
-{% load i18n omos_extras %}
+{% load i18n l10n omos_extras %}
 
 {% block extra_head %}
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.5.2/dist/maplibre-gl.css">
@@ -141,9 +141,9 @@ const WORKSPACE_SLUG = "{{ workspace.slug }}";
 const MAP_TILE_URL = "{{ map_tile_url }}";
 const MAP_TILE_ATTR = "{{ map_tile_attribution }}";
 const LAYER_KINDS = {{ layer_kinds|pprint|safe }};
-const CENTER_LON = {% if workspace.center %}{{ workspace.center.x }}{% else %}12.37{% endif %};
-const CENTER_LAT = {% if workspace.center %}{{ workspace.center.y }}{% else %}51.34{% endif %};
-const DEFAULT_ZOOM = {{ workspace.default_zoom }};
+const CENTER_LON = {% if workspace.center %}{{ workspace.center.x|unlocalize }}{% else %}12.37{% endif %};
+const CENTER_LAT = {% if workspace.center %}{{ workspace.center.y|unlocalize }}{% else %}51.34{% endif %};
+const DEFAULT_ZOOM = {{ workspace.default_zoom|unlocalize }};
 
 const LAYER_COLORS = {
   bike_network: "#22c55e",

@@ -141,7 +141,18 @@ class OSMOverpassConnector(BaseConnector):
 
     def _call_overpass(self, query: str) -> dict:
         endpoint = settings.OSM_OVERPASS_API
-        response = requests.post(endpoint, data={"data": query}, timeout=180)
+        version = getattr(settings, "PLATFORM_VERSION", "0.0.0")
+        repo_url = getattr(settings, "PROJECT_REPO_URL", "https://github.com/richardkfm/openmobility-os")
+        # Overpass API rejects the default python-requests User-Agent with HTTP 406.
+        # It requires clients to identify themselves so operators can reach out about
+        # excessive traffic. See https://dev.overpass-api.de/overpass-doc/en/preface/commons.html
+        headers = {
+            "User-Agent": f"OpenMobilityOS/{version} (+{repo_url})",
+            "Accept": "application/json",
+        }
+        response = requests.post(
+            endpoint, data={"data": query}, headers=headers, timeout=180
+        )
         response.raise_for_status()
         return response.json()
 

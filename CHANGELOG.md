@@ -8,6 +8,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added (Phase 8 — Accidents as a First-Class Layer, complete)
+### Fixed
+- Workspace map view now sets `Referrer-Policy: strict-origin-when-cross-origin`
+  on its response. Django's project-wide default of `same-origin` strips the
+  `Referer` header from cross-origin tile requests, which the OpenStreetMap
+  volunteer tile servers reject with an "access blocked" tile (per their
+  [tile usage policy](https://operations.osmfoundation.org/policies/tiles/)).
+  Sending the origin (no path or query) on cross-origin requests satisfies the
+  check without leaking the workspace URL to the tile provider.
+- Workspace map page now renders correctly under non-English locales (e.g. German).
+  Map center coordinates and default zoom embedded in the inline `<script>` are now
+  passed through Django's `unlocalize` filter, so floats like `12.3731` are no longer
+  formatted as `12,3731` — which previously produced a JavaScript `SyntaxError`
+  (`const CENTER_LON = 12,3731;`) and prevented MapLibre from initializing, leaving
+  `/<workspace>/map/` blank.
+- `OSMOverpassConnector` now sends a descriptive `User-Agent` header
+  (`OpenMobilityOS/<version> (+<repo-url>)`) and an explicit `Accept: application/json`
+  header when calling the Overpass API. The public Overpass endpoint rejects requests
+  with the default `python-requests` User-Agent with `HTTP 406 Not Acceptable`,
+  which broke all OSM dataset syncs.
+
+### Added (Phase 8 — Accidents as a First-Class Layer)
 - `UnfallatlasConnector` (`unfallat`) — reads German Destatis Unfallatlas CSV format
   (semicolon-delimited, UKATEGORIE severity key, XGCSWGS84/YGCSWGS84 coordinates) and
   normalizes to the standard accident schema
