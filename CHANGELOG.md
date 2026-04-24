@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (Phase 8 — Accidents as a First-Class Layer, complete)
 ### Fixed
 - Workspace map view now sets `Referrer-Policy: strict-origin-when-cross-origin`
   on its response. Django's project-wide default of `same-origin` strips the
@@ -43,6 +44,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Extended `accident_hotspot` measure rule: weighted severity scoring (fatal×3, serious×2,
   minor×1); generates a second VRU-specific measure candidate when ≥3 accidents involve
   cyclists or pedestrians
+- Map: heatmap density view for the accidents layer with severity-weighted intensity
+  (fatal=1×, serious=0.67×, minor=0.33×) and a yellow→orange→dark-red colour ramp;
+  toggled via a Circles/Heatmap segmented control in the accident filter panel
 
 ### Added
 - Version badge in the public footer and on `/about/` now links directly to the matching GitHub release (`…/releases/tag/v<version>`); footer also gains a persistent "GitHub" link to the source repository
