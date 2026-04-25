@@ -84,6 +84,30 @@ data_sources:
     config:
       template: transit_stops
 
+  # GTFS examples — replace url with a public LVB / VVO feed when seeding
+  # against real data. Without a sync these data sources sit idle; the rest
+  # of the platform keeps working.
+  - name: GTFS — Stops (example, requires url)
+    source_type: gtfs
+    layer_kind: transit_stops
+    license: "depends on agency"
+    config:
+      url: ""
+      layer: transit_stops
+  - name: GTFS — Routes (example, requires url)
+    source_type: gtfs
+    layer_kind: transit_routes
+    config:
+      url: ""
+      layer: transit_routes
+  - name: GTFS — Coverage 400 m (example, requires url)
+    source_type: gtfs
+    layer_kind: transit_coverage
+    config:
+      url: ""
+      layer: transit_coverage
+      coverage_buffer_m: 400
+
   - name: OSM — Schulen
     source_type: osm_overpass
     layer_kind: schools

@@ -4,9 +4,10 @@ from .accident_connector import AccidentCSVConnector
 from .base import BaseConnector
 from .csv_connector import CSVConnector
 from .geojson_connector import GeoJSONConnector
+from .gtfs_connector import GTFSConnector
 from .manual_connector import ManualConnector
 from .osm_connector import OSMOverpassConnector
-from .stubs import CKANConnector, GTFSConnector, RESTConnector, WFSConnector
+from .stubs import CKANConnector, RESTConnector, WFSConnector
 from .unfallat_connector import UnfallatlasConnector
 
 _REGISTRY: dict[str, BaseConnector] = {}

@@ -7,6 +7,7 @@ from core.utils import get_active_workspace
 from datasets.models import DataSource, NormalizedFeatureSet
 from measures.models import Measure, MeasureScore
 from measures.scoring import compute_priority_score
+from measures.transit_kpis import compute_transit_kpis
 
 
 def dashboard(request, workspace_slug: str):
@@ -17,6 +18,9 @@ def dashboard(request, workspace_slug: str):
         measures, key=lambda m: compute_priority_score(m, ws.scoring_weights), reverse=True
     )[:5]
     sources = ws.data_sources.all()
+    transit_kpis = compute_transit_kpis(
+        ws, NormalizedFeatureSet.objects.filter(workspace=ws)
+    )
     return render(
         request,
         "workspaces/dashboard.html",
@@ -27,6 +31,7 @@ def dashboard(request, workspace_slug: str):
             "measure_count": len(measures),
             "data_source_count": sources.count(),
             "data_sources_active": sources.filter(status=DataSource.Status.ACTIVE).count(),
+            "transit_kpis": transit_kpis,
             "page_title": ws.name,
         },
     )

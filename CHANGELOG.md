@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (Phase 9 — Public Transit Network as a First-Class Layer)
+- Full `GTFSConnector` (`gtfs`) — reads a static GTFS zip (stops, routes,
+  trips, stop_times, calendar, shapes) and emits one of three normalized
+  layers depending on the `layer` config field:
+  - `transit_stops` — stops enriched with `wheelchair_boarding`
+    (yes/no/unknown), `modes` (bus/tram/rail/subway/…), `daily_trips`,
+    `avg_headway_min`, and `night_service` (any trip 22:00–05:00)
+  - `transit_routes` — LineString per route, using `shapes.txt` when
+    available and falling back to the stop sequence otherwise
+  - `transit_coverage` — buffer polygons (default 400 m, configurable via
+    `coverage_buffer_m`) around every active stop for catchment analysis
+- Optional `agency_filter` and `route_type_filter` config fields restrict the
+  output to a specific agency or to selected GTFS route types
+- New layer kind `transit_coverage` added to `DataSource.LayerKind`
+- New measure categories: `transit_frequency`, `transit_accessibility`,
+  `transit_gap` (the existing coverage rule now files under `transit_gap`)
+- Two new measure rules:
+  - `rule_transit_frequency` — flags workspaces where ≥25 % of stops have an
+    average daytime headway above 20 min
+  - `rule_transit_accessibility` — flags workspaces where ≥20 % of rated stops
+    are not wheelchair-accessible
+- Workspace dashboard now shows a "Public transit" KPI strip when transit
+  data is present: stop count, average headway (min), population coverage %
+  (with absolute resident estimate), night-service share, and barrier-free
+  share
+- `/api/v1/workspaces/<slug>/` now returns a `transit_kpis` object with the
+  same numbers, so dashboards consuming the API can re-render the strip
+- Map: `transit_routes` rendered as blue lines, `transit_coverage` as
+  translucent buffer polygons; both layers honour the existing layer toggle
 ### Fixed
 - Demo accidents layer now visible on the Leipzig map out of the box:
   added 15 illustrative accident points (mix of severities and modes) to the
