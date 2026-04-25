@@ -9,7 +9,7 @@
 
 # OpenMobility OS
 
-**Version:** 0.2.0 (pre-release) — see [CHANGELOG.md](CHANGELOG.md)
+**Version:** 0.3.0 (pre-release) — see [CHANGELOG.md](CHANGELOG.md)
 **License:** See [LICENSE](LICENSE)
 
 > The open, free, self-hostable operating system between open mobility data
@@ -129,9 +129,12 @@ three demo workspaces: **Leipzig**, **Musterstadt**, and **Muster-Landkreis**.
 - **Data connectors** (fully implemented):
   - CSV (upload or URL) with column mapping and encoding detection
   - GeoJSON URL with property remapping
-  - OpenStreetMap via Overpass API (six built-in templates + custom queries)
+  - OpenStreetMap via Overpass API (eight built-in templates + custom queries)
+  - Static GTFS zip (transit stops, routes, coverage) — enriches stops with
+    average headway, night service, and barrier-free status from the schedule
+  - Accident CSV (Destatis Unfallatlas + generic international)
 - **Planned connectors** (interface defined, implementation pending):
-  GTFS, CKAN, WFS, generic REST
+  CKAN, WFS, generic REST
 - **Rule-based measures engine** — generates prioritized interventions
   from available data
 - **Transparent scoring** — nine dimensions, every value traceable to its source
@@ -192,7 +195,8 @@ Toggle individual data layers on and off. Available layer kinds include:
 
 | Category | Layers |
 |---|---|
-| Infrastructure | Streets, streets with speed limits, bike network, transit stops, parking |
+| Infrastructure | Streets, streets with speed limits, bike network, parking |
+| Public transit | Transit stops (with headway / night / barrier-free enrichment), transit routes, transit coverage (300–500 m buffers) |
 | Safety | Accidents |
 | Community | Schools, districts |
 | Environment | Trees, green areas, parks, heat corridors, water bodies, air quality, sealed surfaces, land use |
@@ -294,10 +298,14 @@ The data hub at `/<slug>/data/` is the control centre for all data sources.
      latitude/longitude (or a WKT geometry column).
    - **GeoJSON URL** — provide a URL to any GeoJSON FeatureCollection.
      Optionally remap or filter properties.
-   - **OSM Overpass** — pick one of six built-in templates (streets,
-     bike network, transit stops, schools, parking, trees/parks) or write a
-     custom Overpass QL query. The workspace bounding box is injected
-     automatically.
+   - **OSM Overpass** — pick one of eight built-in templates (streets,
+     streets-with-speed, bike network, transit stops, schools, parking,
+     trees, parks-and-green) or write a custom Overpass QL query. The
+     workspace bounding box is injected automatically.
+   - **GTFS static** — provide a URL to a GTFS zip and pick the output layer
+     (`transit_stops`, `transit_routes`, or `transit_coverage`). Stops are
+     enriched with average headway, night service flag, and barrier-free
+     status; coverage emits configurable buffer polygons (default 400 m).
    - **Manual** — for hand-entered KPI values (no network fetch).
 3. Select the **layer kind** that best describes what this data represents
    (e.g. `bike_network`, `schools`, `accidents`).
@@ -455,11 +463,10 @@ principles.
 
 Near-term (post-MVP):
 
-- Full GTFS static connector + `transit_routes` / `transit_coverage` layers
-- Accident data layer with mode classification
-  (pedestrian, cyclist, car, truck, bus, tram, motorbike, scooter)
 - Climate adaptation layer: trees, green areas, heat corridors, desealing
 - Before/after map slider for measures
 - Citizen feedback on measures
+- GTFS-RT adapter for live transit delays (extends the Phase 9 static GTFS
+  layers with realtime data)
 
 See [ROADMAP.md](ROADMAP.md) for the full phase-by-phase breakdown.

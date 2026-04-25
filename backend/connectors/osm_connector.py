@@ -83,12 +83,12 @@ class OSMOverpassConnector(BaseConnector):
     display_name_en = "OpenStreetMap (Overpass)"
     description_de = (
         "Fragt OpenStreetMap-Daten über die Overpass-API ab. "
-        "Enthält sechs Templates für die wichtigsten Mobilitäts-Layer; "
+        "Enthält acht Templates für die wichtigsten Mobilitäts-Layer; "
         "Bounding Box stammt aus dem Workspace-Profil oder der Konfiguration."
     )
     description_en = (
         "Queries OpenStreetMap data via the Overpass API. "
-        "Ships with six templates for the most common mobility layers; "
+        "Ships with eight templates for the most common mobility layers; "
         "bounding box comes from the workspace profile or config."
     )
 

@@ -5,6 +5,8 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_GET
 
 from core.utils import get_active_workspace
+from datasets.models import NormalizedFeatureSet
+from measures.transit_kpis import compute_transit_kpis
 from workspaces.models import Workspace
 
 
@@ -63,6 +65,9 @@ def workspace_detail(request, slug):
             "goals_count": w.goals.count(),
             "measures_count": w.measures.count(),
             "data_sources_count": w.data_sources.count(),
+            "transit_kpis": compute_transit_kpis(
+                w, NormalizedFeatureSet.objects.filter(workspace=w)
+            ),
         }
     )
 

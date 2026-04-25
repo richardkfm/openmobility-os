@@ -4,36 +4,12 @@ Stub connectors — interfaces defined, implementation pending.
 These exist to declare our public contract early, so core code can reference
 them today. Calling .fetch() raises NotImplementedError with a clear message.
 
-Plan: full implementations in post-MVP phases. See the project plan for the
-full roadmap (GTFS in Phase 9, CKAN and others in Phase 11).
+Plan: full implementations in post-MVP phases. GTFS static is fully implemented
+in ``connectors.gtfs_connector``; CKAN, WFS, and generic REST are planned for
+Phase 11.
 """
 
 from .base import BaseConnector, ConnectorTestResult
-
-
-class GTFSConnector(BaseConnector):
-    id = "gtfs"
-    display_name_de = "GTFS static (geplant)"
-    display_name_en = "GTFS static (planned)"
-    description_de = "Liest einen GTFS-Zip. Implementierung geplant für Phase 9."
-    description_en = "Reads a GTFS zip archive. Implementation planned for Phase 9."
-    config_schema = {
-        "url": {"type": "string", "required": True, "label": "GTFS zip URL"},
-        "agency_filter": {"type": "string", "label": "Agency ID filter (optional)"},
-    }
-
-    def test_connection(self, config, workspace=None):
-        return ConnectorTestResult(
-            False,
-            "GTFS connector is a planned feature and not yet implemented. "
-            "See CHANGELOG for progress.",
-        )
-
-    def fetch(self, config, workspace=None):
-        raise NotImplementedError(
-            "GTFS connector is planned for a future release. Use GeoJSON or "
-            "CSV as an interim for transit stop data."
-        )
 
 
 class CKANConnector(BaseConnector):

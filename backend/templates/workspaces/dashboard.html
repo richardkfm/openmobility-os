@@ -50,6 +50,55 @@
     {% endif %}
   </div>
 
+  {# Transit KPIs — only shown when a transit_stops or transit_coverage layer is synced #}
+  {% if transit_kpis %}
+  <section>
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="text-lg font-semibold">{% trans "Public transit" %}</h2>
+      <a href="{% url 'workspace_map' workspace.slug %}" class="text-sm text-slate-600 hover:underline">
+        {% trans "Show on map" %} →
+      </a>
+    </div>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {% if transit_kpis.stop_count is not None %}
+      <div class="rounded-lg border bg-white p-4">
+        <div class="text-xs text-slate-500">{% trans "Transit stops" %}</div>
+        <div class="text-2xl font-bold mt-1">{{ transit_kpis.stop_count }}</div>
+      </div>
+      {% endif %}
+      {% if transit_kpis.avg_headway_min is not None %}
+      <div class="rounded-lg border bg-white p-4">
+        <div class="text-xs text-slate-500">{% trans "Average headway" %}</div>
+        <div class="text-2xl font-bold mt-1">{{ transit_kpis.avg_headway_min }} {% trans "min" %}</div>
+      </div>
+      {% endif %}
+      {% if transit_kpis.coverage_pct is not None %}
+      <div class="rounded-lg border bg-white p-4">
+        <div class="text-xs text-slate-500">{% trans "Population coverage" %}</div>
+        <div class="text-2xl font-bold mt-1">{{ transit_kpis.coverage_pct }}%</div>
+        {% if transit_kpis.population_in_coverage %}
+        <div class="text-xs text-slate-400">~{{ transit_kpis.population_in_coverage|stringformat:"d" }} {% trans "residents" %}</div>
+        {% endif %}
+      </div>
+      {% endif %}
+      {% if transit_kpis.night_service_pct is not None %}
+      <div class="rounded-lg border bg-white p-4">
+        <div class="text-xs text-slate-500">{% trans "Night service" %}</div>
+        <div class="text-2xl font-bold mt-1">{{ transit_kpis.night_service_pct }}%</div>
+        <div class="text-xs text-slate-400">{% trans "of stops served 22:00–05:00" %}</div>
+      </div>
+      {% endif %}
+      {% if transit_kpis.barrier_free_pct is not None %}
+      <div class="rounded-lg border bg-white p-4">
+        <div class="text-xs text-slate-500">{% trans "Barrier-free stops" %}</div>
+        <div class="text-2xl font-bold mt-1">{{ transit_kpis.barrier_free_pct }}%</div>
+        <div class="text-xs text-slate-400">{% trans "wheelchair-accessible" %}</div>
+      </div>
+      {% endif %}
+    </div>
+  </section>
+  {% endif %}
+
   <div class="grid gap-8 lg:grid-cols-2">
 
     {# Goals #}

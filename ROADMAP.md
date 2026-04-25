@@ -167,14 +167,14 @@ These features are **not in the MVP**, but the architecture is already prepared 
 
 ---
 
-### Phase 9 — Public Transit Network as a First-Class Layer
+### ✅ Phase 9 — Public Transit Network as a First-Class Layer
 > Full GTFS support, transit coverage analysis.
 
-- [ ] Full `GTFSConnector` implementation (static GTFS zip — routes, stops, trips, calendar)
-- [ ] New layer kinds: `transit_routes`, `transit_coverage` (300m / 500m buffer polygons)
-- [ ] `transit_stops` enriched with: accessibility status, average headway, night service
-- [ ] New measure categories: `transit_frequency`, `transit_accessibility`, `transit_gap`
-- [ ] KPIs: average headway, population coverage %, night connections, barrier-free stops %
+- [x] Full `GTFSConnector` implementation (static GTFS zip — routes, stops, trips, calendar)
+- [x] New layer kinds: `transit_routes`, `transit_coverage` (300m / 500m buffer polygons)
+- [x] `transit_stops` enriched with: accessibility status, average headway, night service
+- [x] New measure categories: `transit_frequency`, `transit_accessibility`, `transit_gap`
+- [x] KPIs: average headway, population coverage %, night connections, barrier-free stops %
 - [ ] GTFS-RT adapter for live delay visualization (see Phase 11)
 
 ---
