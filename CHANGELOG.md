@@ -36,6 +36,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   same numbers, so dashboards consuming the API can re-render the strip
 - Map: `transit_routes` rendered as blue lines, `transit_coverage` as
   translucent buffer polygons; both layers honour the existing layer toggle
+### Fixed
+- Demo accidents layer now visible on the Leipzig map out of the box:
+  added 15 illustrative accident points (mix of severities and modes) to the
+  Leipzig seed workspace, and `seed_demo` now auto-syncs `manual` data sources
+  on first boot so districts and accidents appear on the map without a manual
+  sync step
 
 ### Added (Phase 8 — Accidents as a First-Class Layer, complete)
 ### Fixed

@@ -115,6 +115,61 @@ data_sources:
     config:
       template: schools
 
+  - name: Beispiel — Unfälle (Demo-Daten)
+    source_type: manual
+    layer_kind: accidents
+    license: "CC0 (example data — not real accident records)"
+    attribution: "Illustrative demo data only"
+    config:
+      feature_collection:
+        type: FeatureCollection
+        features:
+          - type: Feature
+            properties: {severity: fatal, date: "2023-06", time_of_day: evening, weather: wet, involved_modes: ["cyclist", "car"], vulnerable_road_user: true, intersection_type: crossing, speed_limit: 50}
+            geometry: {type: Point, coordinates: [12.3731, 51.3397]}
+          - type: Feature
+            properties: {severity: serious, date: "2023-04", time_of_day: morning, weather: dry, involved_modes: ["pedestrian", "car"], vulnerable_road_user: true, intersection_type: t_junction, speed_limit: 50}
+            geometry: {type: Point, coordinates: [12.3801, 51.3421]}
+          - type: Feature
+            properties: {severity: serious, date: "2023-08", time_of_day: day, weather: dry, involved_modes: ["cyclist"], vulnerable_road_user: true, intersection_type: none, speed_limit: 30}
+            geometry: {type: Point, coordinates: [12.3650, 51.3350]}
+          - type: Feature
+            properties: {severity: minor, date: "2023-03", time_of_day: night, weather: wet, involved_modes: ["car", "car"], vulnerable_road_user: false, intersection_type: crossing, speed_limit: 50}
+            geometry: {type: Point, coordinates: [12.3900, 51.3310]}
+          - type: Feature
+            properties: {severity: minor, date: "2023-07", time_of_day: day, weather: dry, involved_modes: ["cyclist", "car"], vulnerable_road_user: true, intersection_type: t_junction, speed_limit: 30}
+            geometry: {type: Point, coordinates: [12.3550, 51.3410]}
+          - type: Feature
+            properties: {severity: serious, date: "2023-05", time_of_day: morning, weather: dry, involved_modes: ["pedestrian"], vulnerable_road_user: true, intersection_type: crossing, speed_limit: 50}
+            geometry: {type: Point, coordinates: [12.4050, 51.3380]}
+          - type: Feature
+            properties: {severity: minor, date: "2023-09", time_of_day: evening, weather: dry, involved_modes: ["car", "truck"], vulnerable_road_user: false, intersection_type: t_junction, speed_limit: 50}
+            geometry: {type: Point, coordinates: [12.3480, 51.3290]}
+          - type: Feature
+            properties: {severity: minor, date: "2023-02", time_of_day: day, weather: snow, involved_modes: ["car"], vulnerable_road_user: false, intersection_type: none, speed_limit: 30}
+            geometry: {type: Point, coordinates: [12.3760, 51.3450]}
+          - type: Feature
+            properties: {severity: fatal, date: "2022-11", time_of_day: night, weather: wet, involved_modes: ["cyclist", "truck"], vulnerable_road_user: true, intersection_type: crossing, speed_limit: 50}
+            geometry: {type: Point, coordinates: [12.3710, 51.3330]}
+          - type: Feature
+            properties: {severity: serious, date: "2023-01", time_of_day: morning, weather: dry, involved_modes: ["car", "car"], vulnerable_road_user: false, intersection_type: roundabout, speed_limit: 30}
+            geometry: {type: Point, coordinates: [12.3830, 51.3460]}
+          - type: Feature
+            properties: {severity: minor, date: "2023-10", time_of_day: day, weather: dry, involved_modes: ["cyclist"], vulnerable_road_user: true, intersection_type: none, speed_limit: 30}
+            geometry: {type: Point, coordinates: [12.3590, 51.3370]}
+          - type: Feature
+            properties: {severity: minor, date: "2023-06", time_of_day: evening, weather: dry, involved_modes: ["car", "car"], vulnerable_road_user: false, intersection_type: t_junction, speed_limit: 50}
+            geometry: {type: Point, coordinates: [12.4120, 51.3400]}
+          - type: Feature
+            properties: {severity: serious, date: "2023-03", time_of_day: day, weather: wet, involved_modes: ["pedestrian", "car"], vulnerable_road_user: true, intersection_type: crossing, speed_limit: 50}
+            geometry: {type: Point, coordinates: [12.3680, 51.3500]}
+          - type: Feature
+            properties: {severity: minor, date: "2022-12", time_of_day: morning, weather: snow, involved_modes: ["car", "car"], vulnerable_road_user: false, intersection_type: none, speed_limit: 30}
+            geometry: {type: Point, coordinates: [12.3420, 51.3440]}
+          - type: Feature
+            properties: {severity: serious, date: "2023-08", time_of_day: evening, weather: dry, involved_modes: ["cyclist", "car"], vulnerable_road_user: true, intersection_type: crossing, speed_limit: 50}
+            geometry: {type: Point, coordinates: [12.3950, 51.3250]}
+
   - name: Beispiel — Stadtbezirke (statisch)
     source_type: manual
     layer_kind: districts
