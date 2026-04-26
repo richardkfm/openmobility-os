@@ -114,9 +114,14 @@ def _row_to_feature(row):
     ]
     vru = any(m in involved_modes for m in ("cyclist", "pedestrian"))
 
-    year = str(row.get("UJAHR", "")).strip()
+    year_str = str(row.get("UJAHR", "")).strip()
     month = str(row.get("UMONAT", "")).strip().zfill(2)
-    date = f"{year}-{month}" if year and month else None
+    date = f"{year_str}-{month}" if year_str and month else None
+    year_int: int | None
+    try:
+        year_int = int(year_str) if year_str else None
+    except ValueError:
+        year_int = None
 
     hour_str = str(row.get("USTUNDE", "")).strip()
     time_of_day = _time_of_day(hour_str)
@@ -130,6 +135,7 @@ def _row_to_feature(row):
         "properties": {
             "severity": severity,
             "date": date,
+            "year": year_int,
             "time_of_day": time_of_day,
             "weather": weather,
             "involved_modes": involved_modes,

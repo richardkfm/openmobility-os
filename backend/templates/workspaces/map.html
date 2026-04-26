@@ -29,10 +29,10 @@
           <span x-text="open ? '▲' : '▼'" class="text-slate-400 text-xs"></span>
         </button>
         <div x-show="open" class="mt-3 flex flex-col gap-2 text-sm" id="layer-controls">
-          {% for lk in layer_kinds %}
+          {% for layer in layers %}
           <label class="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" checked class="layer-toggle" data-layer="{{ lk }}">
-            <span class="capitalize">{{ lk|lower|replace:"_: " }}</span>
+            <input type="checkbox" checked class="layer-toggle" data-layer="{{ layer.value }}">
+            <span>{{ layer.label }}</span>
           </label>
           {% empty %}
           <p class="text-xs text-slate-400">{% trans "No layers available. Sync data sources first." %}</p>
@@ -50,6 +50,17 @@
         <div class="font-semibold mb-3 flex items-center gap-2">
           <span class="inline-block w-3 h-3 rounded-full bg-red-500"></span>
           {% trans "Accident filters" %}
+        </div>
+
+        {# Year filters — populated from data, default to most recent year only #}
+        <p class="text-xs text-slate-500 mb-2 font-medium uppercase tracking-wide">{% trans "Years" %}</p>
+        <div class="flex flex-col gap-1 mb-4" x-show="availableYears.length > 0">
+          <template x-for="y in availableYears" :key="y">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" :value="y" x-model="years" @change="applyFilter()">
+              <span x-text="y"></span>
+            </label>
+          </template>
         </div>
 
         {# View mode toggle #}
@@ -187,6 +198,14 @@ function layerColor(kind) {
   return LAYER_COLORS[kind] || "#64748b";
 }
 
+// Look up the current checkbox state for a layer so we can honor it at
+// add-time (otherwise MapLibre defaults to "visible" regardless of the UI).
+function initialVisibility(id) {
+  const cb = document.querySelector(`.layer-toggle[data-layer="${id}"]`);
+  if (!cb) return "visible";
+  return cb.checked ? "visible" : "none";
+}
+
 function addGeoJsonLayer(id, url, color) {
   fetch(url)
     .then(r => r.json())
@@ -196,6 +215,7 @@ function addGeoJsonLayer(id, url, color) {
       }
 
       const types = new Set((fc.features || []).map(f => f.geometry?.type));
+      const startVis = initialVisibility(id);
 
       if (id === "accidents") {
         // Heatmap layer — severity-weighted density, shown at low zoom
@@ -243,6 +263,7 @@ function addGeoJsonLayer(id, url, color) {
           id: "accidents-circle",
           type: "circle",
           source: "accidents",
+          layout: { visibility: startVis },
           paint: {
             "circle-radius": [
               "match", ["get", "severity"],
@@ -276,17 +297,38 @@ function addGeoJsonLayer(id, url, color) {
 
       } else {
         if (types.has("LineString") || types.has("MultiLineString")) {
+          // streets_with_speed is colored by the maxspeed value so it reads
+          // as "speed-limit map" rather than "another generic streets layer".
+          const linePaint = id === "streets_with_speed"
+            ? {
+                "line-width": 2.5,
+                "line-opacity": 0.9,
+                "line-color": [
+                  "match",
+                  ["to-string", ["coalesce", ["get", "maxspeed"], "unknown"]],
+                  ["10", "20", "30"], "#16a34a",
+                  ["40", "50"],       "#f97316",
+                  ["60", "70"],       "#dc2626",
+                  ["80", "100", "120"], "#7f1d1d",
+                  /* default */       "#94a3b8",
+                ],
+              }
+            : { "line-color": color, "line-width": 2.5, "line-opacity": 0.85 };
           map.addLayer({ id: id + "-line", type: "line", source: id,
-            paint: { "line-color": color, "line-width": 2.5, "line-opacity": 0.85 } });
+            layout: { visibility: startVis },
+            paint: linePaint });
         }
         if (types.has("Polygon") || types.has("MultiPolygon")) {
           map.addLayer({ id: id + "-fill", type: "fill", source: id,
+            layout: { visibility: startVis },
             paint: { "fill-color": color, "fill-opacity": 0.25 } });
           map.addLayer({ id: id + "-outline", type: "line", source: id,
+            layout: { visibility: startVis },
             paint: { "line-color": color, "line-width": 1, "line-opacity": 0.6 } });
         }
         if (types.has("Point") || types.has("MultiPoint")) {
           map.addLayer({ id: id + "-circle", type: "circle", source: id,
+            layout: { visibility: startVis },
             paint: { "circle-radius": 5, "circle-color": color, "circle-opacity": 0.8 } });
         }
 
@@ -308,7 +350,24 @@ function addGeoJsonLayer(id, url, color) {
     .catch(() => console.warn("Layer failed to load:", id));
 }
 
+// Shared state between the layer-toggle checkbox and the accident filter
+// component, so each can restore the right accidents sublayer (circles vs
+// heatmap) without overwriting the other's choice.
+const accidentsState = { enabled: true, mode: "circles" };
+
+function syncAccidentLayers() {
+  if (!map.getLayer("accidents-circle") || !map.getLayer("accidents-heat")) return;
+  const circleVis = accidentsState.enabled && accidentsState.mode === "circles" ? "visible" : "none";
+  const heatVis = accidentsState.enabled && accidentsState.mode === "heatmap" ? "visible" : "none";
+  map.setLayoutProperty("accidents-circle", "visibility", circleVis);
+  map.setLayoutProperty("accidents-heat", "visibility", heatVis);
+}
+
 map.on("load", () => {
+  // Seed accident state from the checkbox so first paint matches the UI.
+  const accidentsCb = document.querySelector('.layer-toggle[data-layer="accidents"]');
+  if (accidentsCb) accidentsState.enabled = accidentsCb.checked;
+
   LAYER_KINDS.forEach(kind => {
     const url = `/api/v1/workspaces/${WORKSPACE_SLUG}/features/${kind}/`;
     addGeoJsonLayer(kind, url, layerColor(kind));
@@ -317,9 +376,14 @@ map.on("load", () => {
   const measuresUrl = `/api/v1/workspaces/${WORKSPACE_SLUG}/measures.geojson`;
   addGeoJsonLayer("measures", measuresUrl, "#6366f1");
 
+  // Measures checkbox starts unchecked — keep the layer hidden until toggled on.
+  ["measures-circle", "measures-fill", "measures-line", "measures-outline"].forEach(id => {
+    if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", "none");
+  });
+
   document.getElementById("toggle-measures")?.addEventListener("change", (e) => {
     const vis = e.target.checked ? "visible" : "none";
-    ["measures-circle", "measures-fill", "measures-line"].forEach(id => {
+    ["measures-circle", "measures-fill", "measures-line", "measures-outline"].forEach(id => {
       if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", vis);
     });
   });
@@ -327,15 +391,15 @@ map.on("load", () => {
   document.querySelectorAll(".layer-toggle").forEach(checkbox => {
     checkbox.addEventListener("change", (e) => {
       const kind = e.target.dataset.layer;
+      if (kind === "accidents") {
+        accidentsState.enabled = e.target.checked;
+        syncAccidentLayers();
+        return;
+      }
       const vis = e.target.checked ? "visible" : "none";
       ["-line", "-fill", "-outline", "-circle"].forEach(suffix => {
         if (map.getLayer(kind + suffix)) map.setLayoutProperty(kind + suffix, "visibility", vis);
       });
-      if (kind === "accidents") {
-        // Keep the currently active accident view in sync with the toggle
-        if (map.getLayer("accidents-circle")) map.setLayoutProperty("accidents-circle", "visibility", vis);
-        if (map.getLayer("accidents-heat")) map.setLayoutProperty("accidents-heat", "visibility", "none");
-      }
     });
   });
 });
@@ -346,21 +410,37 @@ function accidentFilter() {
     viewMode: "circles",
     severity: { fatal: true, serious: true, minor: true },
     modes: { cyclist: false, pedestrian: false, car: false, truck: false },
+    availableYears: [],   // discovered from loaded accident features (desc)
+    years: [],            // currently selected years; defaults to most recent only
 
     init() {
-      map.on("idle", () => this.applyFilter());
+      // Apply once the source data is in (deferred via 'idle').
+      map.on("idle", () => {
+        this.discoverYears();
+        this.applyFilter();
+      });
+    },
+
+    discoverYears() {
+      if (this.availableYears.length > 0) return;
+      const src = map.getSource("accidents");
+      if (!src || !src._data) return;
+      const fc = src._data;
+      const seen = new Set();
+      for (const f of fc.features || []) {
+        const y = f.properties && f.properties.year;
+        if (y !== undefined && y !== null && y !== "") seen.add(Number(y));
+      }
+      if (seen.size === 0) return;
+      this.availableYears = [...seen].sort((a, b) => b - a);
+      // Default: most recent year only. User opts in to older years.
+      this.years = [this.availableYears[0]];
     },
 
     setViewMode(mode) {
       this.viewMode = mode;
-      if (!map.getLayer("accidents-circle") || !map.getLayer("accidents-heat")) return;
-      if (mode === "heatmap") {
-        map.setLayoutProperty("accidents-circle", "visibility", "none");
-        map.setLayoutProperty("accidents-heat", "visibility", "visible");
-      } else {
-        map.setLayoutProperty("accidents-heat", "visibility", "none");
-        map.setLayoutProperty("accidents-circle", "visibility", "visible");
-      }
+      accidentsState.mode = mode;
+      syncAccidentLayers();
       this.applyFilter();
     },
 
@@ -369,17 +449,30 @@ function accidentFilter() {
         .filter(([, on]) => on)
         .map(([k]) => k);
 
+      // No severities selected → hide everything via an always-false filter.
       if (activeSeverities.length === 0) {
-        const noneFilter = ["==", "severity", "__none__"];
+        const noneFilter = ["==", ["get", "severity"], "__none__"];
         if (map.getLayer("accidents-circle")) map.setFilter("accidents-circle", noneFilter);
         if (map.getLayer("accidents-heat")) map.setFilter("accidents-heat", noneFilter);
         return;
       }
 
       const severityFilter = ["in", ["get", "severity"], ["literal", activeSeverities]];
+      const baseClauses = [severityFilter];
 
-      // Circle mode: also apply mode filter if any modes are selected
-      let circleFilter = severityFilter;
+      // Year filter: only apply when the connector emitted year data.
+      if (this.availableYears.length > 0) {
+        if (this.years.length === 0) {
+          const noneFilter = ["==", ["get", "severity"], "__none__"];
+          if (map.getLayer("accidents-circle")) map.setFilter("accidents-circle", noneFilter);
+          if (map.getLayer("accidents-heat")) map.setFilter("accidents-heat", noneFilter);
+          return;
+        }
+        baseClauses.push(["in", ["to-number", ["get", "year"]], ["literal", this.years.map(Number)]]);
+      }
+
+      // Circle mode also applies the mode filter when any modes are selected.
+      const circleClauses = [...baseClauses];
       const activeModes = Object.entries(this.modes)
         .filter(([, on]) => on)
         .map(([k]) => k);
@@ -387,17 +480,23 @@ function accidentFilter() {
         const modeConditions = activeModes.map(m => [
           "in", m, ["coalesce", ["get", "involved_modes"], ""]
         ]);
-        circleFilter = ["all", severityFilter, ["any", ...modeConditions]];
+        circleClauses.push(["any", ...modeConditions]);
       }
 
+      const circleFilter = circleClauses.length === 1 ? circleClauses[0] : ["all", ...circleClauses];
+      const heatFilter = baseClauses.length === 1 ? baseClauses[0] : ["all", ...baseClauses];
+
       if (map.getLayer("accidents-circle")) map.setFilter("accidents-circle", circleFilter);
-      // Heatmap respects severity filter; mode filter is not applied (density view)
-      if (map.getLayer("accidents-heat")) map.setFilter("accidents-heat", severityFilter);
+      // Heatmap respects severity + year filters; mode filter is not applied (density view)
+      if (map.getLayer("accidents-heat")) map.setFilter("accidents-heat", heatFilter);
     },
 
     resetFilter() {
       this.severity = { fatal: true, serious: true, minor: true };
       this.modes = { cyclist: false, pedestrian: false, car: false, truck: false };
+      if (this.availableYears.length > 0) {
+        this.years = [this.availableYears[0]];
+      }
       this.applyFilter();
     },
   };

@@ -40,13 +40,24 @@ def dashboard(request, workspace_slug: str):
 def workspace_map(request, workspace_slug: str):
     ws = get_active_workspace(workspace_slug)
     feature_sets = NormalizedFeatureSet.objects.filter(workspace=ws)
-    layer_kinds = list(feature_sets.values_list("layer_kind", flat=True).distinct())
+    kind_values = list(feature_sets.values_list("layer_kind", flat=True).distinct())
+
+    # Map every kind to its translated LayerKind label; fall back to the raw
+    # value (with underscores replaced) for connector-defined kinds that aren't
+    # in the enum.
+    label_map = dict(DataSource.LayerKind.choices)
+    layers = [
+        {"value": v, "label": str(label_map.get(v, v.replace("_", " ").capitalize()))}
+        for v in sorted(kind_values)
+    ]
+
     response = render(
         request,
         "workspaces/map.html",
         {
             "workspace": ws,
-            "layer_kinds": layer_kinds,
+            "layers": layers,
+            "layer_kinds": kind_values,
             "page_title": _("Map — %(name)s") % {"name": ws.name},
         },
     )
