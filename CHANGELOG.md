@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Syncing a data source with an incomplete configuration (e.g. the GTFS
+  example sources shipped with an empty `url`) used to surface the raw
+  `requests.MissingSchema: Invalid URL ''` traceback. The sync runner now
+  validates the connector config before fetching and stores a clear
+  "Configuration incomplete: …" message instead
+
 ### Fixed (Map filtering pass)
 - Layer toggles in the workspace map now actually take effect on first render:
   layers are added with the visibility implied by the sidebar checkbox state

@@ -155,6 +155,17 @@ def _run_sync(source: DataSource):
     source.status = DataSource.Status.PENDING
     source.save(update_fields=["status"])
 
+    # Validate config before hitting the network — connectors with placeholder
+    # config (e.g. example data sources shipped with empty URLs) would
+    # otherwise raise a low-level `requests.MissingSchema` on the bare URL,
+    # which is opaque to the operator.
+    config_errors = connector.validate_config(source.config or {})
+    if config_errors:
+        source.status = DataSource.Status.ERROR
+        source.error_message = "Configuration incomplete: " + "; ".join(config_errors)
+        source.save(update_fields=["status", "error_message"])
+        return False, source.error_message
+
     try:
         result = connector.fetch(source.config, workspace=source.workspace)
     except NotImplementedError as exc:
