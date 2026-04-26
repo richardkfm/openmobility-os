@@ -14,11 +14,15 @@ from datasets.models import NormalizedFeatureSet
 @cache_page(30)
 def workspace_layer(request, workspace_slug: str, layer_kind: str):
     ws = get_active_workspace(workspace_slug)
-    try:
-        fs = NormalizedFeatureSet.objects.get(workspace=ws, layer_kind=layer_kind)
-    except NormalizedFeatureSet.DoesNotExist:
-        return JsonResponse({"type": "FeatureCollection", "features": []})
-    return JsonResponse(fs.feature_collection)
+    # Multiple data sources can publish into the same layer kind (e.g. one
+    # Unfallatlas datasource per year). Aggregate across all feature sets so
+    # the map sees a single FeatureCollection per layer.
+    feature_sets = NormalizedFeatureSet.objects.filter(workspace=ws, layer_kind=layer_kind)
+    features: list = []
+    for fs in feature_sets:
+        fc = fs.feature_collection or {}
+        features.extend(fc.get("features") or [])
+    return JsonResponse({"type": "FeatureCollection", "features": features})
 
 
 @require_GET

@@ -144,6 +144,14 @@ def _row_to_feature(row, config, severity_map):
 
     date_col = config.get("date_col")
     date = str(row.get(date_col, "")).strip() if date_col else None
+    year: int | None = None
+    if date:
+        # Pull a 4-digit year out of the date string if present (handles
+        # YYYY, YYYY-MM, YYYY-MM-DD, DD.MM.YYYY, ...).
+        for token in (date[:4], date[-4:]):
+            if token.isdigit() and 1900 <= int(token) <= 2100:
+                year = int(token)
+                break
 
     mode_col = config.get("mode_col")
     involved_modes: list[str] = []
@@ -161,6 +169,7 @@ def _row_to_feature(row, config, severity_map):
         "properties": {
             "severity": severity,
             "date": date,
+            "year": year,
             "time_of_day": None,
             "weather": None,
             "involved_modes": involved_modes,

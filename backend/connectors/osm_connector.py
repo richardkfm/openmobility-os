@@ -74,6 +74,20 @@ OVERPASS_TEMPLATES: dict[str, str] = {
         );
         out geom tags;
     """,
+    # Admin level 9 = "Stadtbezirk" (city district) in Germany; level 10 =
+    # "Ortsteil" (sub-district). Most municipalities map districts at one of
+    # these two levels. Operators can override this template with `custom_query`
+    # if their administrative system uses different levels.
+    "districts": """
+        [out:json][timeout:60];
+        (
+          relation["boundary"="administrative"]["admin_level"="9"]({bbox});
+          relation["boundary"="administrative"]["admin_level"="10"]({bbox});
+          way["boundary"="administrative"]["admin_level"="9"]({bbox});
+          way["boundary"="administrative"]["admin_level"="10"]({bbox});
+        );
+        out geom tags;
+    """,
 }
 
 
@@ -237,4 +251,100 @@ def _osm_element_to_feature(el: dict):
                 "geometry": {"type": "Point", "coordinates": [center["lon"], center["lat"]]},
                 "properties": props,
             }
+
+    if el_type == "relation":
+        polygons = _assemble_relation_polygons(el)
+        if polygons:
+            if len(polygons) == 1:
+                return {
+                    "type": "Feature",
+                    "geometry": {"type": "Polygon", "coordinates": polygons[0]},
+                    "properties": props,
+                }
+            return {
+                "type": "Feature",
+                "geometry": {"type": "MultiPolygon", "coordinates": polygons},
+                "properties": props,
+            }
+        # Relation members didn't form closed rings — fall back to a
+        # MultiLineString of the outer ways so the boundary is at least visible.
+        outer_lines = _outer_member_lines(el)
+        if outer_lines:
+            return {
+                "type": "Feature",
+                "geometry": {"type": "MultiLineString", "coordinates": outer_lines},
+                "properties": props,
+            }
     return None
+
+
+def _outer_member_lines(relation: dict) -> list[list[list[float]]]:
+    """Return each outer way's geometry as its own LineString coord list."""
+    lines: list[list[list[float]]] = []
+    for member in relation.get("members") or []:
+        if member.get("type") != "way":
+            continue
+        role = member.get("role") or "outer"
+        if role not in ("outer", ""):
+            continue
+        geom = member.get("geometry") or []
+        coords = [[g["lon"], g["lat"]] for g in geom if "lon" in g and "lat" in g]
+        if len(coords) >= 2:
+            lines.append(coords)
+    return lines
+
+
+def _assemble_relation_polygons(relation: dict) -> list[list[list[list[float]]]]:
+    """Assemble outer member ways into one or more closed polygon rings.
+
+    Returns a list of polygons; each polygon is `[outer_ring]` (we don't track
+    inner holes here — fine for administrative-boundary visualization, which
+    rarely needs hole accuracy at the city-district level).
+    """
+    segments = _outer_member_lines(relation)
+    if not segments:
+        return []
+
+    polygons: list[list[list[list[float]]]] = []
+    remaining = [list(s) for s in segments]
+
+    while remaining:
+        ring = remaining.pop(0)
+        # Already closed?
+        if len(ring) >= 4 and ring[0] == ring[-1]:
+            polygons.append([ring])
+            continue
+
+        # Greedy chain: keep finding a remaining segment that connects to the
+        # current ring's open end, flipping if needed.
+        progress = True
+        while progress and ring[0] != ring[-1]:
+            progress = False
+            for i, seg in enumerate(remaining):
+                if seg[0] == ring[-1]:
+                    ring.extend(seg[1:])
+                    remaining.pop(i)
+                    progress = True
+                    break
+                if seg[-1] == ring[-1]:
+                    ring.extend(list(reversed(seg))[1:])
+                    remaining.pop(i)
+                    progress = True
+                    break
+                if seg[-1] == ring[0]:
+                    ring = seg[:-1] + ring
+                    remaining.pop(i)
+                    progress = True
+                    break
+                if seg[0] == ring[0]:
+                    ring = list(reversed(seg))[:-1] + ring
+                    remaining.pop(i)
+                    progress = True
+                    break
+
+        if len(ring) >= 4 and ring[0] == ring[-1]:
+            polygons.append([ring])
+        # else: dangling chain — discard (the MultiLineString fallback in the
+        # caller will pick up these segments).
+
+    return polygons

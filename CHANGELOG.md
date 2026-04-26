@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (Map filtering pass)
+- Layer toggles in the workspace map now actually take effect on first render:
+  layers are added with the visibility implied by the sidebar checkbox state
+  instead of always defaulting to "visible"
+- Switching the accidents view between Circles and Heatmap no longer leaves the
+  inactive sub-layer ghosted on; the layer-toggle checkbox and view-mode buttons
+  now share state and restore the correct sub-layer when re-enabled
+- The map's GeoJSON endpoint (`/api/v1/workspaces/<slug>/features/<layer>/`) now
+  aggregates features across every data source publishing the same layer kind.
+  Workspaces with multiple sources for one layer (e.g. one Unfallatlas source
+  per year) used to return HTTP 500 with `MultipleObjectsReturned`
+- Layer sidebar labels now use the translated `LayerKind` choices (e.g.
+  "Streets with speed limits", "Districts / neighborhoods") instead of a
+  string built from the slug, which previously read as e.g.
+  "streets_with_speed" or "streets with speed"
+- "Measures" overlay no longer renders before its checkbox is ticked
+
+### Added (Map filtering pass)
+- Accidents layer: per-year filter checkboxes in the accidents sidebar.
+  Years are auto-discovered from the loaded data; only the most recent year
+  is selected by default to keep the map readable. Older years can be toggled
+  on individually
+- `streets_with_speed` layer is now color-coded by speed limit
+  (≤30 km/h green → 40–50 orange → 60–70 red → ≥80 dark red), so it is
+  visually distinct from the generic streets layer
+- New `districts` Overpass template plus relation-to-polygon assembly in the
+  OSM connector — produces proper administrative-boundary polygons from
+  `boundary=administrative` relations (admin_level 9 / 10). Falls back to a
+  MultiLineString of outer ways when rings cannot be closed
+- Both accident connectors (`UnfallatlasConnector`, `AccidentCSVConnector`)
+  now emit a top-level `year` property on each feature so the year filter
+  works without parsing the date string
+
+### Changed
+- Leipzig demo workspace: the accidents data source now spans 2021–2025
+  (≈40 illustrative points), and the districts data source now uses the OSM
+  connector instead of three hardcoded polygons. The static fallback YAML
+  blocks are documented inline as commented examples for operators who need
+  fully offline demo data
+
 ### Added (Phase 9 — Public Transit Network as a First-Class Layer)
 - Full `GTFSConnector` (`gtfs`) — reads a static GTFS zip (stops, routes,
   trips, stop_times, calendar, shapes) and emits one of three normalized
