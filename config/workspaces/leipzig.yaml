@@ -84,27 +84,36 @@ data_sources:
     config:
       template: transit_stops
 
-  # GTFS examples — replace url with a public LVB / VVO feed when seeding
-  # against real data. Without a sync these data sources sit idle; the rest
-  # of the platform keeps working.
-  - name: GTFS — Stops (example, requires url)
+  # GTFS feed: Germany-wide local transit (gtfs.de "nv_free"). Includes
+  # LVB/MDV stops and routes for Leipzig as part of the nationwide
+  # nv_free aggregate. CC BY 4.0. The same zip feeds all three derived
+  # layers below — only the `layer` field differs.
+  - name: GTFS — Stops (gtfs.de nv_free)
     source_type: gtfs
     layer_kind: transit_stops
-    license: "depends on agency"
+    license: "CC BY 4.0"
+    attribution: "gtfs.de — Germany Local Transit (nv_free)"
+    source_url: https://gtfs.de/en/feeds/de_nv/
     config:
-      url: ""
+      url: https://download.gtfs.de/germany/nv_free/latest.zip
       layer: transit_stops
-  - name: GTFS — Routes (example, requires url)
+  - name: GTFS — Routes (gtfs.de nv_free)
     source_type: gtfs
     layer_kind: transit_routes
+    license: "CC BY 4.0"
+    attribution: "gtfs.de — Germany Local Transit (nv_free)"
+    source_url: https://gtfs.de/en/feeds/de_nv/
     config:
-      url: ""
+      url: https://download.gtfs.de/germany/nv_free/latest.zip
       layer: transit_routes
-  - name: GTFS — Coverage 400 m (example, requires url)
+  - name: GTFS — Coverage 400 m (gtfs.de nv_free)
     source_type: gtfs
     layer_kind: transit_coverage
+    license: "CC BY 4.0"
+    attribution: "gtfs.de — Germany Local Transit (nv_free)"
+    source_url: https://gtfs.de/en/feeds/de_nv/
     config:
-      url: ""
+      url: https://download.gtfs.de/germany/nv_free/latest.zip
       layer: transit_coverage
       coverage_buffer_m: 400
 
