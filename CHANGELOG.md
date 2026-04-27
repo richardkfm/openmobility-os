@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Leipzig demo: GTFS data sources now point at the gtfs.de nationwide local
+  transit feed (`nv_free`, CC BY 4.0) instead of empty placeholder URLs, so
+  the three transit layers (stops, routes, coverage) sync out of the box
+  for the Leipzig demo. The same zip feeds all three layers — only the
+  derived `layer` view differs
+
 ### Fixed
 - Syncing a data source with an incomplete configuration (e.g. the GTFS
   example sources shipped with an empty `url`) used to surface the raw
