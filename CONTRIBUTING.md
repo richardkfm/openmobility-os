@@ -76,28 +76,9 @@ Use the **New connector proposal** template. Before starting:
 
 ## Development Setup (without Docker)
 
-### System dependencies
-
-These are **not** bundled and must be installed on your machine before you
-create the virtualenv. The Docker-based quickstart in the README handles them
-for you — install these only if you are running Django directly on the host.
-
-| Dependency | macOS | Linux (Debian / Ubuntu) | Windows |
-|---|---|---|---|
-| **Python 3.12+** | [python.org](https://www.python.org/downloads/macos/) or `brew install python@3.12` | `sudo apt install python3.12 python3.12-venv` | [python.org](https://www.python.org/downloads/windows/) (tick "Add to PATH") |
-| **PostgreSQL 16 + PostGIS 3** | [Postgres.app](https://postgresapp.com/) (bundles PostGIS) or `brew install postgresql@16 postgis` | `sudo apt install postgresql-16 postgresql-16-postgis-3` ([wiki.postgresql.org](https://wiki.postgresql.org/wiki/Apt)) | [EDB installer](https://www.postgresql.org/download/windows/) + Stack Builder → "PostGIS Bundle" |
-| **GDAL** | `brew install gdal` | `sudo apt install gdal-bin libgdal-dev` | [OSGeo4W](https://trac.osgeo.org/osgeo4w/) installer, or `conda install -c conda-forge gdal` |
-
-After installing, create a database and enable PostGIS:
-
 ```bash
-createdb openmobility
-psql -d openmobility -c "CREATE EXTENSION postgis;"
-```
+# Requires Python 3.12+, PostgreSQL 16 + PostGIS 3, GDAL
 
-### Virtualenv + dependencies
-
-```bash
 python -m venv venv
 source venv/bin/activate    # bash / zsh / sh
 # fish:        source venv/bin/activate.fish
