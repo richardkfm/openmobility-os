@@ -29,6 +29,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (collisions and near-misses; hazards opt-in)
 
 ### Changed
+- CONTRIBUTING.md now spells out the host-side system dependencies for the
+  non-Docker setup (Python 3.12, PostgreSQL 16 + PostGIS 3, GDAL) with
+  per-platform install links for macOS / Linux / Windows, and documents
+  the shell-specific virtualenv activation commands (fish, csh, PowerShell)
+  alongside the bash/zsh form
 - Leipzig demo: GTFS data sources now point at the gtfs.de nationwide local
   transit feed (`nv_free`, CC BY 4.0) instead of empty placeholder URLs, so
   the three transit layers (stops, routes, coverage) sync out of the box
