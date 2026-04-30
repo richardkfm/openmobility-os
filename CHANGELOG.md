@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **BikeMaps.org connector** — pulls global crowdsourced cycling collisions,
+  near-misses, and hazards from `bikemaps.org`, normalized to the standard
+  accident schema. Reports are tagged with `incident_type` and
+  `data_origin: crowdsourced` so the UI / scoring layer can clearly
+  distinguish citizen-science data from authoritative police records.
+  Addresses the well-documented under-reporting of vulnerable road users in
+  official accident statistics. License: CC BY 4.0.
+- **`seed_unfallatlas` management command** — bootstraps a German workspace
+  with real Destatis Unfallatlas accident data clipped to the workspace
+  bounding box, replacing the illustrative demo accident layer. Reads
+  per-year download URLs from `config/unfallatlas.yaml` (or a per-workspace
+  override at `config/unfallatlas/<slug>.yaml`), or accepts a
+  `--url-pattern "https://…/{year}.csv"` for one-off imports
+- Unfallatlas connector now supports a `bbox` config option and, when a
+  workspace with bounds is supplied at sync time, automatically clips rows
+  outside the workspace bounding box. Makes importing the national CSV
+  feasible for a single municipality
+- Leipzig demo workspace ships a BikeMaps.org data source by default
+  (collisions and near-misses; hazards opt-in)
+
 ### Changed
 - Leipzig demo: GTFS data sources now point at the gtfs.de nationwide local
   transit feed (`nv_free`, CC BY 4.0) instead of empty placeholder URLs, so

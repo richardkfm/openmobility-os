@@ -259,20 +259,33 @@ data_sources:
             properties: {severity: minor,   year: 2025, date: "2025-10", time_of_day: day,     weather: dry,  involved_modes: ["car"],              vulnerable_road_user: false, intersection_type: none,       speed_limit: 30}
             geometry: {type: Point, coordinates: [12.3795, 51.3470]}
 
-  # Production: replace the demo source above by configuring one Unfallatlas
-  # data source per year (Destatis publishes per-state CSVs annually). Each
-  # source carries its `year` property automatically; the map's year filter
-  # will surface them as separate togglable years.
+  # Production: replace the demo source above by importing real Destatis
+  # Unfallatlas data via the helper management command. Configure the per-year
+  # download URLs in `config/unfallatlas.yaml` (or `config/unfallatlas/leipzig.yaml`)
+  # and run, for example:
   #
-  #   - name: Unfallatlas Sachsen 2024
-  #     source_type: csv
-  #     layer_kind: accidents
-  #     license: "dl-de/by-2-0"
-  #     attribution: "© Statistische Ämter des Bundes und der Länder"
-  #     config:
-  #       url: https://example.example/unfallatlas/sachsen-2024.csv
-  #       connector: unfallat
-  #       encoding: utf-8
+  #   docker compose exec web python manage.py seed_unfallatlas \
+  #       --workspace leipzig --years 2021-2024
+  #
+  # The command creates one `unfallat`-typed DataSource per year, clipped to
+  # this workspace's bounding box, and replaces the illustrative demo layer.
+
+  # BikeMaps.org — global crowdsourced cycling-incident reports. Bridges the
+  # well-documented under-reporting gap of vulnerable-road-user incidents in
+  # police statistics. Hazards are off by default (set include_hazards: true
+  # to surface them too). Density of reports varies strongly by city; this
+  # source will simply yield zero features in regions with no community
+  # reporting yet — that is itself useful information for the operator.
+  - name: BikeMaps.org — Crowdsourced cycling reports
+    source_type: bikemaps
+    layer_kind: accidents
+    license: "CC BY 4.0"
+    attribution: "© BikeMaps.org contributors"
+    source_url: https://bikemaps.org/
+    config:
+      include_collisions: true
+      include_near_misses: true
+      include_hazards: false
 
   # Districts come from OSM (admin_level 9 = Stadtbezirk, 10 = Ortsteil). The
   # OSM connector assembles the relation members into closed polygons. Sync

@@ -1,0 +1,42 @@
+# Unfallatlas (German Federal Statistics Office) source URLs
+# ---------------------------------------------------------------------------
+# Year → CSV download URL mapping consumed by the `seed_unfallatlas`
+# management command. The official Destatis Unfallatlas portal at
+# https://unfallatlas.statistikportal.de publishes a fresh CSV bundle for
+# each calendar year (typically released the following spring under the
+# "dl-de/by-2-0" license).
+#
+# WHY YOU NEED TO FILL THIS IN YOURSELF
+# Destatis rotates download URLs and packaging (per-year, per-state, ZIPs
+# vs. plain CSVs) every release cycle. Hard-coding URLs in code would mean
+# a connector that silently breaks every year. Instead, this file is the
+# single source of truth — and the `seed_unfallatlas` command will tell
+# you exactly which years are configured.
+#
+# HOW TO POPULATE
+#   1. Visit https://unfallatlas.statistikportal.de/_opendata.html
+#   2. Download the per-year CSV (national or per-state) you want to use.
+#   3. Either: host the file yourself and put the URL below
+#      OR: copy the direct Destatis download URL.
+#   4. Set the encoding (utf-8 or latin-1 — Destatis used latin-1 for older
+#      bundles, switched to utf-8 in recent years).
+#
+# RUNNING
+#   python manage.py seed_unfallatlas --workspace <slug> --years 2021,2022,2023
+#
+# Per-workspace overrides: drop a file at config/unfallatlas/<slug>.yaml
+# with the same shape and it takes precedence over this file.
+
+default_encoding: utf-8
+
+sources: {}
+  # Example — replace placeholders before use:
+  # 2021:
+  #   url: "https://example.org/unfallatlas/2021_national.csv"
+  #   encoding: utf-8
+  # 2022:
+  #   url: "https://example.org/unfallatlas/2022_national.csv"
+  # 2023:
+  #   url: "https://example.org/unfallatlas/2023_national.csv"
+  # 2024:
+  #   url: "https://example.org/unfallatlas/2024_national.csv"
