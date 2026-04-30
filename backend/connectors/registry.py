@@ -2,6 +2,7 @@
 
 from .accident_connector import AccidentCSVConnector
 from .base import BaseConnector
+from .bikemaps_connector import BikeMapsConnector
 from .csv_connector import CSVConnector
 from .geojson_connector import GeoJSONConnector
 from .gtfs_connector import GTFSConnector
@@ -32,6 +33,7 @@ for _connector in [
     ManualConnector(),
     AccidentCSVConnector(),
     UnfallatlasConnector(),
+    BikeMapsConnector(),
     GTFSConnector(),
     CKANConnector(),
     WFSConnector(),

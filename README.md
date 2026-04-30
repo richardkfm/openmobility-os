@@ -132,7 +132,14 @@ three demo workspaces: **Leipzig**, **Musterstadt**, and **Muster-Landkreis**.
   - OpenStreetMap via Overpass API (eight built-in templates + custom queries)
   - Static GTFS zip (transit stops, routes, coverage) — enriches stops with
     average headway, night service, and barrier-free status from the schedule
-  - Accident CSV (Destatis Unfallatlas + generic international)
+  - Accident CSV — Destatis Unfallatlas (Germany) and generic international,
+    both with optional bounding-box clipping to the workspace
+  - **BikeMaps.org** — global crowdsourced cycling collisions, near-misses,
+    and hazards. Closes the well-documented under-reporting of vulnerable
+    road users in police accident records (CC BY 4.0)
+- **`seed_unfallatlas` command** — bootstraps a German workspace with real
+  Destatis accident data clipped to the workspace bounds, replacing the
+  illustrative demo layer
 - **Planned connectors** (interface defined, implementation pending):
   CKAN, WFS, generic REST
 - **Rule-based measures engine** — generates prioritized interventions

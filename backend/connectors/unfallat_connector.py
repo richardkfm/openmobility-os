@@ -50,12 +50,28 @@ class UnfallatlasConnector(BaseConnector):
             "default": "utf-8",
             "label": "File encoding (utf-8 or latin-1)",
         },
+        "bbox": {
+            "type": "string",
+            "label": (
+                "Optional bounding box 'west,south,east,north' (WGS84). "
+                "Rows outside the box are dropped. If omitted and a workspace "
+                "is supplied during sync, the workspace bounds are used."
+            ),
+        },
+        "clip_to_workspace": {
+            "type": "boolean",
+            "default": True,
+            "label": "When no explicit bbox is set, clip to workspace bounds.",
+        },
     }
 
     def validate_config(self, config):
         errors = []
         if not config.get("url"):
             errors.append("CSV URL is required.")
+        bbox = _parse_bbox(config.get("bbox"))
+        if config.get("bbox") and bbox is None:
+            errors.append("bbox must be 'west,south,east,north' in decimal degrees.")
         return errors
 
     def _fetch_rows(self, config):
@@ -68,6 +84,22 @@ class UnfallatlasConnector(BaseConnector):
         rows = list(reader)
         fieldnames = reader.fieldnames or []
         return rows, fieldnames
+
+    def _resolve_bbox(self, config, workspace):
+        bbox = _parse_bbox(config.get("bbox"))
+        if bbox is not None:
+            return bbox
+        clip = config.get("clip_to_workspace", True)
+        if not clip or workspace is None:
+            return None
+        bounds = getattr(workspace, "bounds", None)
+        if bounds is None:
+            return None
+        # GeoDjango Polygon.extent → (west, south, east, north).
+        try:
+            return tuple(bounds.extent)
+        except (AttributeError, TypeError):
+            return None
 
     def test_connection(self, config, workspace=None):
         errors = self.validate_config(config)
@@ -84,27 +116,35 @@ class UnfallatlasConnector(BaseConnector):
                 False,
                 f"Missing required columns: {sorted(missing)}. Found: {fieldnames[:12]}",
             )
-        preview = [_row_to_feature(r) for r in rows[:3]]
+        bbox = self._resolve_bbox(config, workspace)
+        preview = [_row_to_feature(r, bbox) for r in rows[:50]]
+        kept = [f for f in preview if f]
+        suffix = f" (bbox-clip active, sample {len(kept)}/{len(preview)} kept)" if bbox else ""
         return ConnectorTestResult(
             True,
-            f"Unfallatlas CSV OK. {len(rows)} rows, required columns detected.",
-            [f for f in preview if f],
+            f"Unfallatlas CSV OK. {len(rows)} rows, required columns detected{suffix}.",
+            kept[:3],
         )
 
     def fetch(self, config, workspace=None):
         rows, _ = self._fetch_rows(config)
-        features = [f for r in rows if (f := _row_to_feature(r)) is not None]
+        bbox = self._resolve_bbox(config, workspace)
+        features = [f for r in rows if (f := _row_to_feature(r, bbox)) is not None]
         return FetchResult(
             feature_collection={"type": "FeatureCollection", "features": features},
             record_count=len(features),
         )
 
 
-def _row_to_feature(row):
+def _row_to_feature(row, bbox=None):
     lon = _safe_float_de(row.get("XGCSWGS84") or row.get("xgcswgs84"))
     lat = _safe_float_de(row.get("YGCSWGS84") or row.get("ygcswgs84"))
     if lon is None or lat is None:
         return None
+    if bbox is not None:
+        west, south, east, north = bbox
+        if not (west <= lon <= east and south <= lat <= north):
+            return None
 
     severity_code = str(row.get("UKATEGORIE", "")).strip()
     severity = SEVERITY_MAP.get(severity_code, "minor")
@@ -144,6 +184,30 @@ def _row_to_feature(row):
             "intersection_type": _intersection_type(row),
         },
     }
+
+
+def _parse_bbox(raw):
+    if raw is None:
+        return None
+    if isinstance(raw, (list, tuple)) and len(raw) == 4:
+        try:
+            west, south, east, north = (float(v) for v in raw)
+        except (TypeError, ValueError):
+            return None
+    else:
+        text = str(raw).strip()
+        if not text:
+            return None
+        parts = [p.strip() for p in text.split(",")]
+        if len(parts) != 4:
+            return None
+        try:
+            west, south, east, north = (float(p) for p in parts)
+        except ValueError:
+            return None
+    if west > east or south > north:
+        return None
+    return (west, south, east, north)
 
 
 def _safe_float_de(value):
