@@ -1,0 +1,38 @@
+"""Add 'electrification' measure category for EV-charging / electrification rules."""
+
+from django.db import migrations, models
+
+
+class Migration(migrations.Migration):
+
+    dependencies = [
+        ("measures", "0002_phase9_transit_layers"),
+    ]
+
+    operations = [
+        migrations.AlterField(
+            model_name="measure",
+            name="category",
+            field=models.CharField(
+                choices=[
+                    ("bike_infra", "Bike infrastructure"),
+                    ("pedestrian", "Pedestrian / walkability"),
+                    ("transit", "Public transit"),
+                    ("transit_frequency", "Transit frequency"),
+                    ("transit_accessibility", "Transit accessibility"),
+                    ("transit_gap", "Transit coverage gap"),
+                    ("parking", "Parking management"),
+                    ("speed", "Speed / traffic calming"),
+                    ("safety", "Traffic safety"),
+                    ("access", "Accessibility / barrier-free"),
+                    ("school_routes", "School routes"),
+                    ("mobility_hub", "Mobility hub"),
+                    ("public_space", "Public space reclamation"),
+                    ("electrification", "Electrification / EV charging"),
+                    ("other", "Other"),
+                ],
+                default="other",
+                max_length=30,
+            ),
+        ),
+    ]

@@ -18,9 +18,10 @@ class DataSource(models.Model):
         OSM_OVERPASS = "osm_overpass", _("OpenStreetMap (Overpass API)")
         MANUAL = "manual", _("Manual KPI entry")
         GTFS = "gtfs", _("GTFS static (transit schedule)")
-        CKAN = "ckan", _("CKAN open-data portal (planned)")
-        WFS = "wfs", _("WFS geo-service (planned)")
-        REST = "rest", _("Generic REST JSON (planned)")
+        CKAN = "ckan", _("CKAN open-data portal")
+        WFS = "wfs", _("WFS geo-service")
+        REST = "rest", _("Generic REST JSON")
+        MOBILITHEK = "mobilithek", _("Mobilithek (German NAP)")
 
     class LayerKind(models.TextChoices):
         STREETS = "streets", _("Streets")
@@ -40,6 +41,13 @@ class DataSource(models.Model):
         SEALED_SURFACES = "sealed_surfaces", _("Sealed surfaces")
         HEAT_CORRIDORS = "heat_corridors", _("Heat / fresh-air corridors")
         WATER_BODIES = "water_bodies", _("Water bodies / retention areas")
+        EV_CHARGING = "ev_charging", _("EV charging stations")
+        TRAFFIC_COUNTS = "traffic_counts", _("Traffic counts")
+        CYCLING_COUNTS = "cycling_counts", _("Cycling counts")
+        NOISE = "noise", _("Noise contours")
+        PUBLIC_BUILDINGS = "public_buildings", _("Public buildings / amenities")
+        POPULATION_GRID = "population_grid", _("Population density grid")
+        DEMOGRAPHICS = "demographics", _("Demographic indicators")
         CUSTOM = "custom", _("Custom / other")
 
     class Status(models.TextChoices):

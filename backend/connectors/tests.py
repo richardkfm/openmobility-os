@@ -510,3 +510,478 @@ class UnfallatlasBboxTests(TestCase):
         }
         self.assertIsNone(_row_to_feature(outside_row, bbox=(12.0, 51.0, 13.0, 52.0)))
         self.assertIsNotNone(_row_to_feature(outside_row, bbox=None))
+
+
+# --------------------------------------------------------------------------- #
+# CKAN connector
+# --------------------------------------------------------------------------- #
+
+
+class _JsonResponse:
+    """Minimal stand-in for a requests.Response that yields JSON."""
+
+    def __init__(self, payload, status_code=200, content_type="application/json"):
+        self._payload = payload
+        self.status_code = status_code
+        self.text = str(payload)
+        self.headers = {"Content-Type": content_type}
+
+    def raise_for_status(self):
+        if self.status_code >= 400:
+            raise RuntimeError(f"HTTP {self.status_code}")
+
+    def json(self):
+        return self._payload
+
+
+class _BytesResponse:
+    """Stand-in for a binary response (used by CSV/GTFS connectors under the hood)."""
+
+    def __init__(self, content):
+        self.content = content if isinstance(content, bytes) else content.encode("utf-8")
+
+    def raise_for_status(self):
+        return None
+
+
+CKAN_PACKAGE = {
+    "success": True,
+    "result": {
+        "name": "bike-counters",
+        "resources": [
+            {
+                "id": "r-pdf",
+                "name": "Methodology",
+                "format": "PDF",
+                "url": "http://example/method.pdf",
+            },
+            {
+                "id": "r-csv",
+                "name": "Counts",
+                "format": "CSV",
+                "url": "http://example/counts.csv",
+            },
+            {
+                "id": "r-geo",
+                "name": "Stations",
+                "format": "GeoJSON",
+                "url": "http://example/stations.geojson",
+            },
+        ],
+    },
+}
+
+STATIONS_GEOJSON = {
+    "type": "FeatureCollection",
+    "features": [
+        {
+            "type": "Feature",
+            "geometry": {"type": "Point", "coordinates": [12.37, 51.34]},
+            "properties": {"id": "S1", "name": "Augustusplatz"},
+        }
+    ],
+}
+
+
+class CKANConnectorTests(TestCase):
+    def test_resolves_geojson_resource_by_preference_and_delegates(self):
+        from connectors.ckan_connector import CKANConnector
+
+        # Note: connectors.ckan_connector.requests and
+        # connectors.geojson_connector.requests refer to the same module object,
+        # so we patch once and dispatch by URL.
+        seen = []
+
+        def dispatch(url, params=None, timeout=None, headers=None):
+            seen.append(url)
+            if "/api/3/action/" in url:
+                return _JsonResponse(CKAN_PACKAGE)
+            if url.endswith(".geojson"):
+                return _JsonResponse(STATIONS_GEOJSON)
+            raise AssertionError(f"Unexpected URL {url}")
+
+        with mock.patch(
+            "connectors.ckan_connector.requests.get", side_effect=dispatch
+        ):
+            result = CKANConnector().fetch(
+                {
+                    "portal_url": "https://opendata.example/",
+                    "package_id": "bike-counters",
+                }
+            )
+
+        self.assertEqual(result.record_count, 1)
+        self.assertEqual(
+            result.feature_collection["features"][0]["properties"]["name"],
+            "Augustusplatz",
+        )
+        # First call hits the CKAN package_show endpoint, then the resource URL.
+        self.assertTrue(any("/api/3/action/package_show" in u for u in seen))
+        self.assertTrue(any(u.endswith(".geojson") for u in seen))
+
+    def test_validate_config_requires_portal_and_id(self):
+        from connectors.ckan_connector import CKANConnector
+
+        errors = CKANConnector().validate_config({})
+        self.assertTrue(any("portal_url" in e for e in errors))
+        self.assertTrue(any("package_id or resource_id" in e for e in errors))
+
+
+# --------------------------------------------------------------------------- #
+# WFS connector
+# --------------------------------------------------------------------------- #
+
+
+WFS_RESPONSE = {
+    "type": "FeatureCollection",
+    "features": [
+        {
+            "type": "Feature",
+            "geometry": {"type": "Point", "coordinates": [12.4, 51.3]},
+            "properties": {"id": "D1", "name": "Zentrum"},
+        },
+        {
+            "type": "Feature",
+            "geometry": {"type": "Point", "coordinates": [12.5, 51.4]},
+            "properties": {"id": "D2", "name": "Plagwitz"},
+        },
+    ],
+}
+
+
+@dataclass
+class _StubBounds:
+    extent: tuple
+
+
+@dataclass
+class _StubWorkspace:
+    bounds: _StubBounds
+
+
+class WFSConnectorTests(TestCase):
+    def test_fetch_returns_feature_collection(self):
+        from connectors.wfs_connector import WFSConnector
+
+        with mock.patch(
+            "connectors.wfs_connector.requests.get",
+            return_value=_JsonResponse(WFS_RESPONSE),
+        ):
+            result = WFSConnector().fetch(
+                {"url": "https://wfs.example/", "layer_name": "districts"}
+            )
+        self.assertEqual(result.record_count, 2)
+        ids = {f["properties"]["id"] for f in result.feature_collection["features"]}
+        self.assertEqual(ids, {"D1", "D2"})
+
+    def test_workspace_bbox_is_added_to_params(self):
+        from connectors.wfs_connector import WFSConnector
+
+        captured = {}
+
+        def fake_get(url, params=None, headers=None, timeout=None):
+            captured["params"] = params
+            return _JsonResponse(WFS_RESPONSE)
+
+        ws = _StubWorkspace(bounds=_StubBounds(extent=(12.0, 51.0, 13.0, 52.0)))
+        with mock.patch("connectors.wfs_connector.requests.get", side_effect=fake_get):
+            WFSConnector().fetch(
+                {"url": "https://wfs.example/", "layer_name": "districts"},
+                workspace=ws,
+            )
+        self.assertIn("bbox", captured["params"])
+        self.assertTrue(captured["params"]["bbox"].startswith("12.0,51.0,13.0,52.0,EPSG:4326"))
+
+    def test_cql_filter_disables_workspace_bbox(self):
+        from connectors.wfs_connector import WFSConnector
+
+        captured = {}
+
+        def fake_get(url, params=None, headers=None, timeout=None):
+            captured["params"] = params
+            return _JsonResponse(WFS_RESPONSE)
+
+        ws = _StubWorkspace(bounds=_StubBounds(extent=(12.0, 51.0, 13.0, 52.0)))
+        with mock.patch("connectors.wfs_connector.requests.get", side_effect=fake_get):
+            WFSConnector().fetch(
+                {
+                    "url": "https://wfs.example/",
+                    "layer_name": "districts",
+                    "cql_filter": "population > 1000",
+                },
+                workspace=ws,
+            )
+        self.assertNotIn("bbox", captured["params"])
+        self.assertEqual(captured["params"]["CQL_FILTER"], "population > 1000")
+
+    def test_validate_config_flags_missing_fields(self):
+        from connectors.wfs_connector import WFSConnector
+
+        errors = WFSConnector().validate_config({})
+        self.assertTrue(any("URL" in e for e in errors))
+        self.assertTrue(any("layer_name" in e for e in errors))
+
+
+# --------------------------------------------------------------------------- #
+# REST connector
+# --------------------------------------------------------------------------- #
+
+
+UBA_LIKE_RESPONSE = {
+    "stations": [
+        {
+            "id": "DESN001",
+            "name": "Leipzig-Mitte",
+            "coords": {"lat": "51.3397", "lon": "12.3731"},
+            "no2_ugm3": 28.4,
+        },
+        {
+            "id": "DESN002",
+            "name": "Leipzig-West",
+            "coords": {"lat": "51.3300", "lon": "12.3100"},
+            "no2_ugm3": 22.1,
+        },
+        {
+            "id": "BAD",
+            "name": "no-coords",
+            "coords": {"lat": None, "lon": None},
+            "no2_ugm3": None,
+        },
+    ]
+}
+
+
+class RESTConnectorTests(TestCase):
+    def test_fetch_with_lat_lon_mapping(self):
+        from connectors.rest_connector import RESTConnector
+
+        with mock.patch(
+            "connectors.rest_connector.requests.get",
+            return_value=_JsonResponse(UBA_LIKE_RESPONSE),
+        ):
+            result = RESTConnector().fetch(
+                {
+                    "url": "https://uba.example/stations",
+                    "json_path": "stations",
+                    "geometry_mapping": {"lat": "coords.lat", "lon": "coords.lon"},
+                }
+            )
+        self.assertEqual(result.record_count, 2)  # BAD is dropped (no coords)
+        f = result.feature_collection["features"][0]
+        self.assertEqual(f["geometry"]["type"], "Point")
+        # Comma-decimal would also work; here we use plain floats.
+        self.assertAlmostEqual(f["geometry"]["coordinates"][0], 12.3731)
+        self.assertEqual(f["properties"]["id"], "DESN001")
+
+    def test_fetch_with_embedded_geojson_geometry(self):
+        from connectors.rest_connector import RESTConnector
+
+        payload = {
+            "items": [
+                {
+                    "name": "Park A",
+                    "shape": {"type": "Polygon", "coordinates": [[[0, 0], [1, 0], [1, 1], [0, 0]]]},
+                }
+            ]
+        }
+        with mock.patch(
+            "connectors.rest_connector.requests.get",
+            return_value=_JsonResponse(payload),
+        ):
+            result = RESTConnector().fetch(
+                {
+                    "url": "https://example/",
+                    "json_path": "items",
+                    "geometry_mapping": {"geojson": "shape"},
+                }
+            )
+        self.assertEqual(result.record_count, 1)
+        self.assertEqual(result.feature_collection["features"][0]["geometry"]["type"], "Polygon")
+
+    def test_validate_config_requires_geometry_mapping(self):
+        from connectors.rest_connector import RESTConnector
+
+        errors = RESTConnector().validate_config({"url": "https://x"})
+        self.assertTrue(any("geometry_mapping" in e for e in errors))
+
+
+# --------------------------------------------------------------------------- #
+# Mobilithek connector
+# --------------------------------------------------------------------------- #
+
+
+class MobilithekConnectorTests(TestCase):
+    def test_open_mode_dispatches_geojson_to_geojson_connector(self):
+        from connectors.mobilithek_connector import MobilithekConnector
+
+        with mock.patch(
+            "connectors.geojson_connector.requests.get",
+            return_value=_JsonResponse(STATIONS_GEOJSON),
+        ):
+            result = MobilithekConnector().fetch(
+                {
+                    "distribution_url": "https://mobilithek.example/stations.geojson",
+                    "format_hint": "geojson",
+                }
+            )
+        self.assertEqual(result.record_count, 1)
+        self.assertEqual(
+            result.feature_collection["features"][0]["properties"]["name"],
+            "Augustusplatz",
+        )
+
+    def test_open_mode_dispatches_gtfs_to_gtfs_connector(self):
+        from connectors.mobilithek_connector import MobilithekConnector
+
+        archive = _build_archive()
+        with mock.patch(
+            "connectors.gtfs_connector.requests.get",
+            return_value=_BytesResponse(archive),
+        ):
+            result = MobilithekConnector().fetch(
+                {
+                    "distribution_url": "https://mobilithek.example/gtfs.zip",
+                    "format_hint": "gtfs",
+                    "inner_options": {"layer": "transit_stops"},
+                }
+            )
+        self.assertGreater(result.record_count, 0)
+        ids = {f["properties"]["stop_id"] for f in result.feature_collection["features"]}
+        self.assertIn("A", ids)
+
+    def test_subscriber_mode_validates_cert_paths(self):
+        from connectors.mobilithek_connector import MobilithekConnector
+
+        errors = MobilithekConnector().validate_config(
+            {
+                "distribution_url": "https://x",
+                "format_hint": "geojson",
+                "mode": "subscriber",
+            }
+        )
+        self.assertTrue(any("cert_path" in e and "key_path" in e for e in errors))
+
+    def test_subscriber_mode_raises_not_implemented(self):
+        from connectors.mobilithek_connector import MobilithekConnector
+
+        with self.assertRaises(NotImplementedError):
+            MobilithekConnector().fetch(
+                {
+                    "distribution_url": "https://x",
+                    "format_hint": "geojson",
+                    "mode": "subscriber",
+                    "cert_path": "/run/secrets/cert.pem",
+                    "key_path": "/run/secrets/key.pem",
+                }
+            )
+
+    def test_validate_rejects_unknown_format(self):
+        from connectors.mobilithek_connector import MobilithekConnector
+
+        errors = MobilithekConnector().validate_config(
+            {"distribution_url": "https://x", "format_hint": "datex"}
+        )
+        self.assertTrue(any("format_hint" in e for e in errors))
+
+
+class OSMTemplateExtensionsTests(TestCase):
+    """The decision-support templates (kindergartens, hospitals, public
+    buildings, pedestrian crossings, EV chargers) must be registered and
+    must compile against a workspace bbox without hitting the network."""
+
+    def test_new_templates_registered(self):
+        from connectors.osm_connector import OVERPASS_TEMPLATES
+
+        for tpl in (
+            "kindergartens",
+            "hospitals",
+            "public_buildings",
+            "pedestrian_crossings",
+            "ev_chargers_osm",
+        ):
+            self.assertIn(tpl, OVERPASS_TEMPLATES)
+
+    def test_templates_render_workspace_bbox(self):
+        from connectors.osm_connector import OSMOverpassConnector
+
+        # Re-use the same workspace stub pattern as the other tests in this file.
+        @dataclass
+        class _Bnds:
+            extent: tuple = (12.295, 51.236, 12.549, 51.443)
+
+        @dataclass
+        class _Ws:
+            bounds: _Bnds = None
+
+        ws = _Ws(bounds=_Bnds())
+        conn = OSMOverpassConnector()
+        for tpl in (
+            "kindergartens",
+            "hospitals",
+            "public_buildings",
+            "pedestrian_crossings",
+            "ev_chargers_osm",
+        ):
+            q = conn._build_query({"template": tpl}, ws)
+            self.assertIn("51.236,12.295,51.443,12.549", q)
+            self.assertNotIn("{bbox}", q)
+
+    def test_overpass_call_routed_through_request_mock(self):
+        """Sanity-check that fetch() round-trips the response through the
+        shared element-to-feature converter for the new templates."""
+        from connectors.osm_connector import OSMOverpassConnector
+
+        sample = {
+            "elements": [
+                {
+                    "type": "node",
+                    "id": 1,
+                    "lat": 51.34,
+                    "lon": 12.37,
+                    "tags": {"amenity": "kindergarten", "name": "Kita Süd"},
+                }
+            ]
+        }
+
+        @dataclass
+        class _Bnds:
+            extent: tuple = (12.295, 51.236, 12.549, 51.443)
+
+        @dataclass
+        class _Ws:
+            bounds: _Bnds = None
+
+        ws = _Ws(bounds=_Bnds())
+
+        with mock.patch(
+            "connectors.osm_connector.requests.post",
+            return_value=_OSMFakeResponse(json_data=sample),
+        ):
+            result = OSMOverpassConnector().fetch({"template": "kindergartens"}, ws)
+
+        self.assertEqual(result.record_count, 1)
+        feat = result.feature_collection["features"][0]
+        self.assertEqual(feat["geometry"]["type"], "Point")
+        self.assertEqual(feat["properties"]["amenity"], "kindergarten")
+
+
+class _OSMFakeResponse:
+    """Minimal stand-in for ``requests.Response`` used by the OSM tests above.
+
+    Other test classes in this file define their own fake responses tailored
+    to the request/response shape of their connector (CSV needs ``.content``,
+    Unfallatlas needs ``.content``+ encoding, etc.) — keep this one local to
+    the OSM tests so it can't collide with them.
+    """
+
+    def __init__(self, json_data=None):
+        self._json = json_data or {}
+        self.status_code = 200
+        self.headers = {"Content-Type": "application/json"}
+        self.text = ""
+
+    def raise_for_status(self):
+        return None
+
+    def json(self):
+        return self._json

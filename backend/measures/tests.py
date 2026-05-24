@@ -3,6 +3,7 @@
 from dataclasses import dataclass, field
 from unittest import TestCase
 
+from measures.rules.electrification import rule_ev_charging_gap
 from measures.rules.transit import (
     rule_transit_accessibility,
     rule_transit_coverage_gap,
@@ -26,6 +27,7 @@ class _FakeBounds:
 class _FakeWorkspace:
     name: str = "Demo"
     population: int | None = 50_000
+    area_km2: float | None = 100.0
     bounds: _FakeBounds | None = None
 
 
@@ -148,3 +150,46 @@ class TransitKPIsTests(TestCase):
 
     def test_empty_feature_sets_yield_empty_dict(self):
         self.assertEqual(compute_transit_kpis(_FakeWorkspace(), []), {})
+
+
+def _charger(idx):
+    return {
+        "type": "Feature",
+        "geometry": {"type": "Point", "coordinates": [12.37 + idx * 0.001, 51.34]},
+        "properties": {"osm_id": idx, "amenity": "charging_station"},
+    }
+
+
+class EVChargingGapRuleTests(TestCase):
+    def test_triggers_when_residents_per_charger_above_afir_reference(self):
+        # 50_000 residents / 100 chargers = 500 per point → far above 100.
+        chargers = [_charger(i) for i in range(100)]
+        fs = _FakeFS("ev_charging", {"features": chargers})
+        ws = _FakeWorkspace(population=50_000, area_km2=300.0)
+        candidates = rule_ev_charging_gap(ws, [fs])
+        self.assertEqual(len(candidates), 1)
+        c = candidates[0]
+        self.assertEqual(c.category, "electrification")
+        self.assertEqual(c.evidence["charger_count"], 100)
+        self.assertEqual(c.evidence["residents_per_charger"], 500.0)
+        # Need 500 to hit AFIR reference (50_000/100) → 400 more.
+        self.assertEqual(c.evidence["needed_extra_by_2030"], 400)
+
+    def test_skips_when_density_and_ratio_both_healthy(self):
+        chargers = [_charger(i) for i in range(600)]
+        fs = _FakeFS("ev_charging", {"features": chargers})
+        ws = _FakeWorkspace(population=50_000, area_km2=300.0)
+        self.assertEqual(rule_ev_charging_gap(ws, [fs]), [])
+
+    def test_no_feature_set_means_no_candidate(self):
+        self.assertEqual(rule_ev_charging_gap(_FakeWorkspace(), []), [])
+
+    def test_density_floor_fires_without_population(self):
+        # No population data: rule falls back to the density floor.
+        chargers = [_charger(i) for i in range(5)]
+        fs = _FakeFS("ev_charging", {"features": chargers})
+        ws = _FakeWorkspace(population=None, area_km2=300.0)
+        candidates = rule_ev_charging_gap(ws, [fs])
+        self.assertEqual(len(candidates), 1)
+        # 0.5 chargers/km² * 300 km² = 150 wanted, minus 5 we have.
+        self.assertEqual(candidates[0].evidence["needed_extra_by_2030"], 145)

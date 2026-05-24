@@ -26,6 +26,7 @@ class Measure(models.Model):
         SCHOOL_ROUTES = "school_routes", _("School routes")
         MOBILITY_HUB = "mobility_hub", _("Mobility hub")
         PUBLIC_SPACE = "public_space", _("Public space reclamation")
+        ELECTRIFICATION = "electrification", _("Electrification / EV charging")
         OTHER = "other", _("Other")
 
     class EffortLevel(models.TextChoices):

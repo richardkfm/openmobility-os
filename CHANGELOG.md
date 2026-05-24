@@ -8,6 +8,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Decision-support layer kinds** — seven new `DataSource.LayerKind`
+  values (`ev_charging`, `traffic_counts`, `cycling_counts`, `noise`,
+  `public_buildings`, `population_grid`, `demographics`) so connectors
+  and the map can carry the data needed to argue for measures, not just
+  to draw the existing transport layers
+- **OSM template extensions** — five new Overpass templates wired into
+  the OSM connector: `kindergartens`, `hospitals`, `public_buildings`
+  (libraries / town halls / community centres / post offices / places of
+  worship), `pedestrian_crossings`, and `ev_chargers_osm`. Each is
+  workspace-bbox-aware out of the box
+- **EV-charging-gap measure rule** — compares the number of public
+  charging points in a workspace against the EU AFIR 2030 reference of
+  ≈100 residents per charging point (with a 0.5-chargers-per-km² floor
+  when population is unknown). Generates a transparent
+  "Public EV charging buildout" measure with the gap quantified in the
+  evidence object
+- **`electrification` measure category** for EV / charging /
+  decarbonisation rules
+- Leipzig demo workspace ships five new OSM data sources (kindergartens,
+  hospitals, public amenities, pedestrian crossings, EV chargers) and
+  documents drop-in CKAN / REST / Mobilithek presets for Bundesnetzagentur,
+  Umweltbundesamt, opendata.leipzig.de, and the DELFI nationwide GTFS feed
+
+### Added (previous Unreleased block)
+- **CKAN connector** — fetches resources from any CKAN-based open-data
+  portal (GovData.de, opendata.leipzig.de, daten.berlin.de, the EU Open
+  Data Portal, …). Resolves the best-matching distribution by format
+  preference (GeoJSON → JSON → CSV → TSV) and delegates parsing to the
+  existing GeoJSON or CSV connector
+- **WFS connector** — fetches a layer from any OGC WFS service (federal
+  BKG WFS, state geoportals such as Geoportal Sachsen / NRW / Bayern,
+  Umgebungslärm noise maps, …) and returns GeoJSON. Automatically adds
+  the workspace bounding box as a BBOX filter so requests stay small
+- **Generic REST/JSON connector** — pulls a feature list out of any JSON
+  endpoint (UBA Luftqualität, Sensor.Community, OpenChargeMap, BNetzA
+  Ladesäulenregister, ADAC, municipal APIs). Config picks the dotted
+  path to the list and the geometry mapping (lat+lon or embedded
+  GeoJSON geometry)
+- **Mobilithek connector** — gateway to the German National Access Point
+  for mobility data (BMDV, successor to mCLOUD). Pass a Mobilithek
+  distribution URL plus a format hint (`gtfs`, `geojson`, `json`, `csv`)
+  and the connector dispatches to the matching parser. Open
+  distributions work today; subscriber mode (X.509 client cert) is
+  scaffolded and planned
 - **BikeMaps.org connector** — pulls global crowdsourced cycling collisions,
   near-misses, and hazards from `bikemaps.org`, normalized to the standard
   accident schema. Reports are tagged with `incident_type` and

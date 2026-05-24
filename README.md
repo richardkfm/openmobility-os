@@ -123,7 +123,12 @@ three demo workspaces: **Leipzig**, **Musterstadt**, and **Muster-Landkreis**.
 - **Data connectors** (fully implemented):
   - CSV (upload or URL) with column mapping and encoding detection
   - GeoJSON URL with property remapping
-  - OpenStreetMap via Overpass API (eight built-in templates + custom queries)
+  - OpenStreetMap via Overpass API — thirteen built-in templates
+    (`streets`, `streets_with_speed`, `bike_network`, `transit_stops`,
+    `schools`, `parking`, `trees`, `parks_and_green`, `districts`,
+    `kindergartens`, `hospitals`, `public_buildings`,
+    `pedestrian_crossings`, `ev_chargers_osm`) plus a custom-query
+    escape hatch
   - Static GTFS zip (transit stops, routes, coverage) — enriches stops with
     average headway, night service, and barrier-free status from the schedule
   - Accident CSV — Destatis Unfallatlas (Germany) and generic international,
@@ -131,11 +136,24 @@ three demo workspaces: **Leipzig**, **Musterstadt**, and **Muster-Landkreis**.
   - **BikeMaps.org** — global crowdsourced cycling collisions, near-misses,
     and hazards. Closes the well-documented under-reporting of vulnerable
     road users in police accident records (CC BY 4.0)
+  - **CKAN open-data portal** — pulls resources from any CKAN-based portal
+    (GovData.de, opendata.leipzig.de, daten.berlin.de, EU Open Data Portal,
+    …) and delegates parsing to the GeoJSON or CSV connector by format
+    preference
+  - **OGC WFS service** — fetches a layer from any WFS endpoint (federal
+    BKG WFS, state geoportals such as Geoportal Sachsen / NRW / Bayern,
+    Umgebungslärm noise maps, …); auto-applies the workspace bbox
+  - **Generic REST/JSON** — pulls a feature list out of any JSON endpoint
+    (UBA Luftqualität, Sensor.Community, OpenChargeMap, BNetzA
+    Ladesäulenregister, ADAC, municipal APIs) with configurable list path
+    and geometry mapping
+  - **Mobilithek (German NAP)** — gateway to the federal mobility-data
+    access point (BMDV, successor to mCLOUD); dispatches to the matching
+    parser based on a format hint. Open distributions work today;
+    subscriber mode (X.509 client cert) is scaffolded and planned
 - **`seed_unfallatlas` command** — bootstraps a German workspace with real
   Destatis accident data clipped to the workspace bounds, replacing the
   illustrative demo layer
-- **Planned connectors** (interface defined, implementation pending):
-  CKAN, WFS, generic REST
 - **Rule-based measures engine** — generates prioritized interventions
   from available data
 - **Transparent scoring** — nine dimensions, every value traceable to its source

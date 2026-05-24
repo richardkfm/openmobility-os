@@ -3,13 +3,16 @@
 from .accident_connector import AccidentCSVConnector
 from .base import BaseConnector
 from .bikemaps_connector import BikeMapsConnector
+from .ckan_connector import CKANConnector
 from .csv_connector import CSVConnector
 from .geojson_connector import GeoJSONConnector
 from .gtfs_connector import GTFSConnector
 from .manual_connector import ManualConnector
+from .mobilithek_connector import MobilithekConnector
 from .osm_connector import OSMOverpassConnector
-from .stubs import CKANConnector, RESTConnector, WFSConnector
+from .rest_connector import RESTConnector
 from .unfallat_connector import UnfallatlasConnector
+from .wfs_connector import WFSConnector
 
 _REGISTRY: dict[str, BaseConnector] = {}
 
@@ -38,5 +41,6 @@ for _connector in [
     CKANConnector(),
     WFSConnector(),
     RESTConnector(),
+    MobilithekConnector(),
 ]:
     register(_connector)
