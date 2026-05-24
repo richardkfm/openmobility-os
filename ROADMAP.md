@@ -68,8 +68,9 @@ See [CHANGELOG.md](CHANGELOG.md) for what has already shipped.
       transit stops, schools, parking, trees, parks & green, custom) + configurable
       Overpass endpoint
 - [x] **`ManualConnector`** — accepts pre-normalized GeoJSON in config; for data-poor places
-- [x] Typed stubs with clear `NotImplementedError` messages: `GTFSConnector`,
-      `CKANConnector`, `WFSConnector`, `RESTConnector`
+- [x] Full implementations of `GTFSConnector`, `CKANConnector`,
+      `WFSConnector`, `RESTConnector`, and `MobilithekConnector` (German
+      National Access Point gateway)
 - [x] Data hub UI `/<slug>/data/` — source list, sync status, error display
 - [x] Add-source form `/<slug>/data/add/`
 - [x] Sync + test-connection endpoints (admin-token protected)
@@ -235,8 +236,13 @@ These features are **not in the MVP**, but the architecture is already prepared 
 - [ ] Languages beyond DE/EN (FR, IT, PL, CZ, NL, ...)
 - [ ] Full user and role system (django-allauth or OIDC) — optional upgrade from ADMIN_TOKEN
 - [ ] Federation: instances share measure best-practices across installations
-- [ ] Full `CKANConnector`, `WFSConnector`, `RESTConnector` implementations
-- [ ] Air quality monitoring (integration with UBA API, Luftdaten.info / Sensor.Community)
+- [x] Full `CKANConnector`, `WFSConnector`, `RESTConnector` implementations
+- [x] Mobilithek (German NAP) gateway connector — dispatches to the matching
+      inner parser based on a format hint (open mode; subscriber mode planned)
+- [ ] Mobilithek subscriber mode — plumb X.509 client certificate through
+      the inner GTFS/CSV/GeoJSON parsers for cert-protected feeds
+      (DATEX II realtime, restricted GTFS-RT)
+- [ ] Air quality monitoring (integration with UBA API, Luftdaten.info / Sensor.Community) — unblocked by REST connector
 - [ ] openCode / DE-Government platform integration and mirroring
 
 ---

@@ -18,9 +18,10 @@ class DataSource(models.Model):
         OSM_OVERPASS = "osm_overpass", _("OpenStreetMap (Overpass API)")
         MANUAL = "manual", _("Manual KPI entry")
         GTFS = "gtfs", _("GTFS static (transit schedule)")
-        CKAN = "ckan", _("CKAN open-data portal (planned)")
-        WFS = "wfs", _("WFS geo-service (planned)")
-        REST = "rest", _("Generic REST JSON (planned)")
+        CKAN = "ckan", _("CKAN open-data portal")
+        WFS = "wfs", _("WFS geo-service")
+        REST = "rest", _("Generic REST JSON")
+        MOBILITHEK = "mobilithek", _("Mobilithek (German NAP)")
 
     class LayerKind(models.TextChoices):
         STREETS = "streets", _("Streets")

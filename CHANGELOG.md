@@ -8,6 +8,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **CKAN connector** — fetches resources from any CKAN-based open-data
+  portal (GovData.de, opendata.leipzig.de, daten.berlin.de, the EU Open
+  Data Portal, …). Resolves the best-matching distribution by format
+  preference (GeoJSON → JSON → CSV → TSV) and delegates parsing to the
+  existing GeoJSON or CSV connector
+- **WFS connector** — fetches a layer from any OGC WFS service (federal
+  BKG WFS, state geoportals such as Geoportal Sachsen / NRW / Bayern,
+  Umgebungslärm noise maps, …) and returns GeoJSON. Automatically adds
+  the workspace bounding box as a BBOX filter so requests stay small
+- **Generic REST/JSON connector** — pulls a feature list out of any JSON
+  endpoint (UBA Luftqualität, Sensor.Community, OpenChargeMap, BNetzA
+  Ladesäulenregister, ADAC, municipal APIs). Config picks the dotted
+  path to the list and the geometry mapping (lat+lon or embedded
+  GeoJSON geometry)
+- **Mobilithek connector** — gateway to the German National Access Point
+  for mobility data (BMDV, successor to mCLOUD). Pass a Mobilithek
+  distribution URL plus a format hint (`gtfs`, `geojson`, `json`, `csv`)
+  and the connector dispatches to the matching parser. Open
+  distributions work today; subscriber mode (X.509 client cert) is
+  scaffolded and planned
 - **BikeMaps.org connector** — pulls global crowdsourced cycling collisions,
   near-misses, and hazards from `bikemaps.org`, normalized to the standard
   accident schema. Reports are tagged with `incident_type` and
