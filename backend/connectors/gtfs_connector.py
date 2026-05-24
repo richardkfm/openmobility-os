@@ -29,6 +29,7 @@ from typing import Any
 
 import requests
 
+from ._http import request_kwargs
 from .base import BaseConnector, ConnectorTestResult, FetchResult
 
 GTFS_LAYERS = ("transit_stops", "transit_routes", "transit_coverage")
@@ -140,7 +141,7 @@ class GTFSConnector(BaseConnector):
         if errors:
             return ConnectorTestResult(False, "; ".join(errors))
         try:
-            archive = self._fetch_archive(config["url"])
+            archive = self._fetch_archive(config)
         except Exception as exc:  # noqa: BLE001
             return ConnectorTestResult(False, f"Fetch failed: {exc}")
         try:
@@ -166,7 +167,7 @@ class GTFSConnector(BaseConnector):
         )
 
     def fetch(self, config: dict, workspace: Any = None) -> FetchResult:
-        archive = self._fetch_archive(config["url"])
+        archive = self._fetch_archive(config)
         tables = _read_tables(archive)
         features = self._build(tables, config)
         return FetchResult(
@@ -176,8 +177,10 @@ class GTFSConnector(BaseConnector):
 
     # --------------------------------------------------------------- helpers
 
-    def _fetch_archive(self, url: str) -> zipfile.ZipFile:
-        response = requests.get(url, timeout=180)
+    def _fetch_archive(self, config: dict) -> zipfile.ZipFile:
+        response = requests.get(
+            config["url"], timeout=180, **request_kwargs(config)
+        )
         response.raise_for_status()
         return zipfile.ZipFile(io.BytesIO(response.content))
 

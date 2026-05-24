@@ -861,19 +861,91 @@ class MobilithekConnectorTests(TestCase):
         )
         self.assertTrue(any("cert_path" in e and "key_path" in e for e in errors))
 
-    def test_subscriber_mode_raises_not_implemented(self):
+    def test_subscriber_mode_passes_cert_to_inner_connector(self):
         from connectors.mobilithek_connector import MobilithekConnector
 
-        with self.assertRaises(NotImplementedError):
-            MobilithekConnector().fetch(
+        captured: dict = {}
+
+        def fake_get(url, *args, **kwargs):
+            captured["url"] = url
+            captured["cert"] = kwargs.get("cert")
+            return _JsonResponse(STATIONS_GEOJSON)
+
+        with mock.patch(
+            "connectors.geojson_connector.requests.get", side_effect=fake_get
+        ):
+            result = MobilithekConnector().fetch(
                 {
-                    "distribution_url": "https://x",
+                    "distribution_url": "https://mobilithek.example/restricted.geojson",
                     "format_hint": "geojson",
                     "mode": "subscriber",
                     "cert_path": "/run/secrets/cert.pem",
                     "key_path": "/run/secrets/key.pem",
                 }
             )
+
+        self.assertEqual(result.record_count, 1)
+        self.assertEqual(
+            captured["cert"], ("/run/secrets/cert.pem", "/run/secrets/key.pem")
+        )
+        self.assertEqual(
+            captured["url"], "https://mobilithek.example/restricted.geojson"
+        )
+
+    def test_open_mode_does_not_send_cert(self):
+        from connectors.mobilithek_connector import MobilithekConnector
+
+        captured: dict = {}
+
+        def fake_get(url, *args, **kwargs):
+            captured["cert"] = kwargs.get("cert", "SENTINEL_NOT_PASSED")
+            return _JsonResponse(STATIONS_GEOJSON)
+
+        with mock.patch(
+            "connectors.geojson_connector.requests.get", side_effect=fake_get
+        ):
+            MobilithekConnector().fetch(
+                {
+                    "distribution_url": "https://mobilithek.example/open.geojson",
+                    "format_hint": "geojson",
+                }
+            )
+
+        self.assertEqual(captured["cert"], "SENTINEL_NOT_PASSED")
+
+    def test_subscriber_mode_test_connection_sends_cert_on_head(self):
+        from connectors.mobilithek_connector import MobilithekConnector
+
+        captured: dict = {}
+
+        class _HeadResponse:
+            headers = {"Content-Length": "1234"}
+
+            def raise_for_status(self):
+                return None
+
+        def fake_head(url, *args, **kwargs):
+            captured["cert"] = kwargs.get("cert")
+            return _HeadResponse()
+
+        with mock.patch(
+            "connectors.mobilithek_connector.requests.head", side_effect=fake_head
+        ):
+            result = MobilithekConnector().test_connection(
+                {
+                    "distribution_url": "https://mobilithek.example/restricted.geojson",
+                    "format_hint": "geojson",
+                    "mode": "subscriber",
+                    "cert_path": "/run/secrets/cert.pem",
+                    "key_path": "/run/secrets/key.pem",
+                }
+            )
+
+        self.assertTrue(result.success)
+        self.assertEqual(
+            captured["cert"], ("/run/secrets/cert.pem", "/run/secrets/key.pem")
+        )
+        self.assertIn("subscriber mode", result.message)
 
     def test_validate_rejects_unknown_format(self):
         from connectors.mobilithek_connector import MobilithekConnector
@@ -882,6 +954,32 @@ class MobilithekConnectorTests(TestCase):
             {"distribution_url": "https://x", "format_hint": "datex"}
         )
         self.assertTrue(any("format_hint" in e for e in errors))
+
+
+class HTTPHelperTests(TestCase):
+    """Shared client-cert helper used by every connector that talks HTTP."""
+
+    def test_returns_tuple_when_both_cert_and_key_present(self):
+        from connectors._http import cert_from_config, request_kwargs
+
+        cfg = {"client_cert_path": "/c.pem", "client_key_path": "/k.pem"}
+        self.assertEqual(cert_from_config(cfg), ("/c.pem", "/k.pem"))
+        self.assertEqual(request_kwargs(cfg), {"cert": ("/c.pem", "/k.pem")})
+
+    def test_returns_single_path_for_combined_pem(self):
+        from connectors._http import cert_from_config
+
+        self.assertEqual(
+            cert_from_config({"client_cert_path": "/combined.pem"}),
+            "/combined.pem",
+        )
+
+    def test_returns_none_when_no_cert_configured(self):
+        from connectors._http import cert_from_config, request_kwargs
+
+        self.assertIsNone(cert_from_config({}))
+        self.assertEqual(request_kwargs({}), {})
+        self.assertIsNone(cert_from_config(None))
 
 
 class OSMTemplateExtensionsTests(TestCase):

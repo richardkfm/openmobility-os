@@ -149,8 +149,9 @@ three demo workspaces: **Leipzig**, **Musterstadt**, and **Muster-Landkreis**.
     and geometry mapping
   - **Mobilithek (German NAP)** — gateway to the federal mobility-data
     access point (BMDV, successor to mCLOUD); dispatches to the matching
-    parser based on a format hint. Open distributions work today;
-    subscriber mode (X.509 client cert) is scaffolded and planned
+    parser based on a format hint. Supports both open distributions and
+    subscriber mode with an X.509 client certificate (DATEX II realtime,
+    restricted GTFS-RT)
 - **`seed_unfallatlas` command** — bootstraps a German workspace with real
   Destatis accident data clipped to the workspace bounds, replacing the
   illustrative demo layer
