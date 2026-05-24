@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- `CLAUDE.md` now codifies a binding **Per-Commit Update Rule**: every
+  commit pushed to the repo must include a `CHANGELOG.md` entry, update
+  `README.md` when user-visible behaviour changes, and bump `VERSION` per
+  Semantic Versioning. Tightens the previously per-PR rule to per-commit
+  so the changelog reflects history as it happens
+
 ### Added
 - **Mobilithek subscriber mode** — X.509 client certificates are now
   plumbed through the inner GTFS / CSV / GeoJSON parsers, so Mobilithek
