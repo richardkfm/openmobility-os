@@ -26,6 +26,7 @@ class DataSource(models.Model):
         UBA_AIR = "uba_air", _("UBA air quality stations")
         DWD_CLIMATE = "dwd_climate", _("DWD climate stations")
         BAST_COUNTS = "bast_counts", _("BASt traffic count stations")
+        ZENSUS_GRID = "zensus_grid", _("Zensus 2022 population grid")
 
     class LayerKind(models.TextChoices):
         STREETS = "streets", _("Streets")

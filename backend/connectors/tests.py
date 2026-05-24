@@ -1046,6 +1046,89 @@ class GermanPresetsTests(TestCase):
         self.assertTrue(any("url" in e for e in errors))
 
 
+class ZensusGridConnectorTests(TestCase):
+    """Zensus 2022 100m grid connector — parses INSPIRE grid IDs and
+    converts EPSG:3035 cells to WGS84 polygons."""
+
+    SAMPLE_CSV = (
+        "Gitter_ID_100m;Einwohner;Alter_unter_18;Alter_65_und_aelter\n"
+        "100mN28550E43900;45;12;8\n"
+        "100mN28551E43900;0;0;0\n"
+        "100mN28552E43901;30;5;10\n"
+        # Outside Leipzig bbox (far north):
+        "100mN35000E43000;100;20;20\n"
+    )
+
+    def _fake_get(self, csv_text):
+        class _Resp:
+            content = csv_text.encode("utf-8")
+            status_code = 200
+
+            def raise_for_status(self):
+                return None
+
+        return _Resp()
+
+    def test_parse_grid_id(self):
+        from connectors.zensus_grid_connector import _parse_grid_id
+
+        result = _parse_grid_id("100mN26850E43350")
+        self.assertEqual(result, (100, 4335000, 2685000))
+
+    def test_fetch_filters_by_min_population(self):
+        from connectors.zensus_grid_connector import ZensusGridConnector
+
+        with mock.patch(
+            "connectors.zensus_grid_connector.requests.get",
+            return_value=self._fake_get(self.SAMPLE_CSV),
+        ):
+            result = ZensusGridConnector().fetch(
+                {
+                    "url": "https://example.com/zensus.csv",
+                    "indicator_columns": ["Einwohner", "Alter_unter_18", "Alter_65_und_aelter"],
+                    "min_population": 1,
+                }
+            )
+        # Row with Einwohner=0 is skipped
+        self.assertEqual(result.record_count, 3)
+        for feat in result.feature_collection["features"]:
+            self.assertEqual(feat["geometry"]["type"], "Polygon")
+            self.assertGreater(feat["properties"]["Einwohner"], 0)
+
+    def test_fetch_clips_to_workspace_bbox(self):
+        from connectors.zensus_grid_connector import ZensusGridConnector
+
+        @dataclass
+        class _B:
+            extent: tuple = (12.2, 51.2, 12.6, 51.5)
+
+        @dataclass
+        class _W:
+            bounds: _B = None
+
+        with mock.patch(
+            "connectors.zensus_grid_connector.requests.get",
+            return_value=self._fake_get(self.SAMPLE_CSV),
+        ):
+            result = ZensusGridConnector().fetch(
+                {
+                    "url": "https://example.com/zensus.csv",
+                    "indicator_columns": ["Einwohner", "Alter_unter_18", "Alter_65_und_aelter"],
+                    "min_population": 1,
+                },
+                workspace=_W(bounds=_B()),
+            )
+        # The far-north cell (N35000) should be outside Leipzig bbox
+        self.assertLess(result.record_count, 3)
+
+    def test_validate_config_requires_url_and_indicators(self):
+        from connectors.zensus_grid_connector import ZensusGridConnector
+
+        errors = ZensusGridConnector().validate_config({})
+        self.assertTrue(any("url" in e for e in errors))
+        self.assertTrue(any("indicator_columns" in e for e in errors))
+
+
 class HTTPHelperTests(TestCase):
     """Shared client-cert helper used by every connector that talks HTTP."""
 

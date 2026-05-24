@@ -19,6 +19,7 @@ from .german_presets import (
 from .rest_connector import RESTConnector
 from .unfallat_connector import UnfallatlasConnector
 from .wfs_connector import WFSConnector
+from .zensus_grid_connector import ZensusGridConnector
 
 _REGISTRY: dict[str, BaseConnector] = {}
 
@@ -52,5 +53,6 @@ for _connector in [
     UBAAirQualityConnector(),
     DWDClimateConnector(),
     BASTCountsConnector(),
+    ZensusGridConnector(),
 ]:
     register(_connector)

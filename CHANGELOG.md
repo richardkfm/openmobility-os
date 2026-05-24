@@ -39,6 +39,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     temperature / heat-day indicators (CSV, free reuse)
   - **BASt Dauerzählstellen** (`bast_counts`) — automatic traffic count
     stations on federal roads (annual aggregate CSV, DL-DE BY 2.0)
+- **Zensus 2022 population grid connector** (`zensus_grid`) — reads the
+  Destatis Zensus 2022 100 m grid-cell CSV, converts INSPIRE grid IDs
+  (EPSG:3035) to WGS84 polygons via `pyproj`, and emits a GeoJSON
+  FeatureCollection with demographic indicators (population, under 18,
+  65+) per cell. Workspace-bbox-aware: only cells overlapping the
+  workspace are emitted. License: DL-DE BY 2.0
+- **Population-equity-gap measure rule** — reads the `population_grid`
+  layer and identifies 100 m cells where the share of children (<18) or
+  elderly (65+) exceeds the workspace average by ≥50 %. Generates an
+  "Equity-focused infrastructure investment" measure that quantifies
+  how many residents live in high-vulnerability clusters, so every
+  other measure can be argued with "this serves X residents, Y % of
+  whom are vulnerable." Evidence object carries total population,
+  cluster cell counts, and per-group population breakdowns
 
 ### Added (previous)
 - **Mobilithek subscriber mode** — X.509 client certificates are now
