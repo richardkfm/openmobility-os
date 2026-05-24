@@ -152,6 +152,11 @@ three demo workspaces: **Leipzig**, **Musterstadt**, and **Muster-Landkreis**.
     parser based on a format hint. Supports both open distributions and
     subscriber mode with an X.509 client certificate (DATEX II realtime,
     restricted GTFS-RT)
+  - **German federal presets** — one-URL onboarding for four key German
+    open-data sources: Bundesnetzagentur EV charging register, UBA
+    air-quality stations, DWD climate stations, and BASt traffic counts.
+    Each preset encodes the source's column names, encoding, and
+    geometry mapping so operators don't need to configure them manually
 - **`seed_unfallatlas` command** — bootstraps a German workspace with real
   Destatis accident data clipped to the workspace bounds, replacing the
   illustrative demo layer

@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **German federal data-source presets** — four thin connector wrappers
+  that encode format-specific quirks (column names, encodings, JSON
+  paths) of key German open-data APIs so operators only supply a URL:
+  - **BNetzA Ladesäulenregister** (`bnetza_charging`) — every public EV
+    charger in Germany (weekly CSV, DL-DE BY 2.0)
+  - **UBA Luftqualität** (`uba_air`) — official air-quality monitoring
+    stations (REST API, DL-DE BY 2.0, default URL pre-filled)
+  - **DWD Klimastationen** (`dwd_climate`) — climate stations with
+    temperature / heat-day indicators (CSV, free reuse)
+  - **BASt Dauerzählstellen** (`bast_counts`) — automatic traffic count
+    stations on federal roads (annual aggregate CSV, DL-DE BY 2.0)
+
+### Added (previous)
 - **Mobilithek subscriber mode** — X.509 client certificates are now
   plumbed through the inner GTFS / CSV / GeoJSON parsers, so Mobilithek
   distributions that require a subscriber cert (e.g. DATEX II realtime,

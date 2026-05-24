@@ -956,6 +956,96 @@ class MobilithekConnectorTests(TestCase):
         self.assertTrue(any("format_hint" in e for e in errors))
 
 
+class GermanPresetsTests(TestCase):
+    """German federal preset connectors delegate correctly to CSV/REST."""
+
+    BNETZA_CSV = (
+        "Betreiber;Straße;Breitengrad;Längengrad;Nennleistung\n"
+        "EnBW;Hauptstr. 1;51.3400;12.3700;22\n"
+        "Ionity;Autobahnraststätte;51.3500;12.3800;350\n"
+    )
+
+    def _csv_response(self, text, encoding="cp1252"):
+        class _Resp:
+            content = text.encode(encoding)
+            status_code = 200
+
+            def raise_for_status(self):
+                return None
+
+        return _Resp()
+
+    def test_bnetza_fetch_delegates_with_correct_columns(self):
+        from connectors.german_presets import BNetzAChargingConnector
+
+        with mock.patch(
+            "connectors.csv_connector.requests.get",
+            return_value=self._csv_response(self.BNETZA_CSV),
+        ):
+            result = BNetzAChargingConnector().fetch(
+                {"url": "https://example.com/bnetza.csv"}
+            )
+        self.assertEqual(result.record_count, 2)
+        feat = result.feature_collection["features"][0]
+        self.assertEqual(feat["geometry"]["coordinates"], [12.37, 51.34])
+        self.assertIn("Betreiber", feat["properties"])
+
+    def test_bnetza_validate_requires_url(self):
+        from connectors.german_presets import BNetzAChargingConnector
+
+        errors = BNetzAChargingConnector().validate_config({})
+        self.assertTrue(any("url" in e for e in errors))
+
+    def test_uba_air_fetch_delegates_to_rest(self):
+        from connectors.german_presets import UBAAirQualityConnector
+
+        sample = {
+            "data": [
+                {
+                    "station_name": "Leipzig-Mitte",
+                    "station_code": "DESN049",
+                    "station_city": "Leipzig",
+                    "station_latitude": 51.34,
+                    "station_longitude": 12.37,
+                    "station_type": "background",
+                    "station_setting": "urban",
+                    "network_name": "Sachsen",
+                },
+            ]
+        }
+
+        class _Resp:
+            status_code = 200
+            headers = {"Content-Type": "application/json"}
+
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return sample
+
+        with mock.patch(
+            "connectors.rest_connector.requests.get", return_value=_Resp()
+        ):
+            result = UBAAirQualityConnector().fetch({})
+        self.assertEqual(result.record_count, 1)
+        feat = result.feature_collection["features"][0]
+        self.assertEqual(feat["properties"]["station_name"], "Leipzig-Mitte")
+        self.assertEqual(feat["geometry"]["coordinates"], [12.37, 51.34])
+
+    def test_dwd_validate_requires_url(self):
+        from connectors.german_presets import DWDClimateConnector
+
+        errors = DWDClimateConnector().validate_config({})
+        self.assertTrue(any("url" in e for e in errors))
+
+    def test_bast_validate_requires_url(self):
+        from connectors.german_presets import BASTCountsConnector
+
+        errors = BASTCountsConnector().validate_config({})
+        self.assertTrue(any("url" in e for e in errors))
+
+
 class HTTPHelperTests(TestCase):
     """Shared client-cert helper used by every connector that talks HTTP."""
 
