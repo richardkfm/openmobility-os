@@ -14,18 +14,21 @@ per-DataSource config or workspace YAML.
 Two access modes:
 
 - ``open`` (default) — distribution is reachable without authentication;
-  we hand the URL to the inner connector unchanged.
-- ``subscriber`` — distribution requires a Mobilithek subscriber cert.
-  *Planned*: full subscriber support requires plumbing the client cert
-  through the inner GTFS / CSV / GeoJSON parsers, which use
-  ``requests.get`` directly. Tracked separately; open-mode datasets
-  (the majority of Mobilithek's catalogue) work today.
+  the URL is handed to the inner connector unchanged.
+- ``subscriber`` — distribution requires a Mobilithek-issued X.509 client
+  certificate. The connector copies the configured ``cert_path`` and
+  ``key_path`` into the inner connector's config under the shared keys
+  ``client_cert_path`` / ``client_key_path``, which every inner connector
+  (GTFS, GeoJSON, CSV) reads through ``connectors._http.request_kwargs``.
+  Mount the certificate files into the container as Docker secrets or via
+  env-injected paths; never commit the cert / key files themselves.
 """
 
 from __future__ import annotations
 
 import requests
 
+from ._http import cert_from_config
 from .base import BaseConnector, ConnectorTestResult
 from .csv_connector import CSVConnector
 from .geojson_connector import GeoJSONConnector
@@ -43,16 +46,14 @@ class MobilithekConnector(BaseConnector):
         "(BMDV, Nachfolger von mCLOUD). Mobilithek ist ein Gateway: die "
         "Distribution wird per URL und Format-Hinweis (gtfs, geojson, csv, "
         "json) angegeben und an den passenden Parser weitergereicht. "
-        "Subscriber-Modus mit Client-Zertifikat ist geplant; offene "
-        "Distributionen funktionieren bereits."
+        "Subscriber-Modus mit X.509-Client-Zertifikat wird unterstützt."
     )
     description_en = (
         "Fetches data from Germany's National Access Point Mobilithek "
         "(BMDV, successor to mCLOUD). Mobilithek is a gateway: pass the "
         "distribution URL and a format hint (gtfs, geojson, csv, json) and "
         "the connector dispatches to the matching parser. Subscriber mode "
-        "with an X.509 client certificate is planned; open distributions "
-        "work today."
+        "with an X.509 client certificate is supported."
     )
 
     config_schema = {
@@ -79,11 +80,11 @@ class MobilithekConnector(BaseConnector):
         },
         "cert_path": {
             "type": "string",
-            "label": "Path to client certificate PEM (subscriber mode, planned)",
+            "label": "Path to client certificate PEM (subscriber mode)",
         },
         "key_path": {
             "type": "string",
-            "label": "Path to client private key PEM (subscriber mode, planned)",
+            "label": "Path to client private key PEM (subscriber mode)",
         },
         "inner_options": {
             "type": "object",
@@ -103,56 +104,64 @@ class MobilithekConnector(BaseConnector):
         mode = config.get("mode") or "open"
         if mode not in ("open", "subscriber"):
             errors.append(f"mode must be 'open' or 'subscriber' (got {mode!r}).")
-        if mode == "subscriber" and not (config.get("cert_path") and config.get("key_path")):
+        if mode == "subscriber" and not (
+            config.get("cert_path") and config.get("key_path")
+        ):
             errors.append(
                 "Subscriber mode requires both cert_path and key_path."
             )
         return errors
 
-    def _check_subscriber_mode(self, config):
+    def _inner_config(self, config: dict, url: str) -> dict:
+        """Build the config dict handed to the inner parser.
+
+        In subscriber mode the Mobilithek-level ``cert_path`` / ``key_path``
+        are copied into the shared ``client_cert_path`` / ``client_key_path``
+        keys so the inner connector's ``request_kwargs`` helper picks them up.
+        """
+        inner: dict = dict(config.get("inner_options") or {})
+        inner["url"] = url
         if (config.get("mode") or "open") == "subscriber":
-            raise NotImplementedError(
-                "Mobilithek subscriber mode (client-certificate-protected "
-                "feeds, e.g. DATEX II realtime) is not yet wired through the "
-                "inner GTFS/CSV/GeoJSON parsers. Open distributions work "
-                "today; subscriber support is planned."
-            )
+            inner["client_cert_path"] = config["cert_path"]
+            inner["client_key_path"] = config["key_path"]
+        return inner
 
     def test_connection(self, config, workspace=None):
         errors = self.validate_config(config)
         if errors:
             return ConnectorTestResult(False, "; ".join(errors))
-        if (config.get("mode") or "open") == "subscriber":
-            return ConnectorTestResult(
-                False,
-                "Mobilithek subscriber mode is not yet implemented. "
-                "Open distributions are supported today.",
-            )
+        cert = cert_from_config(
+            {
+                "client_cert_path": config.get("cert_path"),
+                "client_key_path": config.get("key_path"),
+            }
+        )
+        kwargs = {"cert": cert} if cert is not None else {}
         try:
             response = requests.head(
                 config["distribution_url"],
                 timeout=30,
                 allow_redirects=True,
+                **kwargs,
             )
             response.raise_for_status()
         except Exception as exc:  # noqa: BLE001
             return ConnectorTestResult(False, f"Mobilithek HEAD failed: {exc}")
         size = response.headers.get("Content-Length", "?")
+        mode = (config.get("mode") or "open")
         return ConnectorTestResult(
             True,
-            f"Mobilithek distribution reachable. Content-Length={size}.",
+            f"Mobilithek distribution reachable ({mode} mode). Content-Length={size}.",
         )
 
     def fetch(self, config, workspace=None):
-        self._check_subscriber_mode(config)
         fmt = config["format_hint"].lower()
-        inner = dict(config.get("inner_options") or {})
-        url = config["distribution_url"]
+        inner = self._inner_config(config, config["distribution_url"])
 
         if fmt == "gtfs":
-            return GTFSConnector().fetch({**inner, "url": url}, workspace=workspace)
+            return GTFSConnector().fetch(inner, workspace=workspace)
         if fmt in ("geojson", "json"):
-            return GeoJSONConnector().fetch({**inner, "url": url}, workspace=workspace)
+            return GeoJSONConnector().fetch(inner, workspace=workspace)
         if fmt == "csv":
-            return CSVConnector().fetch({**inner, "url": url}, workspace=workspace)
+            return CSVConnector().fetch(inner, workspace=workspace)
         raise RuntimeError(f"Unsupported format_hint: {fmt}")

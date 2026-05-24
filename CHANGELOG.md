@@ -8,6 +8,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Mobilithek subscriber mode** — X.509 client certificates are now
+  plumbed through the inner GTFS / CSV / GeoJSON parsers, so Mobilithek
+  distributions that require a subscriber cert (e.g. DATEX II realtime,
+  restricted GTFS-RT) can be fetched end-to-end. The Mobilithek connector
+  copies the configured `cert_path` and `key_path` into the inner
+  connector's config under the shared `client_cert_path` /
+  `client_key_path` keys, which every HTTP-fetching connector now reads
+  through the new `connectors._http.request_kwargs` helper. Open-mode
+  feeds continue to work without sending a cert
+- **Shared HTTP helper** (`connectors._http`) — single source of truth for
+  optional client-cert plumbing. Available to any future connector that
+  needs to talk to a mutual-TLS endpoint (state-level DATEX II,
+  corporate-firewalled WFS, etc.)
+
+### Removed
+- The `NotImplementedError` previously raised by Mobilithek subscriber-mode
+  `fetch()` is gone; calls now succeed when both `cert_path` and
+  `key_path` are configured
+
+### Added (previous Unreleased block)
 - **Decision-support layer kinds** — seven new `DataSource.LayerKind`
   values (`ev_charging`, `traffic_counts`, `cycling_counts`, `noise`,
   `public_buildings`, `population_grid`, `demographics`) so connectors

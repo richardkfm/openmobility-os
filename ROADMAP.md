@@ -239,9 +239,10 @@ These features are **not in the MVP**, but the architecture is already prepared 
 - [x] Full `CKANConnector`, `WFSConnector`, `RESTConnector` implementations
 - [x] Mobilithek (German NAP) gateway connector — dispatches to the matching
       inner parser based on a format hint (open mode; subscriber mode planned)
-- [ ] Mobilithek subscriber mode — plumb X.509 client certificate through
-      the inner GTFS/CSV/GeoJSON parsers for cert-protected feeds
-      (DATEX II realtime, restricted GTFS-RT)
+- [x] Mobilithek subscriber mode — X.509 client certificate plumbed
+      through the inner GTFS/CSV/GeoJSON parsers via the shared
+      `connectors._http.request_kwargs` helper. Supports cert-protected
+      feeds (DATEX II realtime, restricted GTFS-RT)
 - [x] OSM templates for daily-life amenities (`kindergartens`, `hospitals`,
       `public_buildings`, `pedestrian_crossings`, `ev_chargers_osm`)
 - [x] Decision-support layer kinds: `ev_charging`, `traffic_counts`,

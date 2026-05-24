@@ -3,6 +3,7 @@
 
 import requests
 
+from ._http import request_kwargs
 from .base import BaseConnector, ConnectorTestResult, FetchResult
 
 
@@ -40,8 +41,10 @@ class GeoJSONConnector(BaseConnector):
             return ["GeoJSON URL is required."]
         return []
 
-    def _fetch_raw(self, url: str) -> dict:
-        response = requests.get(url, timeout=60)
+    def _fetch_raw(self, config: dict) -> dict:
+        response = requests.get(
+            config["url"], timeout=60, **request_kwargs(config)
+        )
         response.raise_for_status()
         return response.json()
 
@@ -50,7 +53,7 @@ class GeoJSONConnector(BaseConnector):
         if errors:
             return ConnectorTestResult(False, "; ".join(errors))
         try:
-            data = self._fetch_raw(config["url"])
+            data = self._fetch_raw(config)
         except Exception as exc:  # noqa: BLE001
             return ConnectorTestResult(False, f"Fetch failed: {exc}")
 
@@ -63,7 +66,7 @@ class GeoJSONConnector(BaseConnector):
         )
 
     def fetch(self, config, workspace=None):
-        data = self._fetch_raw(config["url"])
+        data = self._fetch_raw(config)
         features = _as_feature_list(data)
 
         keep = set(config.get("keep_properties") or [])

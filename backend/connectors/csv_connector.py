@@ -9,6 +9,7 @@ import io
 
 import requests
 
+from ._http import request_kwargs
 from .base import BaseConnector, ConnectorTestResult, FetchResult
 
 LAT_CANDIDATES = ("lat", "latitude", "y", "y_coord", "ycoord", "breitengrad")
@@ -50,7 +51,7 @@ class CSVConnector(BaseConnector):
         delimiter = config.get("delimiter", ",")
         skip = int(config.get("skip_rows", 0) or 0)
 
-        response = requests.get(url, timeout=60)
+        response = requests.get(url, timeout=60, **request_kwargs(config))
         response.raise_for_status()
         text = response.content.decode(encoding, errors="replace")
 
