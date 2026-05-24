@@ -88,6 +88,68 @@ OVERPASS_TEMPLATES: dict[str, str] = {
         );
         out geom tags;
     """,
+    "kindergartens": """
+        [out:json][timeout:60];
+        (
+          node["amenity"="kindergarten"]({bbox});
+          way["amenity"="kindergarten"]({bbox});
+          node["amenity"="childcare"]({bbox});
+          way["amenity"="childcare"]({bbox});
+        );
+        out center tags;
+    """,
+    "hospitals": """
+        [out:json][timeout:60];
+        (
+          node["amenity"="hospital"]({bbox});
+          way["amenity"="hospital"]({bbox});
+          node["amenity"="clinic"]({bbox});
+          way["amenity"="clinic"]({bbox});
+        );
+        out center tags;
+    """,
+    # Civic anchors people travel to daily: libraries, town halls, community
+    # centres, post offices, places of worship. Useful denominator for
+    # accessibility analyses (how many residents reach a public amenity within
+    # X minutes by foot/bike/transit?).
+    "public_buildings": """
+        [out:json][timeout:60];
+        (
+          node["amenity"="library"]({bbox});
+          way["amenity"="library"]({bbox});
+          node["amenity"="townhall"]({bbox});
+          way["amenity"="townhall"]({bbox});
+          node["amenity"="community_centre"]({bbox});
+          way["amenity"="community_centre"]({bbox});
+          node["amenity"="post_office"]({bbox});
+          way["amenity"="post_office"]({bbox});
+          node["amenity"="place_of_worship"]({bbox});
+          way["amenity"="place_of_worship"]({bbox});
+        );
+        out center tags;
+    """,
+    # Pedestrian crossings — pull both standalone crossing nodes and crossings
+    # tagged on the highway. Important input for school-route safety scoring.
+    "pedestrian_crossings": """
+        [out:json][timeout:60];
+        (
+          node["highway"="crossing"]({bbox});
+          node["crossing"]({bbox});
+          node["railway"="crossing"]({bbox});
+        );
+        out tags;
+    """,
+    # EV chargers from OSM. Note: OSM coverage is patchy compared to the
+    # official Bundesnetzagentur register — wire BNetzA in parallel for
+    # German workspaces.
+    "ev_chargers_osm": """
+        [out:json][timeout:60];
+        (
+          node["amenity"="charging_station"]({bbox});
+          way["amenity"="charging_station"]({bbox});
+        );
+        out center tags;
+    """,
 }
 
 
@@ -97,13 +159,15 @@ class OSMOverpassConnector(BaseConnector):
     display_name_en = "OpenStreetMap (Overpass)"
     description_de = (
         "Fragt OpenStreetMap-Daten über die Overpass-API ab. "
-        "Enthält acht Templates für die wichtigsten Mobilitäts-Layer; "
-        "Bounding Box stammt aus dem Workspace-Profil oder der Konfiguration."
+        "Enthält Templates für die wichtigsten Mobilitäts-, Daseinsvorsorge- "
+        "und Klima-Layer; Bounding Box stammt aus dem Workspace-Profil "
+        "oder der Konfiguration."
     )
     description_en = (
         "Queries OpenStreetMap data via the Overpass API. "
-        "Ships with eight templates for the most common mobility layers; "
-        "bounding box comes from the workspace profile or config."
+        "Ships with templates for the most common mobility, public-services, "
+        "and climate layers; bounding box comes from the workspace profile "
+        "or config."
     )
 
     config_schema = {

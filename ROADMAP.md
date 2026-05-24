@@ -242,6 +242,16 @@ These features are **not in the MVP**, but the architecture is already prepared 
 - [ ] Mobilithek subscriber mode — plumb X.509 client certificate through
       the inner GTFS/CSV/GeoJSON parsers for cert-protected feeds
       (DATEX II realtime, restricted GTFS-RT)
+- [x] OSM templates for daily-life amenities (`kindergartens`, `hospitals`,
+      `public_buildings`, `pedestrian_crossings`, `ev_chargers_osm`)
+- [x] Decision-support layer kinds: `ev_charging`, `traffic_counts`,
+      `cycling_counts`, `noise`, `public_buildings`, `population_grid`,
+      `demographics`
+- [x] EV-charging-gap measure rule (AFIR 2030 reference)
+- [ ] Dedicated specialized connectors with format-specific parsing:
+      Destatis Zensus 2022 100 m population grid, Bundesnetzagentur
+      Ladesäulenregister (CSV preset), Umweltbundesamt Luftqualität (REST
+      preset), DWD climate stations, BAST Dauerzählstellen
 - [ ] Air quality monitoring (integration with UBA API, Luftdaten.info / Sensor.Community) — unblocked by REST connector
 - [ ] openCode / DE-Government platform integration and mirroring
 

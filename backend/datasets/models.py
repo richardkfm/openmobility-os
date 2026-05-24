@@ -41,6 +41,13 @@ class DataSource(models.Model):
         SEALED_SURFACES = "sealed_surfaces", _("Sealed surfaces")
         HEAT_CORRIDORS = "heat_corridors", _("Heat / fresh-air corridors")
         WATER_BODIES = "water_bodies", _("Water bodies / retention areas")
+        EV_CHARGING = "ev_charging", _("EV charging stations")
+        TRAFFIC_COUNTS = "traffic_counts", _("Traffic counts")
+        CYCLING_COUNTS = "cycling_counts", _("Cycling counts")
+        NOISE = "noise", _("Noise contours")
+        PUBLIC_BUILDINGS = "public_buildings", _("Public buildings / amenities")
+        POPULATION_GRID = "population_grid", _("Population density grid")
+        DEMOGRAPHICS = "demographics", _("Demographic indicators")
         CUSTOM = "custom", _("Custom / other")
 
     class Status(models.TextChoices):

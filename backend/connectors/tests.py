@@ -882,3 +882,106 @@ class MobilithekConnectorTests(TestCase):
             {"distribution_url": "https://x", "format_hint": "datex"}
         )
         self.assertTrue(any("format_hint" in e for e in errors))
+
+
+class OSMTemplateExtensionsTests(TestCase):
+    """The decision-support templates (kindergartens, hospitals, public
+    buildings, pedestrian crossings, EV chargers) must be registered and
+    must compile against a workspace bbox without hitting the network."""
+
+    def test_new_templates_registered(self):
+        from connectors.osm_connector import OVERPASS_TEMPLATES
+
+        for tpl in (
+            "kindergartens",
+            "hospitals",
+            "public_buildings",
+            "pedestrian_crossings",
+            "ev_chargers_osm",
+        ):
+            self.assertIn(tpl, OVERPASS_TEMPLATES)
+
+    def test_templates_render_workspace_bbox(self):
+        from connectors.osm_connector import OSMOverpassConnector
+
+        # Re-use the same workspace stub pattern as the other tests in this file.
+        @dataclass
+        class _Bnds:
+            extent: tuple = (12.295, 51.236, 12.549, 51.443)
+
+        @dataclass
+        class _Ws:
+            bounds: _Bnds = None
+
+        ws = _Ws(bounds=_Bnds())
+        conn = OSMOverpassConnector()
+        for tpl in (
+            "kindergartens",
+            "hospitals",
+            "public_buildings",
+            "pedestrian_crossings",
+            "ev_chargers_osm",
+        ):
+            q = conn._build_query({"template": tpl}, ws)
+            self.assertIn("51.236,12.295,51.443,12.549", q)
+            self.assertNotIn("{bbox}", q)
+
+    def test_overpass_call_routed_through_request_mock(self):
+        """Sanity-check that fetch() round-trips the response through the
+        shared element-to-feature converter for the new templates."""
+        from connectors.osm_connector import OSMOverpassConnector
+
+        sample = {
+            "elements": [
+                {
+                    "type": "node",
+                    "id": 1,
+                    "lat": 51.34,
+                    "lon": 12.37,
+                    "tags": {"amenity": "kindergarten", "name": "Kita Süd"},
+                }
+            ]
+        }
+
+        @dataclass
+        class _Bnds:
+            extent: tuple = (12.295, 51.236, 12.549, 51.443)
+
+        @dataclass
+        class _Ws:
+            bounds: _Bnds = None
+
+        ws = _Ws(bounds=_Bnds())
+
+        with mock.patch(
+            "connectors.osm_connector.requests.post",
+            return_value=_OSMFakeResponse(json_data=sample),
+        ):
+            result = OSMOverpassConnector().fetch({"template": "kindergartens"}, ws)
+
+        self.assertEqual(result.record_count, 1)
+        feat = result.feature_collection["features"][0]
+        self.assertEqual(feat["geometry"]["type"], "Point")
+        self.assertEqual(feat["properties"]["amenity"], "kindergarten")
+
+
+class _OSMFakeResponse:
+    """Minimal stand-in for ``requests.Response`` used by the OSM tests above.
+
+    Other test classes in this file define their own fake responses tailored
+    to the request/response shape of their connector (CSV needs ``.content``,
+    Unfallatlas needs ``.content``+ encoding, etc.) — keep this one local to
+    the OSM tests so it can't collide with them.
+    """
+
+    def __init__(self, json_data=None):
+        self._json = json_data or {}
+        self.status_code = 200
+        self.headers = {"Content-Type": "application/json"}
+        self.text = ""
+
+    def raise_for_status(self):
+        return None
+
+    def json(self):
+        return self._json

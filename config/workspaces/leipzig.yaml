@@ -301,6 +301,121 @@ data_sources:
     config:
       template: districts
 
+  # ---- Decision-support overlays -----------------------------------------
+  # These layers populate the equity and electrification scoring rationales.
+  # All are stock OSM templates — no per-city API keys needed.
+
+  - name: OSM — Kindergärten / Kitas
+    source_type: osm_overpass
+    layer_kind: public_buildings
+    license: ODbL
+    attribution: "© OpenStreetMap contributors"
+    source_url: https://www.openstreetmap.org/
+    config:
+      template: kindergartens
+
+  - name: OSM — Krankenhäuser & Kliniken
+    source_type: osm_overpass
+    layer_kind: public_buildings
+    license: ODbL
+    attribution: "© OpenStreetMap contributors"
+    source_url: https://www.openstreetmap.org/
+    config:
+      template: hospitals
+
+  - name: OSM — Öffentliche Einrichtungen
+    source_type: osm_overpass
+    layer_kind: public_buildings
+    license: ODbL
+    attribution: "© OpenStreetMap contributors"
+    source_url: https://www.openstreetmap.org/
+    config:
+      template: public_buildings
+
+  - name: OSM — Fußgängerüberwege
+    source_type: osm_overpass
+    layer_kind: pedestrian_crossings
+    license: ODbL
+    attribution: "© OpenStreetMap contributors"
+    source_url: https://www.openstreetmap.org/
+    config:
+      template: pedestrian_crossings
+
+  - name: OSM — Ladepunkte (Elektromobilität)
+    source_type: osm_overpass
+    layer_kind: ev_charging
+    license: ODbL
+    attribution: "© OpenStreetMap contributors"
+    source_url: https://www.openstreetmap.org/
+    config:
+      template: ev_chargers_osm
+
+  # ---- Optional German federal & municipal portals -----------------------
+  # The following commented-out examples are ready to enable once a
+  # municipality has confirmed the live URLs / package IDs. They are
+  # documented inline rather than activated by default so that fresh
+  # `docker compose up` never depends on third-party uptime.
+  #
+  # Bundesnetzagentur Ladesäulenregister (every public charger in Germany,
+  # weekly CSV download). Replace `<latest-csv-url>` with the current link
+  # from https://www.bundesnetzagentur.de/DE/Fachthemen/ElektrizitaetundGas
+  # /E-Mobilitaet/Ladesaeulenkarte/start.html
+  #
+  # - name: BNetzA — Ladesäulenregister Deutschland
+  #   source_type: csv
+  #   layer_kind: ev_charging
+  #   license: "DL-DE BY 2.0"
+  #   attribution: "Bundesnetzagentur"
+  #   config:
+  #     url: <latest-csv-url>
+  #     delimiter: ";"
+  #     encoding: cp1252
+  #     lat_col: Breitengrad
+  #     lon_col: Längengrad
+  #
+  # Umweltbundesamt Luftqualität — REST endpoint per pollutant. Returns
+  # measurement stations with the latest aggregate values. The exact path
+  # changes per UBA release; check
+  # https://www.umweltbundesamt.de/daten/luft/luftdaten#vorberichteapi
+  #
+  # - name: UBA — Luftqualitätsmessstationen
+  #   source_type: rest
+  #   layer_kind: air_quality
+  #   license: "DL-DE BY 2.0"
+  #   attribution: "Umweltbundesamt"
+  #   config:
+  #     url: https://www.umweltbundesamt.de/api/air_data/v3/stations/json
+  #     json_path: stations
+  #     geometry_mapping: { lat: latitude, lon: longitude }
+  #
+  # opendata.leipzig.de (CKAN) — Radzählstellen (monthly cycle counters).
+  # Drop in the actual package_id from the portal browser:
+  #
+  # - name: opendata.leipzig.de — Radzählstellen
+  #   source_type: ckan
+  #   layer_kind: cycling_counts
+  #   license: "DL-DE BY 2.0"
+  #   attribution: "Stadt Leipzig"
+  #   source_url: https://opendata.leipzig.de/
+  #   config:
+  #     portal_url: https://opendata.leipzig.de
+  #     package_id: radzaehlstellen
+  #
+  # Mobilithek (BMDV) — bundesweite GTFS-RT für ÖV. Open distributions
+  # work today; subscriber-only feeds (e.g. DATEX II Roadworks) need an
+  # operator-issued client cert.
+  #
+  # - name: Mobilithek — DELFI bundesweites GTFS
+  #   source_type: mobilithek
+  #   layer_kind: transit_stops
+  #   license: "CC BY 4.0"
+  #   attribution: "DELFI e. V. / BMDV"
+  #   source_url: https://mobilithek.info/
+  #   config:
+  #     distribution_url: <Mobilithek distribution URL>
+  #     format_hint: gtfs
+  #     inner_options: { layer: transit_stops }
+
 measures:
   - slug: promenadenring-protected-lane
     category: bike_infra
