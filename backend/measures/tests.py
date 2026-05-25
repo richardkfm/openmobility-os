@@ -1,9 +1,10 @@
-"""Unit tests for Phase 9 transit rules and KPI helpers."""
+"""Unit tests for transit rules, KPI helpers, and equity overlay."""
 
 from dataclasses import dataclass, field
 from unittest import TestCase
 
 from measures.rules.electrification import rule_ev_charging_gap
+from measures.rules.equity import rule_population_equity_gap
 from measures.rules.transit import (
     rule_transit_accessibility,
     rule_transit_coverage_gap,
@@ -193,3 +194,48 @@ class EVChargingGapRuleTests(TestCase):
         self.assertEqual(len(candidates), 1)
         # 0.5 chargers/km² * 300 km² = 150 wanted, minus 5 we have.
         self.assertEqual(candidates[0].evidence["needed_extra_by_2030"], 145)
+
+
+def _grid_cell(pop, under_18, over_65):
+    """Build a fake population_grid feature."""
+    return {
+        "type": "Feature",
+        "geometry": {"type": "Polygon", "coordinates": [[[12.0, 51.0], [12.001, 51.0], [12.001, 51.001], [12.0, 51.001], [12.0, 51.0]]]},
+        "properties": {
+            "Einwohner": pop,
+            "Alter_unter_18": under_18,
+            "Alter_65_und_aelter": over_65,
+        },
+    }
+
+
+class PopulationEquityGapRuleTests(TestCase):
+    def test_triggers_when_clusters_of_high_child_share_exist(self):
+        # 20 cells: 10 average (10% u18), 10 with very high child share (50% u18)
+        # workspace avg u18 = (100+500)/2000 = 0.3, threshold = 0.45
+        # high cells: 50/100 = 0.5 > 0.45 → flagged
+        avg_cells = [_grid_cell(100, 10, 15) for _ in range(10)]
+        high_cells = [_grid_cell(100, 50, 10) for _ in range(10)]
+        fs = _FakeFS("population_grid", {"features": avg_cells + high_cells})
+        ws = _FakeWorkspace(population=2000)
+        candidates = rule_population_equity_gap(ws, [fs])
+        self.assertEqual(len(candidates), 1)
+        c = candidates[0]
+        self.assertEqual(c.slug, "equity-focused-infrastructure")
+        self.assertEqual(c.evidence["total_population"], 2000)
+        self.assertGreater(c.evidence["high_child_cells"], 0)
+
+    def test_skips_when_population_is_homogeneous(self):
+        # All cells have identical demographics → no clusters
+        cells = [_grid_cell(100, 20, 20) for _ in range(20)]
+        fs = _FakeFS("population_grid", {"features": cells})
+        ws = _FakeWorkspace(population=2000)
+        self.assertEqual(rule_population_equity_gap(ws, [fs]), [])
+
+    def test_skips_without_population_grid(self):
+        self.assertEqual(rule_population_equity_gap(_FakeWorkspace(), []), [])
+
+    def test_skips_when_too_few_cells(self):
+        cells = [_grid_cell(100, 50, 50) for _ in range(5)]
+        fs = _FakeFS("population_grid", {"features": cells})
+        self.assertEqual(rule_population_equity_gap(_FakeWorkspace(), [fs]), [])

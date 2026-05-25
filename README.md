@@ -160,6 +160,12 @@ three demo workspaces: **Leipzig**, **Musterstadt**, and **Muster-Landkreis**.
     air-quality stations, DWD climate stations, and BASt traffic counts.
     Each preset encodes the source's column names, encoding, and
     geometry mapping so operators don't need to configure them manually
+  - **Zensus 2022 population grid** — reads the Destatis 100 m grid-cell
+    CSV (INSPIRE grid IDs in EPSG:3035), converts to WGS84 polygons, and
+    emits demographic indicators per cell (population, under 18, 65+).
+    Workspace-bbox-aware. Powers the equity-overlay rule that turns
+    mobility measures into political arguments ("this serves 18 000
+    residents, 22 % of whom are children")
 - **`seed_unfallatlas` command** — bootstraps a German workspace with real
   Destatis accident data clipped to the workspace bounds, replacing the
   illustrative demo layer

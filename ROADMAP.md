@@ -252,8 +252,10 @@ These features are **not in the MVP**, but the architecture is already prepared 
 - [x] German federal presets: BNetzA Ladesäulenregister, UBA
       Luftqualität, DWD Klimastationen, BASt Dauerzählstellen — thin
       wrappers over CSV/REST with pre-filled config
-- [ ] Destatis Zensus 2022 100 m population grid connector (tracked
-      separately on the equity-overlay PR)
+- [x] Zensus 2022 100 m population grid connector (INSPIRE grid ID
+      → WGS84 polygon via pyproj, workspace-bbox clipping)
+- [x] Population-equity-gap measure rule — identifies cells with
+      high child/elderly share, quantifies the affected population
 - [ ] Air quality monitoring (integration with UBA API, Luftdaten.info / Sensor.Community) — unblocked by REST connector + UBA preset
 - [ ] openCode / DE-Government platform integration and mirroring
 

@@ -415,6 +415,23 @@ data_sources:
   #     distribution_url: <Mobilithek distribution URL>
   #     format_hint: gtfs
   #     inner_options: { layer: transit_stops }
+  #
+  # Zensus 2022 — 100 m population grid (Destatis). Download the CSV from
+  # https://www.zensus2022.de → Ergebnisse → Gitterzellen. The file is
+  # ~800 MB nationwide; the connector clips to the workspace bbox
+  # automatically so only Leipzig cells are stored.
+  #
+  # - name: Zensus 2022 — Bevölkerungsraster 100 m
+  #   source_type: zensus_grid
+  #   layer_kind: population_grid
+  #   license: "DL-DE BY 2.0"
+  #   attribution: "Statistisches Bundesamt (Destatis), Zensus 2022"
+  #   source_url: https://www.zensus2022.de/
+  #   config:
+  #     url: <Zensus 2022 grid CSV download URL>
+  #     grid_id_column: Gitter_ID_100m
+  #     indicator_columns: ["Einwohner", "Alter_unter_18", "Alter_65_und_aelter"]
+  #     min_population: 1
 
 measures:
   - slug: promenadenring-protected-lane
