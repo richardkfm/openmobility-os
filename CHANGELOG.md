@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Mobilithek catalog browser** — operators can now search the Mobilithek
+  DCAT-AP metadata feed by keyword and discover dataset titles, publishers,
+  and distribution URLs without manually hunting for them in the portal.
+  New `connectors.mobilithek_catalog` module exposes `browse_catalog(keyword)`
+  and `get_distribution_url(uid, format_preference)` for use from a Django shell
+  or scripts. A new management command `python manage.py browse_mobilithek`
+  provides a CLI interface with `--keyword`, `--limit`, `--formats`, and
+  `--supported-only` flags. The parser handles both top-level `dcat:Dataset`
+  elements and catalog-wrapped datasets, prefers German-language titles,
+  and maps raw format labels / IANA media-type URIs to the
+  `MobilithekConnector` `format_hint` values (`gtfs`, `geojson`, `json`,
+  `csv`). Feeds with unsupported formats (DATEX II, NeTEx, GBFS) are still
+  catalogued with a recognized hint so operators know what they are finding.
 - **German federal data-source presets** — four thin connector wrappers
   that encode format-specific quirks (column names, encodings, JSON
   paths) of key German open-data APIs so operators only supply a URL:

@@ -3,7 +3,7 @@
 
 # OpenMobility OS
 
-**Version:** 0.3.0 (pre-release) — see [CHANGELOG.md](CHANGELOG.md)
+**Version:** 0.10.0 (pre-release) — see [CHANGELOG.md](CHANGELOG.md)
 **License:** See [LICENSE](LICENSE)
 
 > The open, free, self-hostable operating system between open mobility data
@@ -151,7 +151,10 @@ three demo workspaces: **Leipzig**, **Musterstadt**, and **Muster-Landkreis**.
     access point (BMDV, successor to mCLOUD); dispatches to the matching
     parser based on a format hint. Supports both open distributions and
     subscriber mode with an X.509 client certificate (DATEX II realtime,
-    restricted GTFS-RT)
+    restricted GTFS-RT). Built-in catalog browser (`browse_catalog()` /
+    `python manage.py browse_mobilithek --keyword GTFS --formats`) parses
+    the Mobilithek DCAT-AP feed so operators can discover dataset titles,
+    publishers, and distribution URLs without manually searching the portal
   - **German federal presets** — one-URL onboarding for four key German
     open-data sources: Bundesnetzagentur EV charging register, UBA
     air-quality stations, DWD climate stations, and BASt traffic counts.
