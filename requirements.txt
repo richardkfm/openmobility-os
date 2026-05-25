@@ -10,3 +10,4 @@ requests==2.32.3
 pyproj==3.7.0
 python-dateutil==2.9.0.post0
 whitenoise==6.7.0
+reportlab==4.0.9
