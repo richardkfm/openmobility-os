@@ -12,6 +12,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   major sections and sub-sections
 
 ### Added
+- **Extended admin dashboard** — workspace operators now have visibility into:
+  - **Workspace health dashboard** (`/<slug>/admin/health/`) — data source
+    status cards, sync audit log, data freshness indicators, and sync
+    actions. Enables operators to diagnose sync failures and track when
+    data was last updated
+  - **Workspace comparison view** (`/workspaces/admin/compare/`) — side-by-side
+    configuration comparison across workspaces for planning purposes
+  - **Export functionality** (`/<slug>/admin/export/`) — measures, data
+    sources, and goals export as CSV, JSON, or PDF (basic table layout)
+    for stakeholder reports and external analysis
+- **Connector audit log** — every data source sync is now logged with
+  timestamp, status (success/error), duration, record count, and error
+  message (if any). Enables operators to diagnose sync failures and track
+  data freshness
 - **ADFC Fahrradklimatest KPI importer** — parses the biennial ADFC
   cycling-satisfaction survey CSV (school grades 1–6 per city) into
   ``WorkspaceGoal.current_value`` entries. Handles German decimal commas,

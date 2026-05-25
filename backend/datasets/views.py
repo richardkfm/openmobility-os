@@ -2,6 +2,7 @@
 
 import json
 import logging
+import time
 
 from django.contrib import messages
 from django.http import JsonResponse
@@ -14,6 +15,7 @@ from django.views.decorators.http import require_POST
 from connectors.registry import get_connector, list_connectors
 from core.decorators import admin_required
 from core.utils import get_active_workspace
+from workspaces.models import ConnectorAuditLog
 
 from .models import DataSource, NormalizedFeatureSet
 
@@ -144,12 +146,15 @@ def delete_data_source(request, workspace_slug, pk):
 
 def _run_sync(source: DataSource):
     """Execute a connector fetch and persist the normalized feature set."""
+    start_time = time.time()
+
     try:
         connector = get_connector(source.source_type)
     except KeyError:
         source.status = DataSource.Status.ERROR
         source.error_message = f"Unknown connector type: {source.source_type}"
         source.save(update_fields=["status", "error_message"])
+        _log_sync(source, ConnectorAuditLog.Status.ERROR, source.error_message, start_time)
         return False, source.error_message
 
     source.status = DataSource.Status.PENDING
@@ -164,6 +169,7 @@ def _run_sync(source: DataSource):
         source.status = DataSource.Status.ERROR
         source.error_message = "Configuration incomplete: " + "; ".join(config_errors)
         source.save(update_fields=["status", "error_message"])
+        _log_sync(source, ConnectorAuditLog.Status.ERROR, source.error_message, start_time)
         return False, source.error_message
 
     try:
@@ -172,12 +178,14 @@ def _run_sync(source: DataSource):
         source.status = DataSource.Status.ERROR
         source.error_message = str(exc)
         source.save(update_fields=["status", "error_message"])
+        _log_sync(source, ConnectorAuditLog.Status.ERROR, str(exc), start_time)
         return False, str(exc)
     except Exception as exc:  # noqa: BLE001 — we want the message surfaced to admin
         logger.exception("Sync failed for source %s", source.pk)
         source.status = DataSource.Status.ERROR
         source.error_message = f"{type(exc).__name__}: {exc}"
         source.save(update_fields=["status", "error_message"])
+        _log_sync(source, ConnectorAuditLog.Status.ERROR, source.error_message, start_time)
         return False, source.error_message
 
     NormalizedFeatureSet.objects.update_or_create(
@@ -202,4 +210,33 @@ def _run_sync(source: DataSource):
             "updated_at",
         ]
     )
+    _log_sync(
+        source,
+        ConnectorAuditLog.Status.SUCCESS,
+        "",
+        start_time,
+        feature_count=result.record_count,
+    )
     return True, _("Synced %(n)d records.") % {"n": result.record_count}
+
+
+def _log_sync(
+    source: DataSource,
+    status: str,
+    error_message: str = "",
+    start_time: float = None,
+    feature_count: int = None,
+):
+    """Create an audit log entry for a sync attempt."""
+    duration_ms = None
+    if start_time is not None:
+        duration_ms = int((time.time() - start_time) * 1000)
+
+    ConnectorAuditLog.objects.create(
+        workspace=source.workspace,
+        datasource=source,
+        status=status,
+        duration_ms=duration_ms,
+        feature_count=feature_count,
+        error_message=error_message,
+    )

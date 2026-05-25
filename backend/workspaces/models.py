@@ -113,3 +113,39 @@ class District(models.Model):
 
     def __str__(self):
         return f"{self.workspace.slug}/{self.name}"
+
+
+class ConnectorAuditLog(models.Model):
+    """Audit log of connector sync attempts — timestamp, status, duration, record count."""
+
+    class Status(models.TextChoices):
+        SUCCESS = "success", _("Success")
+        ERROR = "error", _("Error")
+        PARTIAL = "partial", _("Partial")
+
+    workspace = models.ForeignKey(
+        Workspace, on_delete=models.CASCADE, related_name="connector_audit_logs"
+    )
+    datasource = models.ForeignKey(
+        "datasets.DataSource",
+        on_delete=models.CASCADE,
+        related_name="audit_logs",
+    )
+
+    timestamp = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=20, choices=Status.choices)
+    duration_ms = models.PositiveIntegerField(
+        help_text=_("Sync duration in milliseconds"), null=True, blank=True
+    )
+    feature_count = models.PositiveIntegerField(null=True, blank=True)
+    error_message = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["-timestamp"]
+        indexes = [
+            models.Index(fields=["workspace", "-timestamp"]),
+            models.Index(fields=["datasource", "-timestamp"]),
+        ]
+
+    def __str__(self):
+        return f"{self.datasource.name} @ {self.timestamp.isoformat()} [{self.status}]"
