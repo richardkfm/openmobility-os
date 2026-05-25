@@ -46,11 +46,14 @@ class HealthDashboardView(TemplateView):
                 "sources": list(sources_for_kind),
             }
 
+        active_pct = round(100 * active_count / total_sources) if total_sources else 0
+
         context = {
             "workspace": workspace,
             "sources": sources,
             "total_sources": total_sources,
             "active_count": active_count,
+            "active_pct": active_pct,
             "error_count": error_count,
             "total_features": total_features,
             "recent_logs": recent_logs,
@@ -89,6 +92,7 @@ class WorkspaceComparisonView(TemplateView):
             "workspace_a": workspace_a,
             "workspace_b": workspace_b,
             "comparison_data": comparison_data,
+            "layer_choices": DataSource.LayerKind.choices,
             "page_title": "Workspace Comparison",
         }
         return render(request, self.template_name, context)
@@ -105,9 +109,7 @@ class WorkspaceComparisonView(TemplateView):
             }
 
         def count_goals(workspace):
-            return workspace.workspace_goals.count() if hasattr(
-                workspace, "workspace_goals"
-            ) else 0
+            return workspace.goals.count()
 
         return {
             "basic": {

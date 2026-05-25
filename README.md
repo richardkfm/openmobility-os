@@ -233,6 +233,14 @@ connector reference) and `/about/` (self-hosting guide, current version).
 Clicking a workspace takes you to its dashboard at `/<slug>/`. You will see:
 
 - **KPI strip** — number of measures, goals, active data sources, and population.
+- **Transit KPIs** — stop count, average headway, population coverage, night
+  service share, barrier-free share (shown when transit data is synced).
+- **Traffic safety KPIs** — accident record count, severity breakdown
+  (fatal/serious/minor), year range, and a **data sufficiency indicator** that
+  compares the actual record count against a population-derived expectation
+  (~3 accidents per 1,000 residents/year). Rated "Good", "Thin", or
+  "Placeholder" so operators know at a glance whether the dataset is thick
+  enough for meaningful analysis.
 - **Goals** — each policy goal shows its target value, current value, unit, and
   a progress bar. Goals are loaded from the workspace configuration (YAML seed
   or the Django admin).

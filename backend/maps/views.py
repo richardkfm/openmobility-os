@@ -28,6 +28,7 @@ def workspace_layer(request, workspace_slug: str, layer_kind: str):
 @require_GET
 def workspace_measures_geojson(request, workspace_slug: str):
     ws = get_active_workspace(workspace_slug)
+    lang = getattr(request, "LANGUAGE_CODE", "de")
     features = []
     for m in ws.measures.exclude(geometry__isnull=True):
         features.append(
@@ -36,7 +37,7 @@ def workspace_measures_geojson(request, workspace_slug: str):
                 "geometry": json.loads(m.geometry.geojson),
                 "properties": {
                     "slug": m.slug,
-                    "title": m.title_de,
+                    "title": m.title_localized(lang),
                     "category": m.category,
                     "effort_level": m.effort_level,
                     "status": m.status,

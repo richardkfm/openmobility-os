@@ -5,6 +5,7 @@ from django.utils.translation import gettext as _
 
 from core.utils import get_active_workspace
 from datasets.models import DataSource, NormalizedFeatureSet
+from measures.accident_kpis import compute_accident_kpis
 from measures.models import Measure, MeasureScore
 from measures.scoring import compute_priority_score
 from measures.transit_kpis import compute_transit_kpis
@@ -13,14 +14,14 @@ from measures.transit_kpis import compute_transit_kpis
 def dashboard(request, workspace_slug: str):
     ws = get_active_workspace(workspace_slug)
     goals = ws.goals.all()
-    measures = list(ws.measures.all())
+    measures = list(ws.measures.prefetch_related("scores").all())
     ranked = sorted(
         measures, key=lambda m: compute_priority_score(m, ws.scoring_weights), reverse=True
     )[:5]
     sources = ws.data_sources.all()
-    transit_kpis = compute_transit_kpis(
-        ws, NormalizedFeatureSet.objects.filter(workspace=ws)
-    )
+    feature_sets = NormalizedFeatureSet.objects.filter(workspace=ws)
+    transit_kpis = compute_transit_kpis(ws, feature_sets)
+    accident_kpis = compute_accident_kpis(ws, feature_sets)
     return render(
         request,
         "workspaces/dashboard.html",
@@ -32,6 +33,7 @@ def dashboard(request, workspace_slug: str):
             "data_source_count": sources.count(),
             "data_sources_active": sources.filter(status=DataSource.Status.ACTIVE).count(),
             "transit_kpis": transit_kpis,
+            "accident_kpis": accident_kpis,
             "page_title": ws.name,
         },
     )
@@ -77,7 +79,7 @@ def measures_list(request, workspace_slug: str):
     category = request.GET.get("category", "")
     effort = request.GET.get("effort", "")
 
-    qs = Measure.objects.filter(workspace=ws)
+    qs = Measure.objects.filter(workspace=ws).prefetch_related("scores")
     if category:
         qs = qs.filter(category=category)
     if effort:

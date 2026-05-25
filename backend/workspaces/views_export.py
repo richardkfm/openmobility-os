@@ -11,6 +11,7 @@ from django.views.generic import View
 from core.decorators import admin_required
 from core.utils import get_active_workspace
 from measures.models import Measure
+from measures.scoring import compute_priority_score
 
 try:
     from reportlab.lib import colors
@@ -43,12 +44,12 @@ class ExportView(View):
 
     def _export_measures(self, workspace, format_):
         """Export measures."""
-        measures = Measure.objects.filter(workspace=workspace)
+        measures = Measure.objects.filter(workspace=workspace).prefetch_related("scores")
 
         if format_ == "csv":
-            return self._measures_to_csv(measures)
+            return self._measures_to_csv(measures, workspace)
         elif format_ == "json":
-            return self._measures_to_json(measures)
+            return self._measures_to_json(measures, workspace)
         elif format_ == "pdf":
             return self._measures_to_pdf(measures, workspace)
         else:
@@ -69,7 +70,7 @@ class ExportView(View):
 
     def _export_goals(self, workspace, format_):
         """Export goals."""
-        goals = workspace.workspace_goals.all()
+        goals = workspace.goals.all()
 
         if format_ == "csv":
             return self._goals_to_csv(goals)
@@ -81,51 +82,59 @@ class ExportView(View):
             return HttpResponse("Invalid format", status=400)
 
     # Measures export
-    def _measures_to_csv(self, measures):
+    def _measures_to_csv(self, measures, workspace):
         """Serialize measures to CSV."""
         output = io.StringIO()
         writer = csv.writer(output)
 
         writer.writerow([
-            "Code", "Name (DE)", "Name (EN)", "Category", "Benefit",
-            "Cost (EUR)", "CO2 Avoided (tons)", "Mean Score", "Rationale (DE)", "Rationale (EN)"
+            "Slug", "Title (DE)", "Title (EN)", "Category", "Effort Level",
+            "Status", "Priority Score", "Summary (DE)", "Summary (EN)"
         ])
 
         for measure in measures:
-            score = measure.measure_scores.first() if hasattr(measure, "measure_scores") else None
+            priority = compute_priority_score(measure, workspace.scoring_weights)
             writer.writerow([
                 measure.slug,
-                measure.name_de,
-                measure.name_en,
+                measure.title_de,
+                measure.title_en,
                 measure.get_category_display(),
-                measure.benefit or "",
-                measure.cost_eur or "",
-                measure.co2_avoided_tons or "",
-                score.mean_score if score else "",
-                measure.rationale_de or "",
-                measure.rationale_en or "",
+                measure.get_effort_level_display(),
+                measure.get_status_display(),
+                priority,
+                measure.summary_de,
+                measure.summary_en,
             ])
 
         response = HttpResponse(output.getvalue(), content_type="text/csv")
         response["Content-Disposition"] = "attachment; filename=measures.csv"
         return response
 
-    def _measures_to_json(self, measures):
+    def _measures_to_json(self, measures, workspace):
         """Serialize measures to JSON."""
         data = []
         for measure in measures:
-            score = measure.measure_scores.first() if hasattr(measure, "measure_scores") else None
+            priority = compute_priority_score(measure, workspace.scoring_weights)
+            scores_data = [
+                {
+                    "dimension": s.dimension,
+                    "raw_value": s.raw_value,
+                    "display_value": s.display_value,
+                    "confidence": s.confidence,
+                }
+                for s in measure.scores.all()
+            ]
             data.append({
-                "code": measure.slug,
-                "name_de": measure.name_de,
-                "name_en": measure.name_en,
+                "slug": measure.slug,
+                "title_de": measure.title_de,
+                "title_en": measure.title_en,
                 "category": measure.get_category_display(),
-                "benefit": measure.benefit,
-                "cost_eur": measure.cost_eur,
-                "co2_avoided_tons": measure.co2_avoided_tons,
-                "mean_score": score.mean_score if score else None,
-                "rationale_de": measure.rationale_de,
-                "rationale_en": measure.rationale_en,
+                "effort_level": measure.get_effort_level_display(),
+                "status": measure.get_status_display(),
+                "priority_score": priority,
+                "summary_de": measure.summary_de,
+                "summary_en": measure.summary_en,
+                "scores": scores_data,
             })
 
         response = HttpResponse(
@@ -153,8 +162,6 @@ class ExportView(View):
         styles = getSampleStyleSheet()
         story = []
 
-        # Title
-        from reportlab.platypus import Paragraph
         title = Paragraph(f"{workspace.name} — Measures Report", styles["Heading1"])
         story.append(title)
         timestamp = Paragraph(
@@ -164,17 +171,16 @@ class ExportView(View):
         story.append(timestamp)
         story.append(Spacer(1, 0.3 * inch))
 
-        # Measures table
         table_data = [
-            ["Code", "Name", "Benefit", "Mean Score"]
+            ["Slug", "Title", "Category", "Priority Score"]
         ]
         for measure in measures:
-            score = measure.measure_scores.first() if hasattr(measure, "measure_scores") else None
+            priority = compute_priority_score(measure, workspace.scoring_weights)
             table_data.append([
                 measure.slug,
-                measure.name_en,
-                measure.benefit or "",
-                f"{score.mean_score:.2f}" if score else "—"
+                measure.title_en or measure.title_de,
+                measure.get_category_display(),
+                f"{priority:.1f}"
             ])
 
         table = Table(table_data)
@@ -261,7 +267,6 @@ class ExportView(View):
         styles = getSampleStyleSheet()
         story = []
 
-        # Title
         title = Paragraph(f"{workspace.name} — Data Sources Report", styles["Heading1"])
         story.append(title)
         timestamp = Paragraph(
@@ -271,7 +276,6 @@ class ExportView(View):
         story.append(timestamp)
         story.append(Spacer(1, 0.3 * inch))
 
-        # Sources table
         table_data = [
             ["Name", "Type", "Status", "Records"]
         ]
@@ -311,14 +315,14 @@ class ExportView(View):
         writer = csv.writer(output)
 
         writer.writerow([
-            "Code", "Name (DE)", "Name (EN)", "Current Value", "Target Value", "Unit", "Deadline Year"
+            "Code", "Title (DE)", "Title (EN)", "Current Value", "Target Value", "Unit", "Deadline Year"
         ])
 
         for goal in goals:
             writer.writerow([
                 goal.code,
-                goal.name_de,
-                goal.name_en,
+                goal.title_de,
+                goal.title_en,
                 goal.current_value or "",
                 goal.target_value or "",
                 goal.unit or "",
@@ -335,13 +339,14 @@ class ExportView(View):
         for goal in goals:
             data.append({
                 "code": goal.code,
-                "name_de": goal.name_de,
-                "name_en": goal.name_en,
-                "current_value": goal.current_value,
-                "target_value": goal.target_value,
+                "title_de": goal.title_de,
+                "title_en": goal.title_en,
+                "current_value": float(goal.current_value) if goal.current_value is not None else None,
+                "target_value": float(goal.target_value) if goal.target_value is not None else None,
                 "unit": goal.unit,
                 "deadline_year": goal.deadline_year,
                 "rationale_de": goal.rationale_de,
+                "rationale_en": goal.rationale_en,
             })
 
         response = HttpResponse(
@@ -369,7 +374,6 @@ class ExportView(View):
         styles = getSampleStyleSheet()
         story = []
 
-        # Title
         title = Paragraph(f"{workspace.name} — Goals Report", styles["Heading1"])
         story.append(title)
         timestamp = Paragraph(
@@ -379,14 +383,13 @@ class ExportView(View):
         story.append(timestamp)
         story.append(Spacer(1, 0.3 * inch))
 
-        # Goals table
         table_data = [
-            ["Code", "Name", "Current", "Target", "Unit"]
+            ["Code", "Title", "Current", "Target", "Unit"]
         ]
         for goal in goals:
             table_data.append([
                 goal.code,
-                goal.name_en,
+                goal.title_en or goal.title_de,
                 str(goal.current_value) if goal.current_value else "—",
                 str(goal.target_value) if goal.target_value else "—",
                 goal.unit or "—"

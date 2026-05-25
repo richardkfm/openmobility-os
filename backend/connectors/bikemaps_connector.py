@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import requests
 
+from ._http import request_kwargs
 from .base import BaseConnector, ConnectorTestResult, FetchResult
 
 DEFAULT_API_URL = "https://bikemaps.org/incidents.json"
@@ -157,7 +158,7 @@ class BikeMapsConnector(BaseConnector):
         # BikeMaps DRF responses may either return a GeoJSON FeatureCollection
         # or a paginated `{count, next, results}` envelope. Handle both.
         while next_url and len(collected) < max_records:
-            response = requests.get(next_url, params=next_params, timeout=120)
+            response = requests.get(next_url, params=next_params, timeout=120, **request_kwargs(config))
             response.raise_for_status()
             payload = response.json()
             if isinstance(payload, dict) and payload.get("type") == "FeatureCollection":

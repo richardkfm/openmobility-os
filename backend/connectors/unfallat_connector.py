@@ -12,6 +12,7 @@ import io
 
 import requests
 
+from ._http import request_kwargs
 from .base import BaseConnector, ConnectorTestResult, FetchResult
 
 SEVERITY_MAP = {"1": "fatal", "2": "serious", "3": "minor"}
@@ -77,7 +78,7 @@ class UnfallatlasConnector(BaseConnector):
     def _fetch_rows(self, config):
         url = config["url"]
         encoding = config.get("encoding", "utf-8")
-        response = requests.get(url, timeout=120)
+        response = requests.get(url, timeout=120, **request_kwargs(config))
         response.raise_for_status()
         text = response.content.decode(encoding, errors="replace")
         reader = csv.DictReader(io.StringIO(text), delimiter=";")
