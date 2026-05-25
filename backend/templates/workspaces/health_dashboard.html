@@ -1,0 +1,149 @@
+{% extends "workspaces/base_workspace.html" %}
+{% load i18n %}
+
+{% block content %}
+<div class="flex flex-col gap-8">
+
+  {# Header #}
+  <div>
+    <h1 class="text-2xl font-bold">{% trans "Health Dashboard" %}</h1>
+    <p class="text-slate-600 mt-1 text-sm">
+      {% trans "Data source sync status, freshness, and recent audit log" %}
+    </p>
+  </div>
+
+  {# Summary stats #}
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+    <div class="rounded-lg border bg-white p-4">
+      <div class="text-xs text-slate-500">{% trans "Data sources" %}</div>
+      <div class="text-2xl font-bold mt-1">{{ total_sources }}</div>
+    </div>
+    <div class="rounded-lg border bg-white p-4">
+      <div class="text-xs text-slate-500">{% trans "Passing" %}</div>
+      <div class="text-2xl font-bold mt-1">{{ active_count }}/{{ total_sources }}</div>
+      {% if total_sources > 0 %}
+      <div class="text-xs text-slate-400">
+        {{ active_count|add:error_count|add:0 }}%
+      </div>
+      {% endif %}
+    </div>
+    <div class="rounded-lg border bg-white p-4">
+      <div class="text-xs text-slate-500">{% trans "Errors" %}</div>
+      <div class="text-2xl font-bold mt-1 {% if error_count > 0 %}text-red-600{% endif %}">
+        {{ error_count }}
+      </div>
+    </div>
+    <div class="rounded-lg border bg-white p-4">
+      <div class="text-xs text-slate-500">{% trans "Total features" %}</div>
+      <div class="text-2xl font-bold mt-1">{{ total_features|default:"0" }}</div>
+    </div>
+  </div>
+
+  {# Connector status cards #}
+  <section>
+    <h2 class="text-lg font-semibold mb-4">{% trans "Data sources" %}</h2>
+    {% if sources %}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {% for source in sources %}
+      <div class="rounded-lg border bg-white p-4 flex flex-col gap-3">
+        <div class="flex items-start justify-between gap-2">
+          <div class="flex-1">
+            <h3 class="font-semibold text-slate-900">{{ source.name }}</h3>
+            <p class="text-xs text-slate-600 mt-0.5">{{ source.get_source_type_display }}</p>
+          </div>
+          <span class="px-2 py-1 rounded text-xs font-medium shrink-0
+            {% if source.status == 'active' %}bg-green-100 text-green-800{% elif source.status == 'error' %}bg-red-100 text-red-800{% elif source.status == 'pending' %}bg-amber-100 text-amber-800{% else %}bg-slate-100 text-slate-800{% endif %}">
+            {{ source.get_status_display }}
+          </span>
+        </div>
+
+        <div class="text-sm text-slate-600">
+          <div>{% trans "Layer kind" %}: <span class="font-medium">{{ source.get_layer_kind_display }}</span></div>
+          {% if source.last_synced_at %}
+          <div>
+            {% trans "Last sync" %}: <span class="font-medium">{{ source.last_synced_at|date:"SHORT_DATETIME_FORMAT" }}</span>
+          </div>
+          {% else %}
+          <div class="text-slate-500">{% trans "Never synced" %}</div>
+          {% endif %}
+        </div>
+
+        {% if source.record_count %}
+        <div class="text-sm font-semibold text-slate-900">
+          {{ source.record_count }} {% trans "records" %}
+        </div>
+        {% endif %}
+
+        {% if source.error_message %}
+        <div class="text-xs bg-red-50 text-red-700 p-2 rounded border border-red-200">
+          {{ source.error_message|truncatewords:20 }}
+        </div>
+        {% endif %}
+
+        <div class="pt-2 border-t">
+          <form method="post" action="{% url 'sync_data_source' workspace.slug source.pk %}" class="inline">
+            {% csrf_token %}
+            <button type="submit" class="text-xs text-slate-600 hover:text-slate-900 font-medium">
+              🔄 {% trans "Sync now" %}
+            </button>
+          </form>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="rounded-lg border bg-slate-50 p-6 text-center text-slate-600">
+      {% trans "No data sources configured yet." %}
+    </div>
+    {% endif %}
+  </section>
+
+  {# Recent audit log #}
+  {% if recent_logs %}
+  <section>
+    <h2 class="text-lg font-semibold mb-4">{% trans "Recent syncs" %}</h2>
+    <div class="overflow-x-auto border rounded-lg">
+      <table class="min-w-full bg-white text-sm">
+        <thead class="border-b bg-slate-50">
+          <tr>
+            <th class="text-left px-4 py-2 font-semibold text-slate-900">{% trans "Data source" %}</th>
+            <th class="text-left px-4 py-2 font-semibold text-slate-900">{% trans "Timestamp" %}</th>
+            <th class="text-left px-4 py-2 font-semibold text-slate-900">{% trans "Status" %}</th>
+            <th class="text-right px-4 py-2 font-semibold text-slate-900">{% trans "Duration (ms)" %}</th>
+            <th class="text-right px-4 py-2 font-semibold text-slate-900">{% trans "Records" %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for log in recent_logs %}
+          <tr class="border-b hover:bg-slate-50">
+            <td class="px-4 py-2 text-slate-900 font-medium">{{ log.datasource.name }}</td>
+            <td class="px-4 py-2 text-slate-600">{{ log.timestamp|date:"SHORT_DATETIME_FORMAT" }}</td>
+            <td class="px-4 py-2">
+              <span class="px-2 py-0.5 rounded text-xs font-medium
+                {% if log.status == 'success' %}bg-green-100 text-green-800{% elif log.status == 'error' %}bg-red-100 text-red-800{% else %}bg-amber-100 text-amber-800{% endif %}">
+                {{ log.get_status_display }}
+              </span>
+            </td>
+            <td class="px-4 py-2 text-right text-slate-600">
+              {% if log.duration_ms %}{{ log.duration_ms }}{% else %}—{% endif %}
+            </td>
+            <td class="px-4 py-2 text-right text-slate-600">
+              {% if log.feature_count %}{{ log.feature_count }}{% else %}—{% endif %}
+            </td>
+          </tr>
+          {% if log.error_message %}
+          <tr class="bg-red-50 border-b">
+            <td colspan="5" class="px-4 py-2 text-xs text-red-700">
+              <span class="font-medium">{% trans "Error" %}:</span> {{ log.error_message|truncatewords:30 }}
+            </td>
+          </tr>
+          {% endif %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  {% endif %}
+
+</div>
+{% endblock %}

@@ -6,6 +6,7 @@ from datasets import views as dataset_views
 from measures import views as measure_views
 
 from . import views
+from . import views_admin
 
 urlpatterns = [
     path("", views.dashboard, name="workspace_dashboard"),
@@ -20,4 +21,5 @@ urlpatterns = [
     path("data/<int:pk>/delete/", dataset_views.delete_data_source, name="data_source_delete"),
     path("methodology/", views.workspace_methodology, name="workspace_methodology"),
     path("measures/generate/", measure_views.generate_measures_view, name="measures_generate"),
+    path("admin/health/", views_admin.HealthDashboardView.as_view(), name="workspace_health"),
 ]
