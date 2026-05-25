@@ -7,6 +7,7 @@ from measures import views as measure_views
 
 from . import views
 from . import views_admin
+from . import views_export
 
 urlpatterns = [
     path("", views.dashboard, name="workspace_dashboard"),
@@ -22,4 +23,5 @@ urlpatterns = [
     path("methodology/", views.workspace_methodology, name="workspace_methodology"),
     path("measures/generate/", measure_views.generate_measures_view, name="measures_generate"),
     path("admin/health/", views_admin.HealthDashboardView.as_view(), name="workspace_health"),
+    path("admin/export/", views_export.ExportView.as_view(), name="workspace_export"),
 ]
