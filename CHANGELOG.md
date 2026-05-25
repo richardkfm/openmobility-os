@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Export view (`/<slug>/admin/export/`) crashed with `AttributeError` for all
+  export formats — measures export referenced non-existent model fields
+  (`name_de`, `benefit`, `cost_eur`, `co2_avoided_tons`, `measure_scores`);
+  goals export referenced `name_de`/`name_en` instead of `title_de`/`title_en`
+  and used wrong related manager `workspace_goals` instead of `goals`
+- `@admin_required` decorator now works on class-based view methods — previously
+  it received `self` instead of `request` when applied to CBV methods, bypassing
+  the admin token check on the health dashboard, comparison, and export views
+- Health dashboard "Sync now" button raised `NoReverseMatch` due to incorrect
+  URL name `sync_data_source` (correct name: `data_source_sync`)
+- Health dashboard "Passing" percentage displayed the sum of active + error
+  counts instead of a real percentage
+- Workspace comparison view always showed 0 goals because it looked up the
+  non-existent `workspace_goals` related manager instead of `goals`
+- Workspace comparison view did not pass `layer_choices` to the template,
+  causing layer kind labels to render as empty strings
+- Map popup XSS vulnerability — GeoJSON property keys and values were injected
+  as raw HTML; now escaped via `textContent`
+- Hardcoded Leipzig coordinates (12.37, 51.34) used as map fallback center;
+  replaced with neutral (0, 0) to avoid city-specific defaults per project
+  principles
+- Map measures GeoJSON endpoint hardcoded `title_de` instead of using
+  language-aware `title_localized()`
+- N+1 query on dashboard and measures list — each measure triggered a separate
+  DB query for its scores; now uses `prefetch_related("scores")`
+- Accident CSV, Unfallatlas, and BikeMaps connectors did not pass
+  `request_kwargs(config)` to HTTP requests, preventing mutual-TLS client
+  certificate authentication
+
 ### Changed
 - README now includes a clickable table of contents with links to all
   major sections and sub-sections

@@ -152,8 +152,8 @@ const WORKSPACE_SLUG = "{{ workspace.slug }}";
 const MAP_TILE_URL = "{{ map_tile_url }}";
 const MAP_TILE_ATTR = "{{ map_tile_attribution }}";
 const LAYER_KINDS = {{ layer_kinds|pprint|safe }};
-const CENTER_LON = {% if workspace.center %}{{ workspace.center.x|unlocalize }}{% else %}12.37{% endif %};
-const CENTER_LAT = {% if workspace.center %}{{ workspace.center.y|unlocalize }}{% else %}51.34{% endif %};
+const CENTER_LON = {% if workspace.center %}{{ workspace.center.x|unlocalize }}{% else %}0{% endif %};
+const CENTER_LAT = {% if workspace.center %}{{ workspace.center.y|unlocalize }}{% else %}0{% endif %};
 const DEFAULT_ZOOM = {{ workspace.default_zoom|unlocalize }};
 
 const LAYER_COLORS = {
@@ -196,6 +196,12 @@ map.addControl(new maplibregl.ScaleControl({ unit: "metric" }), "bottom-left");
 
 function layerColor(kind) {
   return LAYER_COLORS[kind] || "#64748b";
+}
+
+function escHtml(s) {
+  const el = document.createElement("span");
+  el.textContent = String(s ?? "");
+  return el.innerHTML;
 }
 
 // Look up the current checkbox state for a layer so we can honor it at
@@ -287,7 +293,7 @@ function addGeoJsonLayer(id, url, color) {
         map.on("click", "accidents-circle", (e) => {
           const props = e.features[0].properties;
           const content = Object.entries(props).slice(0, 8)
-            .map(([k, v]) => `<dt class="font-medium">${k}</dt><dd class="ml-2 text-slate-600">${v}</dd>`)
+            .map(([k, v]) => `<dt class="font-medium">${escHtml(k)}</dt><dd class="ml-2 text-slate-600">${escHtml(v)}</dd>`)
             .join("");
           new maplibregl.Popup()
             .setLngLat(e.lngLat)
@@ -337,7 +343,7 @@ function addGeoJsonLayer(id, url, color) {
           map.on("click", circleLayer, (e) => {
             const props = e.features[0].properties;
             const content = Object.entries(props).slice(0, 8)
-              .map(([k, v]) => `<dt class="font-medium">${k}</dt><dd class="ml-2 text-slate-600">${v}</dd>`)
+              .map(([k, v]) => `<dt class="font-medium">${escHtml(k)}</dt><dd class="ml-2 text-slate-600">${escHtml(v)}</dd>`)
               .join("");
             new maplibregl.Popup()
               .setLngLat(e.lngLat)

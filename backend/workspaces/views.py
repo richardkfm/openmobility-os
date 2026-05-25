@@ -13,7 +13,7 @@ from measures.transit_kpis import compute_transit_kpis
 def dashboard(request, workspace_slug: str):
     ws = get_active_workspace(workspace_slug)
     goals = ws.goals.all()
-    measures = list(ws.measures.all())
+    measures = list(ws.measures.prefetch_related("scores").all())
     ranked = sorted(
         measures, key=lambda m: compute_priority_score(m, ws.scoring_weights), reverse=True
     )[:5]
@@ -77,7 +77,7 @@ def measures_list(request, workspace_slug: str):
     category = request.GET.get("category", "")
     effort = request.GET.get("effort", "")
 
-    qs = Measure.objects.filter(workspace=ws)
+    qs = Measure.objects.filter(workspace=ws).prefetch_related("scores")
     if category:
         qs = qs.filter(category=category)
     if effort:

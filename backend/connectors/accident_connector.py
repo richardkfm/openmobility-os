@@ -11,6 +11,7 @@ import json
 
 import requests
 
+from ._http import request_kwargs
 from .base import BaseConnector, ConnectorTestResult, FetchResult
 
 DEFAULT_SEVERITY_MAP = {
@@ -87,7 +88,7 @@ class AccidentCSVConnector(BaseConnector):
         encoding = config.get("encoding", "utf-8")
         delimiter = config.get("delimiter", ",")
         skip = int(config.get("skip_rows", 0) or 0)
-        response = requests.get(url, timeout=120)
+        response = requests.get(url, timeout=120, **request_kwargs(config))
         response.raise_for_status()
         text = response.content.decode(encoding, errors="replace")
         lines = text.splitlines()
