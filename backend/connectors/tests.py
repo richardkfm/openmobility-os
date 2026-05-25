@@ -956,6 +956,96 @@ class MobilithekConnectorTests(TestCase):
         self.assertTrue(any("format_hint" in e for e in errors))
 
 
+class GermanPresetsTests(TestCase):
+    """German federal preset connectors delegate correctly to CSV/REST."""
+
+    BNETZA_CSV = (
+        "Betreiber;Straße;Breitengrad;Längengrad;Nennleistung\n"
+        "EnBW;Hauptstr. 1;51.3400;12.3700;22\n"
+        "Ionity;Autobahnraststätte;51.3500;12.3800;350\n"
+    )
+
+    def _csv_response(self, text, encoding="cp1252"):
+        class _Resp:
+            content = text.encode(encoding)
+            status_code = 200
+
+            def raise_for_status(self):
+                return None
+
+        return _Resp()
+
+    def test_bnetza_fetch_delegates_with_correct_columns(self):
+        from connectors.german_presets import BNetzAChargingConnector
+
+        with mock.patch(
+            "connectors.csv_connector.requests.get",
+            return_value=self._csv_response(self.BNETZA_CSV),
+        ):
+            result = BNetzAChargingConnector().fetch(
+                {"url": "https://example.com/bnetza.csv"}
+            )
+        self.assertEqual(result.record_count, 2)
+        feat = result.feature_collection["features"][0]
+        self.assertEqual(feat["geometry"]["coordinates"], [12.37, 51.34])
+        self.assertIn("Betreiber", feat["properties"])
+
+    def test_bnetza_validate_requires_url(self):
+        from connectors.german_presets import BNetzAChargingConnector
+
+        errors = BNetzAChargingConnector().validate_config({})
+        self.assertTrue(any("url" in e for e in errors))
+
+    def test_uba_air_fetch_delegates_to_rest(self):
+        from connectors.german_presets import UBAAirQualityConnector
+
+        sample = {
+            "data": [
+                {
+                    "station_name": "Leipzig-Mitte",
+                    "station_code": "DESN049",
+                    "station_city": "Leipzig",
+                    "station_latitude": 51.34,
+                    "station_longitude": 12.37,
+                    "station_type": "background",
+                    "station_setting": "urban",
+                    "network_name": "Sachsen",
+                },
+            ]
+        }
+
+        class _Resp:
+            status_code = 200
+            headers = {"Content-Type": "application/json"}
+
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return sample
+
+        with mock.patch(
+            "connectors.rest_connector.requests.get", return_value=_Resp()
+        ):
+            result = UBAAirQualityConnector().fetch({})
+        self.assertEqual(result.record_count, 1)
+        feat = result.feature_collection["features"][0]
+        self.assertEqual(feat["properties"]["station_name"], "Leipzig-Mitte")
+        self.assertEqual(feat["geometry"]["coordinates"], [12.37, 51.34])
+
+    def test_dwd_validate_requires_url(self):
+        from connectors.german_presets import DWDClimateConnector
+
+        errors = DWDClimateConnector().validate_config({})
+        self.assertTrue(any("url" in e for e in errors))
+
+    def test_bast_validate_requires_url(self):
+        from connectors.german_presets import BASTCountsConnector
+
+        errors = BASTCountsConnector().validate_config({})
+        self.assertTrue(any("url" in e for e in errors))
+
+
 class HTTPHelperTests(TestCase):
     """Shared client-cert helper used by every connector that talks HTTP."""
 
@@ -1061,6 +1151,279 @@ class OSMTemplateExtensionsTests(TestCase):
         feat = result.feature_collection["features"][0]
         self.assertEqual(feat["geometry"]["type"], "Point")
         self.assertEqual(feat["properties"]["amenity"], "kindergarten")
+
+
+# ---------------------------------------------------------------------------
+# Mobilithek catalog browser tests
+# ---------------------------------------------------------------------------
+
+# Minimal DCAT-AP RDF/XML fixture with two datasets:
+#   1. A GTFS transit feed (Deutsche Bahn)
+#   2. A GeoJSON / CSV bike-counter dataset (municipality)
+_DCAT_AP_FIXTURE = b"""<?xml version="1.0" encoding="UTF-8"?>
+<rdf:RDF
+  xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+  xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+  xmlns:dcat="http://www.w3.org/ns/dcat#"
+  xmlns:dct="http://purl.org/dc/terms/"
+  xmlns:foaf="http://xmlns.com/foaf/0.1/"
+  xmlns:xml="http://www.w3.org/XML/1998/namespace">
+
+  <!-- Dataset 1: nationwide GTFS feed -->
+  <dcat:Dataset rdf:about="https://mobilithek.info/offers/11111">
+    <dct:title xml:lang="de">Deutschlandweites GTFS-Paket</dct:title>
+    <dct:title xml:lang="en">Nationwide GTFS package</dct:title>
+    <dct:description xml:lang="de">Haltestellen und Fahrtplandaten fuer ganz Deutschland.</dct:description>
+    <dcat:keyword xml:lang="de">GTFS</dcat:keyword>
+    <dcat:keyword xml:lang="de">Fahrplandaten</dcat:keyword>
+    <dct:publisher>
+      <foaf:Organization>
+        <foaf:name xml:lang="de">Deutsche Bahn AG</foaf:name>
+      </foaf:Organization>
+    </dct:publisher>
+    <dcat:distribution>
+      <dcat:Distribution rdf:about="https://mobilithek.info/offers/11111/dist/1">
+        <dcat:downloadURL rdf:resource="https://download.example.com/db-gtfs.zip"/>
+        <dct:format>GTFS</dct:format>
+        <dct:license rdf:resource="https://creativecommons.org/licenses/by/4.0/"/>
+      </dcat:Distribution>
+    </dcat:distribution>
+  </dcat:Dataset>
+
+  <!-- Dataset 2: bike counter GeoJSON (also has a CSV distribution) -->
+  <dcat:Dataset rdf:about="https://mobilithek.info/offers/22222">
+    <dct:title xml:lang="de">Radverkehrszaehlstellen Leipzig</dct:title>
+    <dct:description xml:lang="de">Automatische Radverkehrszaehlung der Stadt Leipzig.</dct:description>
+    <dcat:keyword xml:lang="de">Radverkehr</dcat:keyword>
+    <dct:publisher>
+      <foaf:Organization>
+        <foaf:name xml:lang="de">Stadt Leipzig</foaf:name>
+      </foaf:Organization>
+    </dct:publisher>
+    <dcat:distribution>
+      <dcat:Distribution rdf:about="https://mobilithek.info/offers/22222/dist/1">
+        <dcat:downloadURL rdf:resource="https://download.example.com/bike-counters.geojson"/>
+        <dct:format>GeoJSON</dct:format>
+        <dct:license rdf:resource="https://www.govdata.de/dl-de/by-2-0"/>
+      </dcat:Distribution>
+    </dcat:distribution>
+    <dcat:distribution>
+      <dcat:Distribution rdf:about="https://mobilithek.info/offers/22222/dist/2">
+        <dcat:downloadURL rdf:resource="https://download.example.com/bike-counters.csv"/>
+        <dct:format>CSV</dct:format>
+        <dct:license rdf:resource="https://www.govdata.de/dl-de/by-2-0"/>
+      </dcat:Distribution>
+    </dcat:distribution>
+  </dcat:Dataset>
+
+  <!-- Dataset 3: DATEX II feed (no supported format_hint) -->
+  <dcat:Dataset rdf:about="https://mobilithek.info/offers/33333">
+    <dct:title xml:lang="de">Baustellen Autobahn GmbH DATEX II</dct:title>
+    <dct:description xml:lang="de">Realtime-Baustellen auf Bundesautobahnen.</dct:description>
+    <dcat:keyword xml:lang="de">DATEX II</dcat:keyword>
+    <dcat:distribution>
+      <dcat:Distribution rdf:about="https://mobilithek.info/offers/33333/dist/1">
+        <dcat:accessURL rdf:resource="https://datex.example.com/roadworks"/>
+        <dct:format>DATEX II</dct:format>
+      </dcat:Distribution>
+    </dcat:distribution>
+  </dcat:Dataset>
+
+</rdf:RDF>
+"""
+
+
+class MobilithekCatalogTests(TestCase):
+    """Tests for mobilithek_catalog.parse_catalog and browse_catalog."""
+
+    def _datasets(self):
+        from connectors.mobilithek_catalog import parse_catalog
+
+        return parse_catalog(_DCAT_AP_FIXTURE)
+
+    # ------------------------------------------------------------------
+    # parse_catalog
+    # ------------------------------------------------------------------
+
+    def test_parse_returns_three_datasets(self):
+        datasets = self._datasets()
+        self.assertEqual(len(datasets), 3)
+
+    def test_parse_title_german_preferred(self):
+        datasets = {d.uid: d for d in self._datasets()}
+        # Dataset 1 has both de and en titles — German should win
+        ds1 = datasets["https://mobilithek.info/offers/11111"]
+        self.assertIn("GTFS", ds1.title)
+        self.assertIn("Deutschland", ds1.title)
+
+    def test_parse_publisher_extracted(self):
+        datasets = {d.uid: d for d in self._datasets()}
+        ds1 = datasets["https://mobilithek.info/offers/11111"]
+        self.assertIn("Deutsche Bahn", ds1.publisher)
+
+    def test_parse_keywords(self):
+        datasets = {d.uid: d for d in self._datasets()}
+        ds1 = datasets["https://mobilithek.info/offers/11111"]
+        self.assertIn("GTFS", ds1.keywords)
+
+    def test_parse_gtfs_distribution(self):
+        datasets = {d.uid: d for d in self._datasets()}
+        ds1 = datasets["https://mobilithek.info/offers/11111"]
+        self.assertEqual(len(ds1.distributions), 1)
+        dist = ds1.distributions[0]
+        self.assertEqual(dist.url, "https://download.example.com/db-gtfs.zip")
+        self.assertEqual(dist.format_hint, "gtfs")
+        self.assertIn("creativecommons", dist.license_url)
+
+    def test_parse_multiple_distributions(self):
+        datasets = {d.uid: d for d in self._datasets()}
+        ds2 = datasets["https://mobilithek.info/offers/22222"]
+        self.assertEqual(len(ds2.distributions), 2)
+        hints = {d.format_hint for d in ds2.distributions}
+        self.assertIn("geojson", hints)
+        self.assertIn("csv", hints)
+
+    def test_parse_datexii_format_hint(self):
+        """DATEX II gets its own format_hint value even though it's not directly parseable."""
+        datasets = {d.uid: d for d in self._datasets()}
+        ds3 = datasets["https://mobilithek.info/offers/33333"]
+        dist = ds3.distributions[0]
+        self.assertEqual(dist.format_hint, "datexii")
+        self.assertEqual(dist.url, "https://datex.example.com/roadworks")
+
+    # ------------------------------------------------------------------
+    # CatalogDataset.best_distribution
+    # ------------------------------------------------------------------
+
+    def test_best_distribution_prefers_requested_format(self):
+        datasets = {d.uid: d for d in self._datasets()}
+        ds2 = datasets["https://mobilithek.info/offers/22222"]
+        best_csv = ds2.best_distribution("csv")
+        self.assertEqual(best_csv.format_hint, "csv")
+        best_geojson = ds2.best_distribution("geojson")
+        self.assertEqual(best_geojson.format_hint, "geojson")
+
+    def test_best_distribution_falls_back_to_geojson(self):
+        """Without an explicit preference the default priority picks geojson over csv."""
+        datasets = {d.uid: d for d in self._datasets()}
+        ds2 = datasets["https://mobilithek.info/offers/22222"]
+        best = ds2.best_distribution()
+        self.assertEqual(best.format_hint, "geojson")
+
+    def test_has_supported_format_true(self):
+        datasets = {d.uid: d for d in self._datasets()}
+        self.assertTrue(datasets["https://mobilithek.info/offers/11111"].has_supported_format())
+        self.assertTrue(datasets["https://mobilithek.info/offers/22222"].has_supported_format())
+
+    def test_has_supported_format_false_for_datexii(self):
+        datasets = {d.uid: d for d in self._datasets()}
+        self.assertFalse(datasets["https://mobilithek.info/offers/33333"].has_supported_format())
+
+    # ------------------------------------------------------------------
+    # browse_catalog
+    # ------------------------------------------------------------------
+
+    def test_browse_no_keyword_returns_all(self):
+        from connectors.mobilithek_catalog import browse_catalog
+
+        results = browse_catalog(_xml_bytes=_DCAT_AP_FIXTURE)
+        self.assertEqual(len(results), 3)
+
+    def test_browse_keyword_filter(self):
+        from connectors.mobilithek_catalog import browse_catalog
+
+        results = browse_catalog(keyword="GTFS", _xml_bytes=_DCAT_AP_FIXTURE)
+        self.assertEqual(len(results), 1)
+        self.assertIn("GTFS", results[0].title)
+
+    def test_browse_keyword_matches_description(self):
+        from connectors.mobilithek_catalog import browse_catalog
+
+        results = browse_catalog(keyword="Bundesautobahn", _xml_bytes=_DCAT_AP_FIXTURE)
+        self.assertEqual(len(results), 1)
+        self.assertIn("DATEX", results[0].title)
+
+    def test_browse_keyword_matches_keywords_field(self):
+        from connectors.mobilithek_catalog import browse_catalog
+
+        results = browse_catalog(keyword="Fahrplandaten", _xml_bytes=_DCAT_AP_FIXTURE)
+        self.assertEqual(len(results), 1)
+        self.assertIn("GTFS", results[0].title)
+
+    def test_browse_returns_sorted_by_title(self):
+        from connectors.mobilithek_catalog import browse_catalog
+
+        results = browse_catalog(_xml_bytes=_DCAT_AP_FIXTURE)
+        titles = [r.title for r in results]
+        self.assertEqual(titles, sorted(titles, key=str.lower))
+
+    def test_browse_empty_keyword_no_match(self):
+        from connectors.mobilithek_catalog import browse_catalog
+
+        results = browse_catalog(keyword="ThisKeywordDoesNotExist", _xml_bytes=_DCAT_AP_FIXTURE)
+        self.assertEqual(len(results), 0)
+
+    # ------------------------------------------------------------------
+    # get_distribution_url
+    # ------------------------------------------------------------------
+
+    def test_get_distribution_url_found(self):
+        from connectors.mobilithek_catalog import get_distribution_url
+
+        url = get_distribution_url(
+            "https://mobilithek.info/offers/11111",
+            _xml_bytes=_DCAT_AP_FIXTURE,
+        )
+        self.assertEqual(url, "https://download.example.com/db-gtfs.zip")
+
+    def test_get_distribution_url_with_format_preference(self):
+        from connectors.mobilithek_catalog import get_distribution_url
+
+        url = get_distribution_url(
+            "https://mobilithek.info/offers/22222",
+            format_preference="csv",
+            _xml_bytes=_DCAT_AP_FIXTURE,
+        )
+        self.assertEqual(url, "https://download.example.com/bike-counters.csv")
+
+    def test_get_distribution_url_not_found(self):
+        from connectors.mobilithek_catalog import get_distribution_url
+
+        url = get_distribution_url(
+            "https://mobilithek.info/offers/99999",
+            _xml_bytes=_DCAT_AP_FIXTURE,
+        )
+        self.assertIsNone(url)
+
+    # ------------------------------------------------------------------
+    # Format normalization edge cases
+    # ------------------------------------------------------------------
+
+    def test_norm_format_media_type_uris(self):
+        from connectors.mobilithek_catalog import _norm_format
+
+        self.assertEqual(_norm_format("application/json"), "json")
+        self.assertEqual(_norm_format("application/geo+json"), "geojson")
+        self.assertEqual(_norm_format("https://www.iana.org/assignments/media-types/text/csv"), "csv")
+        self.assertEqual(_norm_format("application/x-gtfs+zip"), "gtfs")
+        self.assertIsNone(_norm_format("application/xml"))
+        self.assertIsNone(_norm_format("application/octet-stream"))
+
+    # ------------------------------------------------------------------
+    # Malformed XML
+    # ------------------------------------------------------------------
+
+    def test_parse_malformed_xml_raises_value_error(self):
+        from connectors.mobilithek_catalog import parse_catalog
+
+        with self.assertRaises(ValueError):
+            parse_catalog(b"<this is not valid xml >>>")
+
+    def test_parse_empty_catalog(self):
+        from connectors.mobilithek_catalog import parse_catalog
+
+        result = parse_catalog(b'<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"/>')
+        self.assertEqual(result, [])
 
 
 class _OSMFakeResponse:

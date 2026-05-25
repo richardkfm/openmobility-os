@@ -249,11 +249,12 @@ These features are **not in the MVP**, but the architecture is already prepared 
       `cycling_counts`, `noise`, `public_buildings`, `population_grid`,
       `demographics`
 - [x] EV-charging-gap measure rule (AFIR 2030 reference)
-- [ ] Dedicated specialized connectors with format-specific parsing:
-      Destatis Zensus 2022 100 m population grid, Bundesnetzagentur
-      Ladesäulenregister (CSV preset), Umweltbundesamt Luftqualität (REST
-      preset), DWD climate stations, BAST Dauerzählstellen
-- [ ] Air quality monitoring (integration with UBA API, Luftdaten.info / Sensor.Community) — unblocked by REST connector
+- [x] German federal presets: BNetzA Ladesäulenregister, UBA
+      Luftqualität, DWD Klimastationen, BASt Dauerzählstellen — thin
+      wrappers over CSV/REST with pre-filled config
+- [ ] Destatis Zensus 2022 100 m population grid connector (tracked
+      separately on the equity-overlay PR)
+- [ ] Air quality monitoring (integration with UBA API, Luftdaten.info / Sensor.Community) — unblocked by REST connector + UBA preset
 - [ ] openCode / DE-Government platform integration and mirroring
 
 ---

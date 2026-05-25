@@ -10,6 +10,12 @@ from .gtfs_connector import GTFSConnector
 from .manual_connector import ManualConnector
 from .mobilithek_connector import MobilithekConnector
 from .osm_connector import OSMOverpassConnector
+from .german_presets import (
+    BASTCountsConnector,
+    BNetzAChargingConnector,
+    DWDClimateConnector,
+    UBAAirQualityConnector,
+)
 from .rest_connector import RESTConnector
 from .unfallat_connector import UnfallatlasConnector
 from .wfs_connector import WFSConnector
@@ -42,5 +48,9 @@ for _connector in [
     WFSConnector(),
     RESTConnector(),
     MobilithekConnector(),
+    BNetzAChargingConnector(),
+    UBAAirQualityConnector(),
+    DWDClimateConnector(),
+    BASTCountsConnector(),
 ]:
     register(_connector)

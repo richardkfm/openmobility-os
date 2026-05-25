@@ -22,6 +22,10 @@ class DataSource(models.Model):
         WFS = "wfs", _("WFS geo-service")
         REST = "rest", _("Generic REST JSON")
         MOBILITHEK = "mobilithek", _("Mobilithek (German NAP)")
+        BNETZA_CHARGING = "bnetza_charging", _("BNetzA EV charging register")
+        UBA_AIR = "uba_air", _("UBA air quality stations")
+        DWD_CLIMATE = "dwd_climate", _("DWD climate stations")
+        BAST_COUNTS = "bast_counts", _("BASt traffic count stations")
 
     class LayerKind(models.TextChoices):
         STREETS = "streets", _("Streets")
