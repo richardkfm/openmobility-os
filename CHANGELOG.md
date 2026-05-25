@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- `CLAUDE.md` now codifies a binding **Per-Commit Update Rule**: every
+  commit pushed to the repo must include a `CHANGELOG.md` entry, update
+  `README.md` when user-visible behaviour changes, and bump `VERSION` per
+  Semantic Versioning. Tightens the previously per-PR rule to per-commit
+  so the changelog reflects history as it happens
+
 ### Added
 - **Mobilithek catalog browser** — operators can now search the Mobilithek
   DCAT-AP metadata feed by keyword and discover dataset titles, publishers,

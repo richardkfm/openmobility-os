@@ -116,13 +116,38 @@ It must stay current with:
 **Every pull request that adds or removes a user-facing feature must update
 the README in the same commit.**
 
+## Per-Commit Update Rule (binding)
+
+**Every commit pushed to this repository must include, in the same commit:**
+
+1. A `CHANGELOG.md` entry under the `[Unreleased]` section, written from the
+   user's perspective. No commit is too small to skip this — even a typo fix
+   gets a one-line `Fixed` entry.
+2. A `README.md` update if the commit changes any user-visible behaviour,
+   feature list, screenshot, quickstart step, or supported connector. If the
+   commit is internal-only (refactor, test, contributor docs), say so in the
+   commit body and skip the README touch.
+3. A `VERSION` bump per Semantic Versioning:
+   - **PATCH** (`0.x.Y+1`) — bug fix, doc-only change, internal refactor,
+     contributor-tooling change.
+   - **MINOR** (`0.X+1.0`) — new feature, new connector, new measure rule,
+     new layer kind, new language, new template.
+   - **MAJOR** (`X+1.0.0`) — breaking change to the public API, data model,
+     connector interface, or deployment layout. Must include a migration note.
+
+This rule applies to every push by every contributor, including automated
+agents like Claude Code. If a commit cannot satisfy all three points (e.g.
+a pure mechanical rename), state the reason in the commit body. CI does not
+yet enforce the rule mechanically — reviewers must.
+
 ## Contribution Workflow
 
 1. Create a feature branch from `main`.
 2. Make changes. Keep commits small, focused, and self-explanatory.
-3. Update `CHANGELOG.md` under the `[Unreleased]` section.
+3. Update `CHANGELOG.md` under the `[Unreleased]` section (see Per-Commit
+   Update Rule above).
 4. Update `README.md` if user-facing behavior changed.
-5. Bump `VERSION` if this work warrants a release (see Versioning Policy).
+5. Bump `VERSION` per the Per-Commit Update Rule.
 6. Run `docker compose up --build` and manually verify the core flows still work.
 7. Run the test suite (`python manage.py test`).
 8. Open a pull request. Reference any related issues.
