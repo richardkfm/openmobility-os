@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Accident data sufficiency indicator** on the workspace dashboard — compares
+  accident record count against a population-derived expectation (~3 per 1,000
+  residents/year) and rates the dataset as "Good", "Thin", or "Placeholder".
+  Shows severity breakdown, year range, expected volume, and coverage
+  percentage. Surfaced on the dashboard and the public API
+  (`/api/v1/workspaces/<slug>/` → `accident_kpis`)
+
 ### Fixed
 - Export view (`/<slug>/admin/export/`) crashed with `AttributeError` for all
   export formats — measures export referenced non-existent model fields
