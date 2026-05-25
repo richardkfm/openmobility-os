@@ -1529,3 +1529,163 @@ class _OSMFakeResponse:
 
     def json(self):
         return self._json
+
+
+# ---------------------------------------------------------------------------
+# KPI importer tests (ADFC Fahrradklimatest + MiD modal-split)
+# ---------------------------------------------------------------------------
+
+_ADFC_CSV = (
+    "Ort;Einwohnerklasse;Gesamtbewertung;Sicherheit;Komfort\n"
+    "Leipzig;Großstadt;3,8;4,2;3,5\n"
+    "München;Großstadt;3,5;3,8;3,2\n"
+    "Musterstadt;Kleinstadt;4,1;4,5;4,0\n"
+    ";Großstadt;2,0;2,1;1,9\n"  # empty city — should be skipped
+)
+
+_MID_CSV = (
+    "Raumeinheit;Fuß;Rad;ÖV;MIV\n"
+    "Leipzig;22;19;16;43\n"
+    "München;24;18;21;37\n"
+    ";10;5;5;80\n"  # empty city — should be skipped
+)
+
+
+class ADFCFahrradklimaTests(TestCase):
+    """ADFC Fahrradklimatest CSV parser tests."""
+
+    def test_parse_basic_grades(self):
+        from connectors.kpi_importers import parse_adfc
+
+        records = parse_adfc(_csv_bytes=_ADFC_CSV.encode())
+        # 3 cities (empty city row skipped), 1 record each (no subcategories)
+        self.assertEqual(len(records), 3)
+        by_city = {r.city_name: r for r in records}
+        self.assertAlmostEqual(by_city["Leipzig"].value, 3.8)
+        self.assertAlmostEqual(by_city["München"].value, 3.5)
+        self.assertAlmostEqual(by_city["Musterstadt"].value, 4.1)
+
+    def test_parse_with_subcategories(self):
+        from connectors.kpi_importers import parse_adfc
+
+        records = parse_adfc(
+            _csv_bytes=_ADFC_CSV.encode(),
+            subcategory_cols=["Sicherheit", "Komfort"],
+        )
+        # 3 cities × (1 overall + 2 subcategories) = 9
+        self.assertEqual(len(records), 9)
+        leipzig = [r for r in records if r.city_name == "Leipzig"]
+        self.assertEqual(len(leipzig), 3)
+        codes = {r.goal_code for r in leipzig}
+        self.assertIn("adfc_fahrradklima", codes)
+        self.assertIn("adfc_fahrradklima_sicherheit", codes)
+        self.assertIn("adfc_fahrradklima_komfort", codes)
+
+    def test_parse_german_decimal_comma(self):
+        from connectors.kpi_importers import parse_adfc
+
+        records = parse_adfc(_csv_bytes=_ADFC_CSV.encode())
+        # "3,8" should be parsed as 3.8
+        leipzig = [r for r in records if r.city_name == "Leipzig"][0]
+        self.assertAlmostEqual(leipzig.value, 3.8)
+
+    def test_goal_code_is_correct(self):
+        from connectors.kpi_importers import parse_adfc
+
+        records = parse_adfc(_csv_bytes=_ADFC_CSV.encode())
+        for r in records:
+            self.assertEqual(r.goal_code, "adfc_fahrradklima")
+            self.assertEqual(r.unit, "Note / grade (1–6)")
+
+    def test_skips_empty_city(self):
+        from connectors.kpi_importers import parse_adfc
+
+        records = parse_adfc(_csv_bytes=_ADFC_CSV.encode())
+        cities = {r.city_name for r in records}
+        self.assertNotIn("", cities)
+
+    def test_requires_url_or_bytes(self):
+        from connectors.kpi_importers import parse_adfc
+
+        with self.assertRaises(ValueError):
+            parse_adfc()
+
+
+class MiDModalSplitTests(TestCase):
+    """MiD 2017 modal-split CSV parser tests."""
+
+    def test_parse_basic_modal_split(self):
+        from connectors.kpi_importers import parse_mid
+
+        records = parse_mid(_csv_bytes=_MID_CSV.encode())
+        # 2 cities × 4 modes = 8
+        self.assertEqual(len(records), 8)
+
+    def test_parse_mode_values(self):
+        from connectors.kpi_importers import parse_mid
+
+        records = parse_mid(_csv_bytes=_MID_CSV.encode())
+        leipzig = {r.goal_code: r for r in records if r.city_name == "Leipzig"}
+        self.assertAlmostEqual(leipzig["mid_walking_share"].value, 22.0)
+        self.assertAlmostEqual(leipzig["mid_cycling_share"].value, 19.0)
+        self.assertAlmostEqual(leipzig["mid_transit_share"].value, 16.0)
+        self.assertAlmostEqual(leipzig["mid_car_share"].value, 43.0)
+
+    def test_all_modes_have_percent_unit(self):
+        from connectors.kpi_importers import parse_mid
+
+        records = parse_mid(_csv_bytes=_MID_CSV.encode())
+        for r in records:
+            self.assertEqual(r.unit, "%")
+
+    def test_skips_empty_city(self):
+        from connectors.kpi_importers import parse_mid
+
+        records = parse_mid(_csv_bytes=_MID_CSV.encode())
+        cities = {r.city_name for r in records}
+        self.assertNotIn("", cities)
+
+    def test_custom_column_names(self):
+        from connectors.kpi_importers import parse_mid
+
+        custom_csv = (
+            "Stadt;Gehen;Fahrrad;Bus;Auto\n"
+            "Leipzig;22;19;16;43\n"
+        ).encode()
+        records = parse_mid(
+            _csv_bytes=custom_csv,
+            city_col="Stadt",
+            walking_col="Gehen",
+            cycling_col="Fahrrad",
+            transit_col="Bus",
+            car_col="Auto",
+        )
+        self.assertEqual(len(records), 4)
+
+    def test_handles_percentage_symbol(self):
+        from connectors.kpi_importers import parse_mid
+
+        csv_with_pct = "Raumeinheit;Fuß;Rad;ÖV;MIV\nLeipzig;22%;19%;16%;43%\n".encode()
+        records = parse_mid(_csv_bytes=csv_with_pct)
+        self.assertEqual(len(records), 4)
+        by_code = {r.goal_code: r for r in records}
+        self.assertAlmostEqual(by_code["mid_cycling_share"].value, 19.0)
+
+    def test_requires_url_or_bytes(self):
+        from connectors.kpi_importers import parse_mid
+
+        with self.assertRaises(ValueError):
+            parse_mid()
+
+
+class CityNormalizationTests(TestCase):
+    """Tests for the accent-folding city name matcher."""
+
+    def test_normalize_basic(self):
+        from connectors.kpi_importers import _normalize_city
+
+        self.assertEqual(_normalize_city("Leipzig"), "leipzig")
+        self.assertEqual(_normalize_city("MÜNCHEN"), "munchen")
+        self.assertEqual(_normalize_city("  Köln  "), "koln")
+        self.assertEqual(_normalize_city("Düsseldorf"), "dusseldorf")
+        self.assertEqual(_normalize_city("Freiburg im Breisgau"), "freiburg im breisgau")

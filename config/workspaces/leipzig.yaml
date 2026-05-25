@@ -59,6 +59,42 @@ goals:
     unit: "%"
     deadline_year: 2030
 
+  # ADFC Fahrradklimatest — biennial cycling satisfaction survey (2022).
+  # Grade 1 = best, 6 = worst. Leipzig's 2022 grade was 3.8.
+  # Update via: python manage.py import_kpis adfc --file <adfc-results.csv>
+  - code: adfc_fahrradklima
+    title_de: ADFC Fahrradklimatest — Gesamtbewertung
+    title_en: ADFC cycling climate test — overall grade
+    target_value: 3.0
+    current_value: 3.8
+    unit: "Note / grade (1–6)"
+    rationale_de: "ADFC Fahrradklimatest 2022 — niedrigere Note ist besser."
+    rationale_en: "ADFC cycling climate test 2022 — lower grade is better."
+    source_url: https://fahrradklima-test.adfc.de/ergebnisse
+
+  # MiD 2017 (Mobilität in Deutschland) — modal-split baseline.
+  # Update via: python manage.py import_kpis mid --file <mid-modal-split.csv>
+  - code: mid_cycling_share
+    title_de: Radverkehrsanteil (MiD 2017)
+    title_en: Cycling mode share (MiD 2017)
+    target_value: 25
+    current_value: 19
+    unit: "%"
+    rationale_de: "Quelle: MiD 2017 (BMDV), Wegeanteil Radverkehr."
+    rationale_en: "Source: MiD 2017 (BMDV), trip share for cycling."
+    source_url: https://www.mobilitaet-in-deutschland.de/
+
+  - code: mid_car_share
+    title_de: MIV-Anteil (MiD 2017)
+    title_en: Car mode share (MiD 2017)
+    target_value: 30
+    current_value: 43
+    unit: "%"
+    deadline_year: 2030
+    rationale_de: "Quelle: MiD 2017 (BMDV). Ziel: Reduktion auf 30% bis 2030."
+    rationale_en: "Source: MiD 2017 (BMDV). Target: reduce to 30% by 2030."
+    source_url: https://www.mobilitaet-in-deutschland.de/
+
 data_sources:
   - name: OSM — Radnetz
     source_type: osm_overpass

@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **ADFC Fahrradklimatest KPI importer** — parses the biennial ADFC
+  cycling-satisfaction survey CSV (school grades 1–6 per city) into
+  ``WorkspaceGoal.current_value`` entries. Handles German decimal commas,
+  configurable column names, and optional sub-category grades (safety,
+  comfort, etc.). Goal code: ``adfc_fahrradklima``
+- **MiD 2017 modal-split KPI importer** — parses the federal household
+  travel survey (Mobilität in Deutschland) CSV into four workspace goals
+  per city: ``mid_walking_share``, ``mid_cycling_share``,
+  ``mid_transit_share``, ``mid_car_share`` (all in %). Handles percentage
+  symbols, configurable column names, and semicolon/comma delimiters
+- **``import_kpis`` management command** — ``python manage.py import_kpis
+  adfc|mid --file <csv> [--workspace <slug>] [--dry-run]`` reads an
+  ADFC or MiD CSV, matches cities to workspaces by name (case-insensitive,
+  accent-folded), and upserts the corresponding ``WorkspaceGoal`` records.
+  Supports ``--col key=name`` overrides for non-standard CSV layouts
+- Leipzig demo workspace now ships ADFC Fahrradklimatest (grade 3.8,
+  target 3.0) and MiD 2017 modal-split goals (cycling 19 → 25 %, car
+  43 → 30 %) as baseline KPIs on the dashboard
+
 ### Changed
 - `CLAUDE.md` now codifies a binding **Per-Commit Update Rule**: every
   commit pushed to the repo must include a `CHANGELOG.md` entry, update
