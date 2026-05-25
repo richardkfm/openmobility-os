@@ -6,14 +6,11 @@ import json
 from datetime import datetime
 
 from django.http import HttpResponse
-from django.shortcuts import get_object_or_404
 from django.views.generic import View
 
 from core.decorators import admin_required
 from core.utils import get_active_workspace
-from datasets.models import DataSource
-from measures.models import Measure, MeasureScore
-from goals.models import WorkspaceGoal
+from measures.models import Measure
 
 try:
     from reportlab.lib import colors

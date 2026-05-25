@@ -1,12 +1,12 @@
 """Admin dashboard views — workspace health, comparison, export."""
 
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import render
 from django.views.generic import TemplateView
 
 from core.decorators import admin_required
 from core.utils import get_active_workspace
 from datasets.models import DataSource
-from measures.models import Measure, MeasureScore
+from measures.models import Measure
 
 from .models import Workspace, ConnectorAuditLog
 
