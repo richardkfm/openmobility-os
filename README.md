@@ -3,7 +3,7 @@
 
 # OpenMobility OS
 
-**Version:** 0.10.0 (pre-release) — see [CHANGELOG.md](CHANGELOG.md)
+**Version:** 0.11.0 (pre-release) — see [CHANGELOG.md](CHANGELOG.md)
 **License:** See [LICENSE](LICENSE)
 
 > The open, free, self-hostable operating system between open mobility data
@@ -166,6 +166,12 @@ three demo workspaces: **Leipzig**, **Musterstadt**, and **Muster-Landkreis**.
     Workspace-bbox-aware. Powers the equity-overlay rule that turns
     mobility measures into political arguments ("this serves 18 000
     residents, 22 % of whom are children")
+- **KPI importers** — ``python manage.py import_kpis adfc|mid`` reads survey
+  CSVs and writes results into workspace goals:
+  - **ADFC Fahrradklimatest** — biennial cycling satisfaction grades (1–6)
+    per city, matched to workspaces by name
+  - **MiD 2017 modal-split** — walking, cycling, transit, and car share (%)
+    per city/Kreis from the federal household travel survey
 - **`seed_unfallatlas` command** — bootstraps a German workspace with real
   Destatis accident data clipped to the workspace bounds, replacing the
   illustrative demo layer
