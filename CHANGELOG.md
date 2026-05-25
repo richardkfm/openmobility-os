@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- README now includes a clickable table of contents with links to all
+  major sections and sub-sections
+
 ### Added
 - **ADFC Fahrradklimatest KPI importer** — parses the biennial ADFC
   cycling-satisfaction survey CSV (school grades 1–6 per city) into

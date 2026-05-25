@@ -3,7 +3,7 @@
 
 # OpenMobility OS
 
-**Version:** 0.11.0 (pre-release) — see [CHANGELOG.md](CHANGELOG.md)
+**Version:** 0.11.1 (pre-release) — see [CHANGELOG.md](CHANGELOG.md)
 **License:** See [LICENSE](LICENSE)
 
 > The open, free, self-hostable operating system between open mobility data
@@ -27,6 +27,27 @@ Leipzig is the first demo workspace, but the platform is **city-agnostic**
 from day one. Any city, small town, municipality, or region worldwide can
 be added through open data, APIs, and configuration — regardless of
 country, language, data source, or administrative structure.
+
+## Table of Contents
+
+- [Deployment Modes](#deployment-modes)
+- [Screenshots](#screenshots)
+- [Quickstart](#quickstart)
+- [Core Features (MVP)](#core-features-mvp)
+- [Using the Platform](#using-the-platform)
+  - [Landing page](#landing-page)
+  - [Workspace dashboard](#workspace-dashboard)
+  - [Interactive map](#interactive-map)
+  - [Measures list and detail](#measures-list-and-detail)
+  - [Admin: logging in](#admin-logging-in)
+  - [Admin: adding a workspace](#admin-adding-a-workspace)
+  - [Admin: data hub and syncing data](#admin-data-hub-and-syncing-data)
+  - [Admin: generating measures](#admin-generating-measures)
+- [Architecture](#architecture)
+- [Production Deployment](#production-deployment)
+- [Documentation](#documentation)
+- [Contributing](#contributing)
+- [Roadmap](#roadmap)
 
 ## Deployment Modes
 
