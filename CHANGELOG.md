@@ -8,6 +8,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Django admin: full DataSource management** — the `/django-admin/` interface
+  now provides complete connector management without leaving the admin:
+  - Inline `is_enabled` checkbox in the list view (`list_editable`) for
+    quick activation/deactivation without opening the change form
+  - Bulk actions: "Enable selected", "Disable selected", "Sync now"
+  - Custom change form with a file-upload field that auto-injects the stored
+    path into `config["url"]` so CSV/GeoJSON/Unfallatlas connectors pick it up
+  - "Connector schema hint" read-only panel on the change page shows the
+    connector description and a table of all expected config keys/types
+  - `NormalizedFeatureSet` inline with feature preview (first 3 features as
+    pretty-printed JSON) for quick sanity-checking without API calls
+  - `NormalizedFeatureSet` list is read-only (auto-generated, must not be
+    hand-edited)
+
+### Fixed
+- **Map not rendering (blank canvas)** — the `#map` div was inside an
+  `overflow-hidden` flex container that had no explicit height. At certain
+  viewport sizes the container height collapsed to zero, clipping the
+  MapLibre canvas away. Fixed by moving the explicit height to a
+  `#map-wrapper` div and letting `#map` fill 100% of it.
+- **Add data source form broken (Alpine.js silent failure)** — the
+  `connectors_json` payload was rendered with `{{ connectors_json }}` directly
+  inside an HTML double-quoted `x-data` attribute. The JSON's own double-quote
+  characters terminated the attribute early, leaving Alpine.js unable to parse
+  its component definition. Fixed by injecting the JSON into a
+  `<script>window._CONNECTOR_REGISTRY = …</script>` tag and referencing
+  `window._CONNECTOR_REGISTRY` from the `x-data` attribute instead.
+
+
 - **Data hub: activate / deactivate data sources** — admins can now toggle any
   data source on or off via the "Enable / Disable" buttons in the data hub list
   and on the source detail page. Disabled sources are hidden from the map and

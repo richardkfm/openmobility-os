@@ -2,8 +2,14 @@
 {% load i18n %}
 
 {% block content %}
+{# connectors_json is injected via a <script> tag so that JSON double-quotes
+   never appear inside an HTML attribute (which would break the attribute
+   parser and cause Alpine.js to silently fail to initialise). #}
+<script>
+  window._CONNECTOR_REGISTRY = {{ connectors_json }};
+</script>
 <div class="max-w-2xl flex flex-col gap-6"
-  x-data="connectorForm({{ connectors_json }})"
+  x-data="connectorForm(window._CONNECTOR_REGISTRY)"
   x-init="init()">
 
   <nav class="text-sm text-slate-500">
