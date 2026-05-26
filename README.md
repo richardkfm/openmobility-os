@@ -3,7 +3,7 @@
 
 # OpenMobility OS
 
-**Version:** 0.13.0 (pre-release) — see [CHANGELOG.md](CHANGELOG.md)
+**Version:** 0.15.0 (pre-release) — see [CHANGELOG.md](CHANGELOG.md)
 **License:** See [LICENSE](LICENSE)
 
 > The open, free, self-hostable operating system between open mobility data
@@ -143,8 +143,13 @@ four demo workspaces: **Leipzig**, **Utrecht**, **Musterstadt**, and **Muster-La
 
 - **Multi-workspace** — arbitrary number of cities per installation
 - **Interactive maps** — MapLibre GL JS with configurable tile sources
+- **Data hub** — browser-based connector management:
+  - Add, edit, sync, enable/disable, and delete data sources from the UI
+  - Upload local CSV or GeoJSON files directly (no remote URL required)
+  - Connector description and config-field reference shown inline when adding a source
+  - Activate / deactivate toggle: disabled sources disappear from the map without being deleted
 - **Data connectors** (fully implemented):
-  - CSV (upload or URL) with column mapping and encoding detection
+  - CSV (URL or direct file upload) with column mapping and encoding detection
   - GeoJSON URL with property remapping
   - OpenStreetMap via Overpass API — thirteen built-in templates
     (`streets`, `streets_with_speed`, `bike_network`, `transit_stops`,

@@ -19,6 +19,7 @@ urlpatterns = [
     path("data/<int:pk>/", dataset_views.data_source_detail, name="data_source_detail"),
     path("data/<int:pk>/sync/", dataset_views.sync_data_source, name="data_source_sync"),
     path("data/<int:pk>/test/", dataset_views.test_data_source, name="data_source_test"),
+    path("data/<int:pk>/toggle/", dataset_views.toggle_data_source, name="data_source_toggle"),
     path("data/<int:pk>/delete/", dataset_views.delete_data_source, name="data_source_delete"),
     path("methodology/", views.workspace_methodology, name="workspace_methodology"),
     path("measures/generate/", measure_views.generate_measures_view, name="measures_generate"),

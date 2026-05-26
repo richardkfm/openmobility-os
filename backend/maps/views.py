@@ -17,7 +17,10 @@ def workspace_layer(request, workspace_slug: str, layer_kind: str):
     # Multiple data sources can publish into the same layer kind (e.g. one
     # Unfallatlas datasource per year). Aggregate across all feature sets so
     # the map sees a single FeatureCollection per layer.
-    feature_sets = NormalizedFeatureSet.objects.filter(workspace=ws, layer_kind=layer_kind)
+    # Disabled sources (is_enabled=False) are excluded from map rendering.
+    feature_sets = NormalizedFeatureSet.objects.filter(
+        workspace=ws, layer_kind=layer_kind, source__is_enabled=True
+    )
     features: list = []
     for fs in feature_sets:
         fc = fs.feature_collection or {}

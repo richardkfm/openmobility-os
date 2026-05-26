@@ -10,9 +10,7 @@ License: dl-de/by-2-0 (Datenlizenz Deutschland – Namensnennung)
 import csv
 import io
 
-import requests
-
-from ._http import request_kwargs
+from ._http import fetch_bytes
 from .base import BaseConnector, ConnectorTestResult, FetchResult
 
 SEVERITY_MAP = {"1": "fatal", "2": "serious", "3": "minor"}
@@ -78,9 +76,8 @@ class UnfallatlasConnector(BaseConnector):
     def _fetch_rows(self, config):
         url = config["url"]
         encoding = config.get("encoding", "utf-8")
-        response = requests.get(url, timeout=120, **request_kwargs(config))
-        response.raise_for_status()
-        text = response.content.decode(encoding, errors="replace")
+        content = fetch_bytes(url, config, timeout=120)
+        text = content.decode(encoding, errors="replace")
         reader = csv.DictReader(io.StringIO(text), delimiter=";")
         rows = list(reader)
         fieldnames = reader.fieldnames or []

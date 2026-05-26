@@ -8,6 +8,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Data hub: activate / deactivate data sources** — admins can now toggle any
+  data source on or off via the "Enable / Disable" buttons in the data hub list
+  and on the source detail page. Disabled sources are hidden from the map and
+  excluded from layer queries without being deleted. Visual badge clearly marks
+  disabled sources in the list with reduced opacity.
+- **Data hub: direct file upload for CSV, GeoJSON and Unfallatlas connectors**
+  — operators can now upload a local file (`.csv`, `.geojson`, `.json`) directly
+  from the browser instead of providing a remote URL. The uploaded file is stored
+  in `MEDIA_ROOT` and its path is auto-injected into the connector config. Files
+  are served via Django at `/media/` (suitable for self-hosted Docker Compose;
+  replace with nginx/Caddy proxy in high-traffic deployments).
+- **Data hub: connector description and config-schema panel** — when adding a
+  data source, selecting a connector type now shows its description and a table
+  of all configuration fields (key, type, required, label) so operators no
+  longer need to consult external docs to fill in the JSON config. The same
+  schema table appears on the source detail page.
+- **Connectors: local-file support for CSV, GeoJSON and Unfallatlas** — all
+  three connectors now transparently handle local filesystem paths in `config.url`
+  (absolute Unix paths or `file://` URIs). The new `_http.fetch_bytes` helper
+  abstracts HTTP vs. local-file reads so adding local-file support to future
+  connectors is a one-liner.
+
+### Fixed
+- **`/about` self-hosting terminal invisible** — the `components.css` `.prose
+  pre` rule overrode the dark terminal block background with `#f1f5f9`, making
+  the light-coloured text invisible (same background and foreground colour).
+  Fixed by wrapping the terminal in `not-prose` and using inline styles that
+  cannot be overridden by the cascade; the `.prose pre` rule is now scoped to
+  `.measure-description` to avoid future collisions.
+- **`/<workspace>/methodology` 500 error** — the template used a `|split`
+  filter that does not exist in the custom template-tag library, causing
+  `TemplateSyntaxError` on every page load. The broken (and empty) for-loop
+  has been removed; the weights table was already rendered correctly by the
+  lines below it.
+- **Map default state: all layers now start unchecked** — previously every
+  layer checkbox was `checked` on load, flooding the map with all data at once.
+  Layers now start hidden; users opt in by ticking the checkboxes they need.
+
+### Changed
 - **Utrecht (Netherlands) demo workspace** — second real-city demo showing
   international use of the platform. Configured with OSM layers, Dutch
   national GTFS via OVapi (commented, ready to enable), BikeMaps.org,

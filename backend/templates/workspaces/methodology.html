@@ -19,9 +19,6 @@
         </tr>
       </thead>
       <tbody>
-        {% for dim, default_w in "climate:1.5,safety:1.5,quality_of_life:1.2,social:1.2,feasibility:1.0,cost:1.0,visibility:0.6,political:0.8,goal_alignment:1.3"|split:"," %}
-        {% endfor %}
-        {# Render from Python DEFAULT_WEIGHTS — passed as context if we add it, or just show the defaults #}
         <tr class="border-t"><td class="px-3 py-2">{% trans "Climate impact" %}</td><td class="px-3 py-2">{% if scoring_weights.climate %}{{ scoring_weights.climate }}{% else %}1.5{% endif %}</td></tr>
         <tr class="border-t"><td class="px-3 py-2">{% trans "Traffic safety" %}</td><td class="px-3 py-2">{% if scoring_weights.safety %}{{ scoring_weights.safety }}{% else %}1.5{% endif %}</td></tr>
         <tr class="border-t"><td class="px-3 py-2">{% trans "Quality of life" %}</td><td class="px-3 py-2">{% if scoring_weights.quality_of_life %}{{ scoring_weights.quality_of_life }}{% else %}1.2{% endif %}</td></tr>

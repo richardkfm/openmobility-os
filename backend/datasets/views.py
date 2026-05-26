@@ -2,6 +2,7 @@
 
 import json
 import logging
+import os
 import time
 
 from django.contrib import messages
@@ -32,6 +33,9 @@ def data_hub(request, workspace_slug):
             "workspace": ws,
             "sources": sources,
             "status_choices": dict(DataSource.Status.choices),
+            "data_sources_active": sources.filter(
+                status=DataSource.Status.ACTIVE, is_enabled=True
+            ).count(),
             "page_title": _("Data hub — %(name)s") % {"name": ws.name},
         },
     )
@@ -67,10 +71,39 @@ def add_data_source(request, workspace_slug):
             attribution=attribution,
             source_url=source_url,
         )
+
+        # Handle optional file upload: store file and inject its absolute path
+        # into config["url"] so CSV / GeoJSON connectors pick it up automatically.
+        uploaded = request.FILES.get("source_file")
+        if uploaded:
+            source.source_file = uploaded
+            source.save(update_fields=["source_file"])
+            if source.source_file and "url" not in config:
+                source.config = {**config, "url": source.source_file.path}
+                source.save(update_fields=["config"])
+
         messages.success(request, _("Data source added: %(n)s") % {"n": source.name})
         return redirect(
             reverse("data_source_detail", kwargs={"workspace_slug": ws.slug, "pk": source.pk})
         )
+
+    # Serialize connector metadata (id, names, description, config_schema) so
+    # the add-form template can render dynamic connector descriptions and field
+    # hints via Alpine.js without a round-trip.
+    connectors_json = json.dumps(
+        {
+            c.id: {
+                "name": c.display_name_de,
+                "name_en": c.display_name_en,
+                "description": c.description_de,
+                "description_en": c.description_en,
+                "config_schema": c.config_schema or {},
+                "supports_file": c.id in ("csv", "geojson_url", "unfallat"),
+            }
+            for c in connectors
+        },
+        ensure_ascii=False,
+    )
 
     return render(
         request,
@@ -78,6 +111,7 @@ def add_data_source(request, workspace_slug):
         {
             "workspace": ws,
             "connectors": connectors,
+            "connectors_json": connectors_json,
             "layer_choices": DataSource.LayerKind.choices,
             "page_title": _("Add data source"),
         },
@@ -87,6 +121,30 @@ def add_data_source(request, workspace_slug):
 def data_source_detail(request, workspace_slug, pk):
     ws = get_active_workspace(workspace_slug)
     source = get_object_or_404(DataSource, workspace=ws, pk=pk)
+
+    # POST: update source file upload (admin only)
+    if request.method == "POST" and request.is_admin:
+        uploaded = request.FILES.get("source_file")
+        if uploaded:
+            source.source_file = uploaded
+            source.save(update_fields=["source_file"])
+            # Auto-inject file path into config["url"] if not already set
+            config = source.config or {}
+            if source.source_file:
+                config["url"] = source.source_file.path
+                source.config = config
+                source.save(update_fields=["config"])
+            messages.success(request, _("File uploaded and config updated."))
+        return redirect(
+            reverse("data_source_detail", kwargs={"workspace_slug": ws.slug, "pk": source.pk})
+        )
+
+    connector = None
+    try:
+        connector = get_connector(source.source_type)
+    except KeyError:
+        pass
+
     normalized = getattr(source, "normalized", None)
     return render(
         request,
@@ -95,9 +153,27 @@ def data_source_detail(request, workspace_slug, pk):
             "workspace": ws,
             "source": source,
             "normalized": normalized,
+            "connector": connector,
             "page_title": source.name,
         },
     )
+
+
+@admin_required
+@require_POST
+def toggle_data_source(request, workspace_slug, pk):
+    """Toggle the is_enabled flag on a DataSource (activate / deactivate)."""
+    ws = get_active_workspace(workspace_slug)
+    source = get_object_or_404(DataSource, workspace=ws, pk=pk)
+    source.is_enabled = not source.is_enabled
+    source.save(update_fields=["is_enabled"])
+    if source.is_enabled:
+        messages.success(request, _("Data source enabled: %(n)s") % {"n": source.name})
+    else:
+        messages.success(request, _("Data source disabled: %(n)s") % {"n": source.name})
+    # Support HTMX: return to data hub list, or honour ?next= redirect
+    next_url = request.POST.get("next") or reverse("data_hub", kwargs={"workspace_slug": ws.slug})
+    return redirect(next_url)
 
 
 @admin_required
