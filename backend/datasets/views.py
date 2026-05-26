@@ -2,7 +2,6 @@
 
 import json
 import logging
-import os
 import time
 
 from django.contrib import messages
