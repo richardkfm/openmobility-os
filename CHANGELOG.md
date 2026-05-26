@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Map container simplified** — removed the `{# ... #}` Django template comment
+  (it was appearing as literal text in the browser, indicating a Docker layer
+  cache issue where old templates were served alongside a new VERSION file) and
+  collapsed the two-div structure (`#map-wrapper` + `#map`) into a single
+  `<div id="map">`. The `overflow-hidden` on the wrapper that was collapsing the
+  MapLibre canvas in earlier attempts is gone. `#map` is now the direct flex
+  child and the MapLibre container.
+
 ### Changed
 - **README: data hub documentation expanded** — the "Admin: data hub" section
   now covers all 17 connectors in a reference table, with dedicated step-by-step
