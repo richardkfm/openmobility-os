@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **Map canvas renders reliably (JS height)** — CSS `calc(100vh - 220px)` in a
+  `<style>` block was still not guaranteeing a non-zero `clientHeight` for the
+  MapLibre container on the live deployment. The height is now set via a
+  JavaScript inline style (`element.style.height`) immediately before
+  `new maplibregl.Map(...)` initializes, which has the highest possible CSS
+  priority and is evaluated at script-execution time when the DOM is fully
+  ready. A `window.resize` handler keeps the map sized correctly after
+  viewport changes.
+
+### Fixed
 - **Map canvas reliably renders** — the previous fix moved the height to
   `#map-wrapper` and used `height: 100%` on `#map`, but `height: 100%` silently
   resolves to zero when no ancestor in the flex chain has a concrete pixel/
