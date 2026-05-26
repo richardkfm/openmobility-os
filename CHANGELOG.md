@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **README: data hub documentation expanded** — the "Admin: data hub" section
+  now covers all 17 connectors in a reference table, with dedicated step-by-step
+  guides for adding Unfallatlas accident data (file upload and remote URL paths)
+  and for using the Mobilithek catalog browser CLI. Added a new "Django admin
+  (alternative)" section documenting `/django-admin/` as a second management
+  interface. Version badge updated to current release.
+
 ### Fixed
 - **Map canvas renders reliably (JS height)** — CSS `calc(100vh - 220px)` in a
   `<style>` block was still not guaranteeing a non-zero `clientHeight` for the

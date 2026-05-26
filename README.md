@@ -3,7 +3,7 @@
 
 # OpenMobility OS
 
-**Version:** 0.15.0 (pre-release) — see [CHANGELOG.md](CHANGELOG.md)
+**Version:** 0.15.3 (pre-release) — see [CHANGELOG.md](CHANGELOG.md)
 **License:** See [LICENSE](LICENSE)
 
 > The open, free, self-hostable operating system between open mobility data
@@ -44,6 +44,9 @@ language, data source, or administrative structure.
   - [Admin: logging in](#admin-logging-in)
   - [Admin: adding a workspace](#admin-adding-a-workspace)
   - [Admin: data hub and syncing data](#admin-data-hub-and-syncing-data)
+  - [Adding Unfallatlas accident data](#adding-unfallatlas-accident-data)
+  - [Mobilithek catalog browser](#mobilithek-catalog-browser)
+  - [Django admin (alternative)](#django-admin-alternative)
   - [Admin: generating measures](#admin-generating-measures)
 - [Architecture](#architecture)
 - [Production Deployment](#production-deployment)
@@ -365,27 +368,43 @@ docker compose exec web python manage.py seed_demo --only your-city-slug
 ### Admin: data hub and syncing data
 
 The data hub at `/<slug>/data/` is the control centre for all data sources.
+An alternative full-featured management interface is available at
+`/django-admin/datasets/datasource/` (see [Django admin](#django-admin-alternative) below).
 
 **Adding a data source:**
 
 1. Click **Add data source**.
-2. Choose the **connector type**:
-   - **CSV** — provide a URL, delimiter, encoding, and the column names for
-     latitude/longitude (or a WKT geometry column).
-   - **GeoJSON URL** — provide a URL to any GeoJSON FeatureCollection.
-     Optionally remap or filter properties.
-   - **OSM Overpass** — pick one of eight built-in templates (streets,
-     streets-with-speed, bike network, transit stops, schools, parking,
-     trees, parks-and-green) or write a custom Overpass QL query. The
-     workspace bounding box is injected automatically.
-   - **GTFS static** — provide a URL to a GTFS zip and pick the output layer
-     (`transit_stops`, `transit_routes`, or `transit_coverage`). Stops are
-     enriched with average headway, night service flag, and barrier-free
-     status; coverage emits configurable buffer polygons (default 400 m).
-   - **Manual** — for hand-entered KPI values (no network fetch).
+2. Choose the **connector type** (the form shows a description and the expected
+   config fields for the selected connector):
+
+   | Connector | What to provide |
+   |---|---|
+   | **CSV** | URL or upload a local file; delimiter, encoding, lat/lon column names |
+   | **GeoJSON URL** | URL to any GeoJSON FeatureCollection; optional property remapping |
+   | **OSM Overpass** | Pick a built-in template (streets, bike network, transit stops, schools, parking, trees, districts, …) or write a custom QL query; workspace bbox injected automatically |
+   | **GTFS static** | URL to a GTFS zip; pick output layer (`transit_stops`, `transit_routes`, `transit_coverage`) |
+   | **Unfallatlas (Destatis)** | URL to the Destatis CSV *or* upload the file directly — see [Adding Unfallatlas accident data](#adding-unfallatlas-accident-data) |
+   | **Mobilithek (German NAP)** | `distribution_url`, `format_hint` (`gtfs`/`geojson`/`csv`/`json`), `mode` (`open`/`subscriber`) — see [Mobilithek catalog browser](#mobilithek-catalog-browser) |
+   | **BikeMaps.org** | Workspace bbox is used automatically; no config required |
+   | **CKAN portal** | `portal_url` + `resource_id` (or `package_id`); works with GovData, opendata.leipzig.de, daten.berlin.de, and any other CKAN instance |
+   | **OGC WFS** | `url`, `type_name`; workspace bbox applied automatically |
+   | **Generic REST/JSON** | `url`, `list_path` (dot-notation into the JSON), `lat_field`/`lon_field` |
+   | **German federal presets** | `BNetzA EV charging`, `UBA air quality`, `DWD climate`, `BASt traffic` — no config; URL and column mapping are built in |
+   | **Zensus 2022 grid** | `url` to the Destatis 100 m CSV; clips to workspace bbox |
+   | **Manual** | For hand-entered KPI values; no network fetch |
+
 3. Select the **layer kind** that best describes what this data represents
    (e.g. `bike_network`, `schools`, `accidents`).
-4. Click **Save**.
+4. Optionally upload a local CSV or GeoJSON file — the file is stored on disk and
+   its path is auto-filled into `config["url"]` so the connector picks it up.
+5. Click **Add data source**.
+
+**Enabling and disabling sources:**
+
+Each row in the data hub list has an **Enable / Disable** toggle button. Disabled
+sources are hidden from the map and excluded from measure scoring, but their data
+is not deleted. Use this to temporarily hide a layer without losing the sync
+history. The Django admin's list view has an inline checkbox for the same toggle.
 
 **Testing a connection:**
 
@@ -396,19 +415,11 @@ database during a test.
 
 **Syncing:**
 
-Click **Sync** (or run `python manage.py sync_datasources <slug>` from the
-command line) to pull fresh data. The platform:
+Click **Sync** to pull fresh data. The platform:
 
 1. Calls the connector's `fetch()` method.
-2. Writes the returned GeoJSON into a `NormalizedFeatureSet` record linked to
-   this data source.
-3. Updates the status badge:
-   - `active` — sync succeeded
-   - `error` — sync failed; the error message is shown in red below the row
-   - `pending` — sync is in progress
-
-The status table shows record count and the timestamp of the last successful
-sync for each source.
+2. Writes the returned GeoJSON into a `NormalizedFeatureSet` record.
+3. Updates the status badge: `active` (OK), `error` (see error message), or `pending` (in progress).
 
 **Bulk sync from the command line:**
 
@@ -419,6 +430,90 @@ docker compose exec web python manage.py sync_datasources your-city-slug
 # Sync all workspaces
 docker compose exec web python manage.py sync_datasources
 ```
+
+---
+
+### Adding Unfallatlas accident data
+
+The **Unfallatlas** connector reads Destatis accident CSVs (semicolon-delimited,
+German decimal comma). No env changes are needed — just a URL or a file upload.
+
+**Step 1 — Download the CSV from Destatis:**
+
+1. Go to [unfallatlas.statistikportal.de](https://unfallatlas.statistikportal.de)
+2. Click **Daten herunterladen**
+3. Choose year(s) and federal state (e.g. *Sachsen* for Leipzig, *Bayern* for Munich)
+4. Download the ZIP and extract the CSV
+
+**Step 2 — Add the data source:**
+
+Option A — **Upload the file** (simplest):
+1. Go to `/<slug>/data/add/`, choose connector **Unfallatlas**, layer kind **Accidents**
+2. Scroll to "Upload local file" and select the downloaded CSV
+3. Leave config empty (the file path is auto-filled); click **Add data source**
+
+Option B — **Remote URL**:
+1. Paste the direct CSV download URL into the config as `{"url": "https://…"}`
+2. If the file uses `latin-1` encoding (older exports): `{"url": "…", "encoding": "latin-1"}`
+
+The connector clips rows to the workspace bounding box by default (`clip_to_workspace: true`).
+Set `"clip_to_workspace": false` to import all rows regardless of location.
+
+**Bootstrapping via command line:**
+
+```bash
+docker compose exec web python manage.py seed_unfallatlas your-city-slug \
+  --file /path/to/unfallatlas.csv
+```
+
+---
+
+### Mobilithek catalog browser
+
+The **Mobilithek** connector accesses Germany's National Access Point for mobility
+data. To discover dataset titles, publishers, and distribution URLs without
+manually searching the portal, use the built-in catalog browser:
+
+```bash
+# Search for datasets related to Leipzig
+docker compose exec web python manage.py browse_mobilithek -k "Leipzig" --formats
+
+# Show only directly parseable datasets (GTFS, GeoJSON, CSV, JSON)
+docker compose exec web python manage.py browse_mobilithek -k "GTFS" --supported-only
+
+# Browse everything (first 20 results)
+docker compose exec web python manage.py browse_mobilithek
+```
+
+The output shows the dataset UID, title, publisher, tags, and the distribution
+URL(s). Copy the distribution URL into a Mobilithek data source config:
+
+```json
+{
+  "distribution_url": "https://mobilithek.info/offers/…",
+  "format_hint": "gtfs",
+  "mode": "open"
+}
+```
+
+For subscriber-mode datasets (X.509 client certificate required), mount the cert
+and key files into the container and add `cert_path` / `key_path` to the config.
+
+---
+
+### Django admin (alternative)
+
+All data source management is also available at `/django-admin/` (requires the
+same `ADMIN_TOKEN` as the workspace UI — log in with `admin` / `<ADMIN_TOKEN>`).
+
+The Django admin offers:
+
+- **List view** — all data sources across all workspaces, with an inline
+  `is_enabled` checkbox, status badge, record count, and last-sync timestamp
+- **Bulk actions** — *Enable selected*, *Disable selected*, *Sync now*
+- **Change form** — upload or replace a source file; view the connector's
+  config schema as a table; see the last sync's feature collection preview
+- **Filter / search** — by workspace, status, connector type, layer kind
 
 ---
 
