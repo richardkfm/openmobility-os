@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Map canvas reliably renders** — the previous fix moved the height to
+  `#map-wrapper` and used `height: 100%` on `#map`, but `height: 100%` silently
+  resolves to zero when no ancestor in the flex chain has a concrete pixel/
+  viewport height. The height rule is now placed directly on `#map` itself
+  (`calc(100vh - 220px); min-height: 480px`) so MapLibre always reads a
+  non-zero `clientHeight` at initialisation time, regardless of the surrounding
+  flex layout.
+
 ### Added
 - **Django admin: full DataSource management** — the `/django-admin/` interface
   now provides complete connector management without leaving the admin:
