@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Utrecht (Netherlands) demo workspace** — second real-city demo showing
+  international use of the platform. Configured with OSM layers, Dutch
+  national GTFS via OVapi (commented, ready to enable), BikeMaps.org,
+  illustrative accident data, six Utrecht-specific mobility goals
+  (Fietsvisie, Autoluwe Binnenstad, SPV Vision Zero, Fietsersbond score),
+  and five pre-scored measures covering car-free zone expansion, cycling
+  corridors, fietsstraten school zones, tram frequency, and P+R expansion.
+  Demonstrates that the platform works outside Germany without code changes
 - **Accident data sufficiency indicator** on the workspace dashboard — compares
   accident record count against a population-derived expectation (~3 per 1,000
   residents/year) and rates the dataset as "Good", "Thin", or "Placeholder".

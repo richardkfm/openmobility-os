@@ -23,10 +23,12 @@ It answers questions like:
   data-backed?
 - How can these decisions be explained to the public?
 
-Leipzig is the first demo workspace, but the platform is **city-agnostic**
-from day one. Any city, small town, municipality, or region worldwide can
-be added through open data, APIs, and configuration — regardless of
-country, language, data source, or administrative structure.
+Leipzig (Germany) and Utrecht (Netherlands) are the two real-city demo
+workspaces — one developing its cycling infrastructure, the other a
+world-leading cycling city. The platform is **city-agnostic** from day one.
+Any city, small town, municipality, or region worldwide can be added
+through open data, APIs, and configuration — regardless of country,
+language, data source, or administrative structure.
 
 ## Table of Contents
 
@@ -94,7 +96,7 @@ docker compose up --build
 ```
 
 Open **http://localhost:8000** — you should see the platform landing page with
-three demo workspaces: **Leipzig**, **Musterstadt**, and **Muster-Landkreis**.
+four demo workspaces: **Leipzig**, **Utrecht**, **Musterstadt**, and **Muster-Landkreis**.
 
 ### Step-by-step (for novice users)
 
@@ -131,7 +133,7 @@ three demo workspaces: **Leipzig**, **Musterstadt**, and **Muster-Landkreis**.
 
 6. **Open in your browser**
    - Visit http://localhost:8000
-   - You should see three demo workspaces immediately
+   - You should see four demo workspaces immediately
    - To add a new workspace: click "New workspace" (requires ADMIN_TOKEN from `.env`)
 
 7. **To stop**, press `Ctrl+C` in the terminal. Data persists in the

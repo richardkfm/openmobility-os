@@ -1,0 +1,586 @@
+slug: utrecht
+name: Utrecht
+kind: city
+country_code: NL
+region: Utrecht
+language_code: nl
+timezone: Europe/Amsterdam
+population: 361924
+area_km2: 99.21
+is_demo: true
+default_zoom: 13
+
+# Rough Utrecht bounding box (EPSG:4326)
+bounds:
+  west: 5.03
+  south: 52.04
+  east: 5.18
+  north: 52.13
+
+center:
+  lon: 5.1214
+  lat: 52.0907
+
+description_de: |
+  Utrecht ist die zweite reale Demo-Instanz von OpenMobility OS und zeigt,
+  wie die Plattform international funktioniert. Utrecht ist weltbekannt fuer
+  seine vorbildliche Radverkehrsinfrastruktur und ambitionierte
+  Mobilitaetspolitik. Alle Inhalte sind Beispieldaten. Fuer eine produktive
+  Nutzung muessen Quellen, Gewichtungen und Massnahmen von der Kommune
+  validiert werden.
+description_en: |
+  Utrecht is the second real-city demo workspace of OpenMobility OS, showing
+  that the platform works internationally. Utrecht is world-renowned for its
+  exemplary cycling infrastructure and ambitious mobility policy. All content
+  is illustrative — for production use, sources, weights, and measures must
+  be validated by the municipality.
+
+goals:
+  - code: modal_shift_2030
+    title_de: Modal-Split Umweltverbund bis 2030
+    title_en: Sustainable transport modal split by 2030
+    target_value: 73
+    current_value: 60
+    unit: "%"
+    deadline_year: 2030
+    rationale_de: "Strategisches Ziel aus dem Mobiliteitsplan Utrecht 2040. Aktuell ca. 60 % (Rad 33 % + OeV 10 % + Fuss 17 %)."
+    rationale_en: "Strategic target from Mobiliteitsplan Utrecht 2040. Currently ~60 % (bike 33 % + transit 10 % + walking 17 %)."
+    source_url: https://www.utrecht.nl/bestuur-en-organisatie/beleid/mobiliteit/
+
+  - code: vision_zero_2035
+    title_de: Vision Zero — keine Verkehrstoten bis 2035
+    title_en: Vision Zero — zero road fatalities by 2035
+    target_value: 0
+    current_value: 4
+    unit: "pro Jahr / per year"
+    deadline_year: 2035
+    rationale_de: "Niederlaendischer Strategisch Plan Verkeersveiligheid (SPV 2030). Utrecht hatte zuletzt ca. 4 Verkehrstote pro Jahr."
+    rationale_en: "Dutch Strategisch Plan Verkeersveiligheid (SPV 2030). Utrecht had ~4 fatalities per year in recent years."
+    source_url: https://www.rijksoverheid.nl/onderwerpen/verkeersveiligheid
+
+  - code: bike_share_2030
+    title_de: Radverkehrsanteil 40 % bis 2030
+    title_en: Cycling mode share 40% by 2030
+    target_value: 40
+    current_value: 33
+    unit: "%"
+    deadline_year: 2030
+    rationale_de: "Utrecht Fietsvisie 2020–2030. Aktueller Radverkehrsanteil ca. 33 %."
+    rationale_en: "Utrecht Fietsvisie 2020–2030. Current cycling mode share ~33 %."
+    source_url: https://www.utrecht.nl/bestuur-en-organisatie/beleid/mobiliteit/fiets/
+
+  - code: car_share_2030
+    title_de: MIV-Anteil unter 30 % bis 2030
+    title_en: Car mode share below 30% by 2030
+    target_value: 30
+    current_value: 40
+    unit: "%"
+    deadline_year: 2030
+    rationale_de: "Mobiliteitsplan Utrecht und nationales Klimaatakkoord."
+    rationale_en: "Mobiliteitsplan Utrecht and national Klimaatakkoord."
+    source_url: https://www.utrecht.nl/bestuur-en-organisatie/beleid/mobiliteit/
+
+  - code: car_free_center_2030
+    title_de: Reduktion MIV-Verkehr Innenstadt bis 2030
+    title_en: Inner-city car traffic reduction by 2030
+    target_value: 80
+    current_value: 50
+    unit: "% Reduktion / % reduction vs 2019"
+    deadline_year: 2030
+    rationale_de: "Utrechts Programm Autoluwe Binnenstad — autoarme Innenstadt."
+    rationale_en: "Utrecht's Autoluwe Binnenstad (car-light inner city) programme."
+    source_url: https://www.utrecht.nl/wonen-en-leven/verkeer/autoluwe-binnenstad/
+
+  - code: fietsersbond_score
+    title_de: Fietsersbond Zufriedenheitswert
+    title_en: Fietsersbond cycling satisfaction score
+    target_value: 7.5
+    current_value: 7.1
+    unit: "Note / score (1–10)"
+    rationale_de: "Jaehrliche Erhebung des Fietsersbond. Skala 1–10 (hoeher = besser). Utrecht: 7,1."
+    rationale_en: "Annual Fietsersbond survey. Scale 1–10 (higher is better). Utrecht: 7.1."
+    source_url: https://www.fietsersbond.nl/
+
+data_sources:
+  - name: OSM — Bike network
+    source_type: osm_overpass
+    layer_kind: bike_network
+    license: ODbL
+    attribution: "© OpenStreetMap contributors"
+    source_url: https://www.openstreetmap.org/
+    config:
+      template: bike_network
+
+  - name: OSM — Streets with speed limits
+    source_type: osm_overpass
+    layer_kind: streets_with_speed
+    license: ODbL
+    attribution: "© OpenStreetMap contributors"
+    config:
+      template: streets_with_speed
+
+  - name: OSM — Transit stops
+    source_type: osm_overpass
+    layer_kind: transit_stops
+    license: ODbL
+    config:
+      template: transit_stops
+
+  # GTFS feed: Netherlands-wide public transit (OVapi). Covers U-OV (bus/tram),
+  # NS (rail), and all other Dutch operators. CC0. The file is large (~1 GB);
+  # the connector clips to the workspace bounds automatically. Uncomment when
+  # ready to sync Dutch transit data.
+  #
+  # - name: GTFS — Stops (OVapi NL)
+  #   source_type: gtfs
+  #   layer_kind: transit_stops
+  #   license: "CC0"
+  #   attribution: "OVapi.nl — Netherlands public transit"
+  #   source_url: https://gtfs.ovapi.nl/
+  #   config:
+  #     url: https://gtfs.ovapi.nl/nl/gtfs-nl.zip
+  #     layer: transit_stops
+  # - name: GTFS — Routes (OVapi NL)
+  #   source_type: gtfs
+  #   layer_kind: transit_routes
+  #   license: "CC0"
+  #   attribution: "OVapi.nl — Netherlands public transit"
+  #   source_url: https://gtfs.ovapi.nl/
+  #   config:
+  #     url: https://gtfs.ovapi.nl/nl/gtfs-nl.zip
+  #     layer: transit_routes
+  # - name: GTFS — Coverage 400 m (OVapi NL)
+  #   source_type: gtfs
+  #   layer_kind: transit_coverage
+  #   license: "CC0"
+  #   attribution: "OVapi.nl — Netherlands public transit"
+  #   source_url: https://gtfs.ovapi.nl/
+  #   config:
+  #     url: https://gtfs.ovapi.nl/nl/gtfs-nl.zip
+  #     layer: transit_coverage
+  #     coverage_buffer_m: 400
+
+  - name: OSM — Schools
+    source_type: osm_overpass
+    layer_kind: schools
+    license: ODbL
+    config:
+      template: schools
+
+  # Demo accident data spread across 2021–2025 so the year filter on the map
+  # is meaningful out of the box. Replace with the BRON connector or a Dutch
+  # accident CSV for production use.
+  - name: Demo — Accidents (illustrative data 2021–2025)
+    source_type: manual
+    layer_kind: accidents
+    license: "CC0 (example data — not real accident records)"
+    attribution: "Illustrative demo data only"
+    config:
+      feature_collection:
+        type: FeatureCollection
+        features:
+          # ---- 2021 ----
+          - type: Feature
+            properties: {severity: fatal,   year: 2021, date: "2021-02", time_of_day: night,   weather: wet,  involved_modes: ["pedestrian", "car"], vulnerable_road_user: true,  intersection_type: crossing,   speed_limit: 50}
+            geometry: {type: Point, coordinates: [5.1210, 52.0910]}
+          - type: Feature
+            properties: {severity: serious, year: 2021, date: "2021-04", time_of_day: morning, weather: dry,  involved_modes: ["cyclist", "car"],   vulnerable_road_user: true,  intersection_type: t_junction, speed_limit: 50}
+            geometry: {type: Point, coordinates: [5.1125, 52.1050]}
+          - type: Feature
+            properties: {severity: serious, year: 2021, date: "2021-06", time_of_day: day,     weather: dry,  involved_modes: ["car", "car"],       vulnerable_road_user: false, intersection_type: roundabout, speed_limit: 50}
+            geometry: {type: Point, coordinates: [5.0680, 52.0720]}
+          - type: Feature
+            properties: {severity: minor,   year: 2021, date: "2021-07", time_of_day: evening, weather: dry,  involved_modes: ["cyclist"],          vulnerable_road_user: true,  intersection_type: none,       speed_limit: 30}
+            geometry: {type: Point, coordinates: [5.1300, 52.0920]}
+          - type: Feature
+            properties: {severity: minor,   year: 2021, date: "2021-09", time_of_day: day,     weather: dry,  involved_modes: ["car"],              vulnerable_road_user: false, intersection_type: t_junction, speed_limit: 50}
+            geometry: {type: Point, coordinates: [5.0950, 52.0880]}
+          - type: Feature
+            properties: {severity: minor,   year: 2021, date: "2021-10", time_of_day: morning, weather: wet,  involved_modes: ["car", "car"],       vulnerable_road_user: false, intersection_type: crossing,   speed_limit: 50}
+            geometry: {type: Point, coordinates: [5.0520, 52.0850]}
+          - type: Feature
+            properties: {severity: minor,   year: 2021, date: "2021-12", time_of_day: night,   weather: wet,  involved_modes: ["car"],              vulnerable_road_user: false, intersection_type: none,       speed_limit: 30}
+            geometry: {type: Point, coordinates: [5.1400, 52.0650]}
+          # ---- 2022 ----
+          - type: Feature
+            properties: {severity: fatal,   year: 2022, date: "2022-10", time_of_day: night,   weather: wet,  involved_modes: ["cyclist", "truck"], vulnerable_road_user: true,  intersection_type: crossing,   speed_limit: 50}
+            geometry: {type: Point, coordinates: [5.1050, 52.1100]}
+          - type: Feature
+            properties: {severity: serious, year: 2022, date: "2022-03", time_of_day: morning, weather: dry,  involved_modes: ["pedestrian"],       vulnerable_road_user: true,  intersection_type: crossing,   speed_limit: 50}
+            geometry: {type: Point, coordinates: [5.1190, 52.0870]}
+          - type: Feature
+            properties: {severity: serious, year: 2022, date: "2022-05", time_of_day: day,     weather: dry,  involved_modes: ["cyclist", "car"],   vulnerable_road_user: true,  intersection_type: t_junction, speed_limit: 30}
+            geometry: {type: Point, coordinates: [5.1320, 52.0960]}
+          - type: Feature
+            properties: {severity: minor,   year: 2022, date: "2022-06", time_of_day: evening, weather: dry,  involved_modes: ["car", "car"],       vulnerable_road_user: false, intersection_type: roundabout, speed_limit: 30}
+            geometry: {type: Point, coordinates: [5.0880, 52.0980]}
+          - type: Feature
+            properties: {severity: minor,   year: 2022, date: "2022-08", time_of_day: day,     weather: dry,  involved_modes: ["cyclist"],          vulnerable_road_user: true,  intersection_type: none,       speed_limit: 30}
+            geometry: {type: Point, coordinates: [5.1150, 52.0830]}
+          - type: Feature
+            properties: {severity: minor,   year: 2022, date: "2022-11", time_of_day: morning, weather: wet,  involved_modes: ["car", "car"],       vulnerable_road_user: false, intersection_type: none,       speed_limit: 30}
+            geometry: {type: Point, coordinates: [5.0750, 52.0780]}
+          - type: Feature
+            properties: {severity: minor,   year: 2022, date: "2022-07", time_of_day: evening, weather: dry,  involved_modes: ["car", "truck"],     vulnerable_road_user: false, intersection_type: t_junction, speed_limit: 50}
+            geometry: {type: Point, coordinates: [5.0620, 52.0920]}
+          # ---- 2023 ----
+          - type: Feature
+            properties: {severity: fatal,   year: 2023, date: "2023-05", time_of_day: evening, weather: wet,  involved_modes: ["cyclist", "car"],   vulnerable_road_user: true,  intersection_type: crossing,   speed_limit: 50}
+            geometry: {type: Point, coordinates: [5.1214, 52.0907]}
+          - type: Feature
+            properties: {severity: serious, year: 2023, date: "2023-03", time_of_day: morning, weather: dry,  involved_modes: ["pedestrian", "car"], vulnerable_road_user: true, intersection_type: t_junction, speed_limit: 50}
+            geometry: {type: Point, coordinates: [5.1080, 52.1020]}
+          - type: Feature
+            properties: {severity: serious, year: 2023, date: "2023-02", time_of_day: day,     weather: wet,  involved_modes: ["pedestrian", "car"], vulnerable_road_user: true, intersection_type: crossing,   speed_limit: 50}
+            geometry: {type: Point, coordinates: [5.0980, 52.0760]}
+          - type: Feature
+            properties: {severity: serious, year: 2023, date: "2023-07", time_of_day: evening, weather: dry,  involved_modes: ["cyclist", "car"],   vulnerable_road_user: true,  intersection_type: crossing,   speed_limit: 50}
+            geometry: {type: Point, coordinates: [5.1550, 52.0820]}
+          - type: Feature
+            properties: {severity: minor,   year: 2023, date: "2023-06", time_of_day: day,     weather: dry,  involved_modes: ["cyclist", "car"],   vulnerable_road_user: true,  intersection_type: t_junction, speed_limit: 30}
+            geometry: {type: Point, coordinates: [5.1280, 52.1070]}
+          - type: Feature
+            properties: {severity: minor,   year: 2023, date: "2023-01", time_of_day: day,     weather: wet,  involved_modes: ["car"],              vulnerable_road_user: false, intersection_type: none,       speed_limit: 30}
+            geometry: {type: Point, coordinates: [5.1100, 52.0950]}
+          - type: Feature
+            properties: {severity: minor,   year: 2023, date: "2023-09", time_of_day: day,     weather: dry,  involved_modes: ["cyclist"],          vulnerable_road_user: true,  intersection_type: none,       speed_limit: 30}
+            geometry: {type: Point, coordinates: [5.0850, 52.0870]}
+          - type: Feature
+            properties: {severity: minor,   year: 2023, date: "2023-05", time_of_day: evening, weather: dry,  involved_modes: ["car", "car"],       vulnerable_road_user: false, intersection_type: t_junction, speed_limit: 50}
+            geometry: {type: Point, coordinates: [5.0700, 52.1000]}
+          # ---- 2024 ----
+          - type: Feature
+            properties: {severity: fatal,   year: 2024, date: "2024-08", time_of_day: night,   weather: wet,  involved_modes: ["pedestrian", "truck"], vulnerable_road_user: true, intersection_type: crossing,   speed_limit: 50}
+            geometry: {type: Point, coordinates: [5.1160, 52.0800]}
+          - type: Feature
+            properties: {severity: serious, year: 2024, date: "2024-04", time_of_day: morning, weather: dry,  involved_modes: ["cyclist"],          vulnerable_road_user: true,  intersection_type: none,       speed_limit: 30}
+            geometry: {type: Point, coordinates: [5.1350, 52.1030]}
+          - type: Feature
+            properties: {severity: serious, year: 2024, date: "2024-06", time_of_day: day,     weather: dry,  involved_modes: ["car", "car"],       vulnerable_road_user: false, intersection_type: roundabout, speed_limit: 50}
+            geometry: {type: Point, coordinates: [5.0580, 52.0680]}
+          - type: Feature
+            properties: {severity: serious, year: 2024, date: "2024-07", time_of_day: evening, weather: dry,  involved_modes: ["pedestrian", "car"], vulnerable_road_user: true, intersection_type: crossing,   speed_limit: 50}
+            geometry: {type: Point, coordinates: [5.0920, 52.1080]}
+          - type: Feature
+            properties: {severity: minor,   year: 2024, date: "2024-02", time_of_day: morning, weather: wet,  involved_modes: ["car", "car"],       vulnerable_road_user: false, intersection_type: t_junction, speed_limit: 50}
+            geometry: {type: Point, coordinates: [5.1420, 52.0900]}
+          - type: Feature
+            properties: {severity: minor,   year: 2024, date: "2024-05", time_of_day: day,     weather: dry,  involved_modes: ["cyclist", "car"],   vulnerable_road_user: true,  intersection_type: t_junction, speed_limit: 30}
+            geometry: {type: Point, coordinates: [5.1060, 52.0940]}
+          - type: Feature
+            properties: {severity: minor,   year: 2024, date: "2024-09", time_of_day: night,   weather: dry,  involved_modes: ["car"],              vulnerable_road_user: false, intersection_type: none,       speed_limit: 30}
+            geometry: {type: Point, coordinates: [5.0780, 52.0830]}
+          - type: Feature
+            properties: {severity: minor,   year: 2024, date: "2024-11", time_of_day: evening, weather: wet,  involved_modes: ["cyclist"],          vulnerable_road_user: true,  intersection_type: none,       speed_limit: 30}
+            geometry: {type: Point, coordinates: [5.1250, 52.0750]}
+          # ---- 2025 ----
+          - type: Feature
+            properties: {severity: fatal,   year: 2025, date: "2025-03", time_of_day: evening, weather: wet,  involved_modes: ["cyclist", "car"],   vulnerable_road_user: true,  intersection_type: crossing,   speed_limit: 50}
+            geometry: {type: Point, coordinates: [5.1180, 52.0980]}
+          - type: Feature
+            properties: {severity: serious, year: 2025, date: "2025-02", time_of_day: morning, weather: dry,  involved_modes: ["pedestrian", "car"], vulnerable_road_user: true, intersection_type: t_junction, speed_limit: 50}
+            geometry: {type: Point, coordinates: [5.1030, 52.1060]}
+          - type: Feature
+            properties: {severity: serious, year: 2025, date: "2025-05", time_of_day: day,     weather: dry,  involved_modes: ["cyclist"],          vulnerable_road_user: true,  intersection_type: none,       speed_limit: 30}
+            geometry: {type: Point, coordinates: [5.0900, 52.0900]}
+          - type: Feature
+            properties: {severity: serious, year: 2025, date: "2025-06", time_of_day: evening, weather: dry,  involved_modes: ["cyclist", "car"],   vulnerable_road_user: true,  intersection_type: crossing,   speed_limit: 50}
+            geometry: {type: Point, coordinates: [5.1500, 52.0770]}
+          - type: Feature
+            properties: {severity: minor,   year: 2025, date: "2025-01", time_of_day: morning, weather: wet,  involved_modes: ["car", "car"],       vulnerable_road_user: false, intersection_type: roundabout, speed_limit: 30}
+            geometry: {type: Point, coordinates: [5.0650, 52.0950]}
+          - type: Feature
+            properties: {severity: minor,   year: 2025, date: "2025-04", time_of_day: day,     weather: dry,  involved_modes: ["pedestrian"],       vulnerable_road_user: true,  intersection_type: crossing,   speed_limit: 50}
+            geometry: {type: Point, coordinates: [5.1380, 52.0850]}
+          - type: Feature
+            properties: {severity: minor,   year: 2025, date: "2025-07", time_of_day: day,     weather: dry,  involved_modes: ["car", "truck"],     vulnerable_road_user: false, intersection_type: t_junction, speed_limit: 50}
+            geometry: {type: Point, coordinates: [5.0550, 52.0800]}
+          - type: Feature
+            properties: {severity: minor,   year: 2025, date: "2025-08", time_of_day: evening, weather: dry,  involved_modes: ["cyclist", "car"],   vulnerable_road_user: true,  intersection_type: t_junction, speed_limit: 30}
+            geometry: {type: Point, coordinates: [5.1140, 52.1110]}
+          - type: Feature
+            properties: {severity: minor,   year: 2025, date: "2025-10", time_of_day: day,     weather: dry,  involved_modes: ["car"],              vulnerable_road_user: false, intersection_type: none,       speed_limit: 30}
+            geometry: {type: Point, coordinates: [5.1270, 52.0700]}
+
+  # Production: replace the demo source above by importing real BRON
+  # (Bestand geRegistreerde Ongevallen Nederland) data from Rijkswaterstaat.
+  # BRON is the Dutch national accident registry. Download CSV from:
+  # https://data.overheid.nl/ → search "BRON verkeersongevallen"
+
+  # BikeMaps.org — global crowdsourced cycling-incident reports. Coverage in
+  # the Netherlands varies; this source will yield zero features in regions
+  # without community reporting — useful information for the operator.
+  - name: BikeMaps.org — Crowdsourced cycling reports
+    source_type: bikemaps
+    layer_kind: accidents
+    license: "CC BY 4.0"
+    attribution: "© BikeMaps.org contributors"
+    source_url: https://bikemaps.org/
+    config:
+      include_collisions: true
+      include_near_misses: true
+      include_hazards: false
+
+  # Districts come from OSM. In the Netherlands, admin_level 9 maps to "wijk"
+  # (neighborhood) and admin_level 10 to "buurt" (sub-neighborhood). The same
+  # template used for Leipzig's Stadtbezirke/Ortsteile works globally.
+  - name: OSM — Wijken / Buurten (districts)
+    source_type: osm_overpass
+    layer_kind: districts
+    license: ODbL
+    attribution: "© OpenStreetMap contributors"
+    source_url: https://www.openstreetmap.org/
+    config:
+      template: districts
+
+  # ---- Decision-support overlays -----------------------------------------
+  # These layers populate the equity and electrification scoring rationales.
+  # All are stock OSM templates — no per-city API keys needed.
+
+  - name: OSM — Kindergartens / crèches
+    source_type: osm_overpass
+    layer_kind: public_buildings
+    license: ODbL
+    attribution: "© OpenStreetMap contributors"
+    source_url: https://www.openstreetmap.org/
+    config:
+      template: kindergartens
+
+  - name: OSM — Hospitals & clinics
+    source_type: osm_overpass
+    layer_kind: public_buildings
+    license: ODbL
+    attribution: "© OpenStreetMap contributors"
+    source_url: https://www.openstreetmap.org/
+    config:
+      template: hospitals
+
+  - name: OSM — Public buildings & amenities
+    source_type: osm_overpass
+    layer_kind: public_buildings
+    license: ODbL
+    attribution: "© OpenStreetMap contributors"
+    source_url: https://www.openstreetmap.org/
+    config:
+      template: public_buildings
+
+  - name: OSM — Pedestrian crossings
+    source_type: osm_overpass
+    layer_kind: pedestrian_crossings
+    license: ODbL
+    attribution: "© OpenStreetMap contributors"
+    source_url: https://www.openstreetmap.org/
+    config:
+      template: pedestrian_crossings
+
+  - name: OSM — EV charging stations
+    source_type: osm_overpass
+    layer_kind: ev_charging
+    license: ODbL
+    attribution: "© OpenStreetMap contributors"
+    source_url: https://www.openstreetmap.org/
+    config:
+      template: ev_chargers_osm
+
+  # ---- Optional Dutch national & municipal portals ----------------------
+  # The following commented-out examples are ready to enable once an
+  # operator has confirmed the live URLs. They are documented inline so
+  # that fresh `docker compose up` never depends on third-party uptime.
+  #
+  # NDOV Loket / OVapi — real-time GTFS for Netherlands public transit.
+  #
+  # - name: OVapi — GTFS-RT Netherlands
+  #   source_type: gtfs
+  #   layer_kind: transit_stops
+  #   license: "CC0"
+  #   attribution: "OVapi.nl"
+  #   source_url: https://gtfs.ovapi.nl/
+  #   config:
+  #     url: https://gtfs.ovapi.nl/nl/gtfs-nl.zip
+  #     layer: transit_stops
+  #
+  # opendata.utrecht.nl (CKAN) — municipal open data portal. Example:
+  # cycling count data, parking occupancy, air quality.
+  #
+  # - name: opendata.utrecht.nl — Fietsteldata
+  #   source_type: ckan
+  #   layer_kind: cycling_counts
+  #   license: "CC0"
+  #   attribution: "Gemeente Utrecht"
+  #   source_url: https://opendata.utrecht.nl/
+  #   config:
+  #     portal_url: https://ckan.dataplatform.nl
+  #     package_id: <package-id>
+  #
+  # CBS StatLine — Dutch national statistics (demographics, modal split).
+  #
+  # - name: CBS — Bevolking per wijk
+  #   source_type: rest
+  #   layer_kind: demographics
+  #   license: "CC BY 4.0"
+  #   attribution: "Centraal Bureau voor de Statistiek"
+  #   source_url: https://opendata.cbs.nl/
+  #   config:
+  #     url: <CBS StatLine OData URL>
+  #     json_path: value
+  #     geometry_mapping: { lat: latitude, lon: longitude }
+
+measures:
+  - slug: domplein-car-free-expansion
+    category: public_space
+    title_de: Autofreie Zone um den Domplein erweitern
+    title_en: Expand the car-free zone around Domplein
+    summary_de: Erweiterung der autofreien Innenstadt auf angrenzende Strassen rund um Domplein, Oudegracht und Twijnstraat.
+    summary_en: Extend the existing car-free core around Dom Square to adjacent streets, creating a continuous pedestrian-cycling zone.
+    effort_level: major
+    status: proposed
+    description_de_md: |
+      ## Vorschlag
+      Erweiterung des Programms Autoluwe Binnenstad durch Fussgaengerzonen in den
+      Strassen rund um den Domplein, die Oudegracht und die Twijnstraat. Dadurch
+      entsteht eine zusammenhaengende autofreie Zone im historischen Stadtkern.
+
+      ## Datenbasis
+      - OSM Radnetz und Strassennetz
+      - Verkehrszaehlungen der Gemeente Utrecht
+
+      ## Unsicherheiten
+      - Auswirkungen auf Anlieferverkehr und Einzelhandel muessen mit Stakeholdern
+        abgestimmt werden.
+    description_en_md: |
+      ## Proposal
+      Extend Utrecht's Autoluwe Binnenstad programme by pedestrianizing streets
+      around Domplein, Oudegracht, and Twijnstraat. This creates a contiguous
+      car-free zone in the historic city center.
+    scores:
+      climate: { raw: 0.70, rationale_de: "Reduktion des MIV-Durchgangsverkehrs.", rationale_en: "Reduces car through-traffic." }
+      safety: { raw: 0.80, confidence: high }
+      quality_of_life: { raw: 0.90 }
+      social: { raw: 0.65 }
+      feasibility: { raw: 0.45 }
+      cost: { raw: 0.50 }
+      visibility: { raw: 0.95, confidence: high }
+      political: { raw: 0.60 }
+      goal_alignment: { raw: 0.85 }
+
+  - slug: catharijnesingel-cycle-corridor
+    category: bike_infra
+    title_de: Ausbau Radverkehrskorridor Catharijnesingel–Maliebaan
+    title_en: Catharijnesingel–Maliebaan cycling corridor upgrade
+    summary_de: Durchgehend geschuetzter Radweg von Catharijnesingel ueber Maliebaan bis De Uithof mit gesicherten Kreuzungen.
+    summary_en: Upgrade the east-west cycling corridor from Catharijnesingel via Maliebaan to De Uithof with protected intersections and wider cycle paths.
+    effort_level: major
+    status: proposed
+    description_de_md: |
+      ## Vorschlag
+      Der Korridor Catharijnesingel – Maliebaan – De Uithof ist eine der wichtigsten
+      Ost-West-Radachsen Utrechts. Breitere, baulich getrennte Radwege und gesicherte
+      Kreuzungen wuerden die Sicherheit und Kapazitaet deutlich erhoehen.
+
+      ## Datenbasis
+      - OSM Radnetz (Overpass)
+      - Strassen mit Tempolimit
+    description_en_md: |
+      ## Proposal
+      The Catharijnesingel–Maliebaan–De Uithof corridor is one of Utrecht's most
+      important east-west cycling axes. Wider, physically separated cycle paths and
+      protected intersections would significantly improve safety and capacity.
+    scores:
+      climate: { raw: 0.75, rationale_de: "Verschiebung vom MIV zum Rad.", rationale_en: "Shift from car to bike." }
+      safety: { raw: 0.85, confidence: high }
+      quality_of_life: { raw: 0.75 }
+      social: { raw: 0.60 }
+      feasibility: { raw: 0.50 }
+      cost: { raw: 0.40 }
+      visibility: { raw: 0.85, confidence: high }
+      political: { raw: 0.55 }
+      goal_alignment: { raw: 0.80 }
+
+  - slug: school-zone-fietsstraten
+    category: school_routes
+    title_de: Fahrradstrassen-Pilot an Schulen in Overvecht
+    title_en: School zone fietsstraten (bicycle streets) pilot in Overvecht
+    summary_de: Umwidmung von Strassen an fuenf Grundschulen zu Fahrradstrassen mit zeitweiser Sperrung fuer Kfz-Verkehr.
+    summary_en: Convert streets near five primary schools to fietsstraten with timed car access restrictions during school hours.
+    effort_level: quick_win
+    status: proposed
+    description_de_md: |
+      ## Vorschlag
+      Pilotprojekt an fuenf Grundschulen in Overvecht mit zeitweiser Kfz-Sperrung
+      zu Schulbeginn und -ende. Overvecht ist ein Fokusgebiet fuer soziale
+      Gerechtigkeit — Kinder profitieren ueberproportional.
+    description_en_md: |
+      ## Proposal
+      Pilot at five primary schools in Overvecht with timed car restrictions at
+      school start/end. Overvecht is a focus area for social equity — children
+      benefit disproportionately.
+    scores:
+      climate: { raw: 0.40 }
+      safety: { raw: 0.90, confidence: high }
+      quality_of_life: { raw: 0.80 }
+      social: { raw: 0.85, confidence: high }
+      feasibility: { raw: 0.80 }
+      cost: { raw: 0.85 }
+      visibility: { raw: 0.70 }
+      political: { raw: 0.65 }
+      goal_alignment: { raw: 0.65 }
+
+  - slug: uithoflijn-frequency-boost
+    category: transit_frequency
+    title_de: Uithoflijn Tram — Taktverdichtung auf 4 Minuten
+    title_en: Uithoflijn tram — peak frequency to 4 minutes
+    summary_de: Erhoehung der Taktfrequenz der Uithoflijn (Linie 22) von 6 auf 4 Minuten in der Hauptverkehrszeit.
+    summary_en: Increase Uithoflijn (line 22) tram frequency from 6 to 4 minutes during peak hours, reducing overcrowding on the university corridor.
+    effort_level: medium
+    status: proposed
+    description_de_md: |
+      ## Vorschlag
+      Die Uithoflijn verbindet Utrecht Centraal mit dem Utrecht Science Park
+      (De Uithof) und ist stark ausgelastet. Eine Taktverdichtung von 6 auf
+      4 Minuten in der HVZ wuerde Ueberfuellung reduzieren und die Attraktivitaet
+      des OeV steigern.
+    description_en_md: |
+      ## Proposal
+      The Uithoflijn connects Utrecht Centraal to Utrecht Science Park (De Uithof)
+      and is heavily used. Increasing peak frequency from 6 to 4 minutes would
+      reduce overcrowding and improve transit attractiveness.
+    scores:
+      climate: { raw: 0.70 }
+      safety: { raw: 0.45 }
+      quality_of_life: { raw: 0.75 }
+      social: { raw: 0.70 }
+      feasibility: { raw: 0.50 }
+      cost: { raw: 0.30 }
+      visibility: { raw: 0.65 }
+      political: { raw: 0.55 }
+      goal_alignment: { raw: 0.75 }
+
+  - slug: pr-expansion-leidsche-rijn
+    category: parking
+    title_de: Ausbau P+R Leidsche Rijn und Abbau innerstädtischer Parkplätze
+    title_en: Expand P+R Leidsche Rijn and reduce inner-city parking
+    summary_de: Verdopplung der P+R-Kapazitaet bei Leidsche Rijn Centrum bei gleichzeitiger Umwidmung von 500 Innenstadt-Parkplaetzen.
+    summary_en: Double P+R capacity at Leidsche Rijn Centrum while converting 500 inner-city parking spaces to bike parking and public space.
+    effort_level: major
+    status: proposed
+    description_de_md: |
+      ## Vorschlag
+      Ausbau des P+R-Angebots am Stadtrand (Leidsche Rijn) als Anreiz fuer
+      Pendler, das Auto vor der Stadt abzustellen. Gleichzeitig werden 500
+      Pkw-Stellplaetze in der Innenstadt in Fahrradabstellplaetze und
+      oeffentlichen Raum umgewandelt.
+    description_en_md: |
+      ## Proposal
+      Expand P+R at the city edge (Leidsche Rijn) to intercept commuter car
+      traffic. Simultaneously convert 500 inner-city car parking spaces to
+      bike parking and public space.
+    scores:
+      climate: { raw: 0.65 }
+      safety: { raw: 0.50 }
+      quality_of_life: { raw: 0.70 }
+      social: { raw: 0.50 }
+      feasibility: { raw: 0.55 }
+      cost: { raw: 0.35 }
+      visibility: { raw: 0.60 }
+      political: { raw: 0.45 }
+      goal_alignment: { raw: 0.70 }
