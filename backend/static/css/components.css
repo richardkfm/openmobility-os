@@ -11,9 +11,13 @@
   box-shadow: 0 4px 12px rgba(0,0,0,0.12);
 }
 
-/* Prose code blocks inside measure descriptions */
-.prose pre {
+/* Prose code blocks inside measure descriptions.
+   Scoped to .measure-description so it does not override explicitly
+   dark-styled terminal blocks on the About page or methodology pages. */
+.measure-description.prose pre,
+.measure-description .prose pre {
   background: #f1f5f9;
+  color: #1e293b;
   border-radius: 6px;
   padding: 0.75rem 1rem;
   font-size: 0.8rem;

@@ -10,36 +10,62 @@
     <span>{{ source.name }}</span>
   </nav>
 
+  {# ── Header card ── #}
   <div class="rounded-lg border bg-white p-5">
     <div class="flex items-start justify-between gap-3">
       <div>
         <h1 class="text-xl font-bold">{{ source.name }}</h1>
-        <div class="flex flex-wrap items-center gap-2 mt-1">
+        <div class="flex flex-wrap items-center gap-2 mt-1.5">
           <span class="text-xs bg-slate-100 rounded px-1.5 py-0.5">{{ source.source_type }}</span>
           <span class="text-xs bg-slate-100 rounded px-1.5 py-0.5">{{ source.layer_kind }}</span>
           <span class="text-xs rounded-full px-2 py-0.5
             {% if source.status == 'active' %}bg-emerald-100 text-emerald-800
             {% elif source.status == 'error' %}bg-red-100 text-red-800
+            {% elif source.status == 'pending' %}bg-amber-100 text-amber-800
             {% else %}bg-slate-100 text-slate-600{% endif %}">
             {{ source.status }}
           </span>
+          {% if source.is_enabled %}
+          <span class="text-xs rounded-full px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200">{% trans "Enabled" %}</span>
+          {% else %}
+          <span class="text-xs rounded-full px-2 py-0.5 bg-slate-200 text-slate-500">{% trans "Disabled" %}</span>
+          {% endif %}
         </div>
       </div>
       {% if is_admin %}
-      <div class="flex gap-2 shrink-0">
+      <div class="flex flex-wrap gap-2 shrink-0">
+        {# Test connection #}
         <button type="button"
           hx-get="{% url 'data_source_test' workspace.slug source.pk %}"
           hx-target="#test-result"
           hx-indicator="#test-spinner"
           aria-label="{% trans 'Test connection to this data source' %}"
           class="rounded border px-3 py-1.5 text-sm hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400">
-          {% trans "Test connection" %}
+          {% trans "Test" %}
         </button>
+        {# Sync now #}
         <form method="post" action="{% url 'data_source_sync' workspace.slug source.pk %}">
           {% csrf_token %}
           <button type="submit"
             aria-label="{% trans 'Sync this data source now' %}"
             class="rounded bg-slate-900 text-white px-3 py-1.5 text-sm hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-400">{% trans "Sync now" %}</button>
+        </form>
+        {# Enable / disable toggle #}
+        <form method="post" action="{% url 'data_source_toggle' workspace.slug source.pk %}">
+          {% csrf_token %}
+          {% if source.is_enabled %}
+          <button type="submit"
+            aria-label="{% trans 'Disable this source (hide from map)' %}"
+            class="rounded border px-3 py-1.5 text-sm text-amber-700 border-amber-300 hover:bg-amber-50 focus:outline-none focus:ring-2 focus:ring-amber-300">
+            {% trans "Disable" %}
+          </button>
+          {% else %}
+          <button type="submit"
+            aria-label="{% trans 'Enable this source (show on map)' %}"
+            class="rounded border px-3 py-1.5 text-sm text-emerald-700 border-emerald-300 hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-300">
+            {% trans "Enable" %}
+          </button>
+          {% endif %}
         </form>
       </div>
       {% endif %}
@@ -67,16 +93,72 @@
       <dt class="text-slate-500">{% trans "Source URL" %}</dt>
       <dd><a href="{{ source.source_url }}" class="text-blue-600 hover:underline break-all">{{ source.source_url|truncatechars:60 }}</a></dd>
       {% endif %}
+      {% if source.source_file %}
+      <dt class="text-slate-500">{% trans "Local file" %}</dt>
+      <dd class="font-mono text-xs break-all">{{ source.source_file.name }}</dd>
+      {% endif %}
     </dl>
   </div>
 
-  {# Config (read-only view) #}
+  {# ── File upload (admin) ── #}
+  {% if is_admin %}
+  <div class="rounded-lg border bg-white p-5">
+    <h2 class="font-semibold mb-3">{% trans "Upload / replace source file" %}</h2>
+    <p class="text-sm text-slate-500 mb-3">
+      {% trans "Upload a CSV or GeoJSON file to use as the data source instead of a remote URL. The file path will be auto-injected into the config." %}
+    </p>
+    <form method="post" enctype="multipart/form-data" class="flex flex-col gap-3">
+      {% csrf_token %}
+      <input type="file" name="source_file" accept=".csv,.geojson,.json,.txt"
+        class="text-sm text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border file:text-xs file:bg-white file:text-slate-700 hover:file:bg-slate-50">
+      <div>
+        <button type="submit"
+          class="rounded bg-slate-900 text-white px-3 py-1.5 text-sm hover:bg-slate-700">
+          {% trans "Upload file" %}
+        </button>
+      </div>
+    </form>
+  </div>
+  {% endif %}
+
+  {# ── Connector description ── #}
+  {% if connector %}
+  <div class="rounded-lg border bg-white p-5">
+    <h2 class="font-semibold mb-2">{% trans "Connector" %}: {{ connector.display_name_de }}</h2>
+    <p class="text-sm text-slate-600 mb-3">{{ connector.description_de }}</p>
+    {% if connector.config_schema %}
+    <p class="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">{% trans "Configuration fields" %}</p>
+    <table class="w-full text-xs border rounded overflow-hidden">
+      <thead class="bg-slate-50 text-left text-slate-600">
+        <tr>
+          <th class="px-3 py-2">{% trans "Key" %}</th>
+          <th class="px-3 py-2">{% trans "Type" %}</th>
+          <th class="px-3 py-2">{% trans "Required" %}</th>
+          <th class="px-3 py-2">{% trans "Description" %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for key, def in connector.config_schema.items %}
+        <tr class="border-t {% if def.required %}font-medium{% endif %}">
+          <td class="px-3 py-2 font-mono">{{ key }}</td>
+          <td class="px-3 py-2 text-slate-500">{{ def.type|default:"string" }}</td>
+          <td class="px-3 py-2">{% if def.required %}✓{% endif %}</td>
+          <td class="px-3 py-2 text-slate-600">{{ def.label|default:"" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {# ── Configuration (read-only) ── #}
   <div class="rounded-lg border bg-white p-5">
     <h2 class="font-semibold mb-2">{% trans "Configuration" %}</h2>
     <pre class="text-xs bg-slate-50 rounded p-3 overflow-x-auto">{{ source.config|pprint }}</pre>
   </div>
 
-  {# Normalized feature preview #}
+  {# ── Normalized feature preview ── #}
   {% if normalized %}
   <div class="rounded-lg border bg-white p-5">
     <h2 class="font-semibold mb-1">{% trans "Normalized feature set" %}</h2>
@@ -85,7 +167,7 @@
   </div>
   {% endif %}
 
-  {# Danger zone #}
+  {# ── Danger zone ── #}
   {% if is_admin %}
   <div class="rounded-lg border border-red-200 bg-red-50 p-4">
     <h2 class="font-semibold text-red-800 mb-2">{% trans "Danger zone" %}</h2>

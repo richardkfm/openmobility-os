@@ -18,6 +18,8 @@ Config keys (read by every connector that calls ``request_kwargs``):
 
 from __future__ import annotations
 
+import os
+
 
 def cert_from_config(config: dict):
     """Return a value suitable for ``requests.get(..., cert=…)``.
@@ -43,3 +45,43 @@ def request_kwargs(config: dict) -> dict:
     if cert is not None:
         return {"cert": cert}
     return {}
+
+
+def is_local_path(url: str) -> bool:
+    """Return True when *url* points to a local file rather than a remote URL."""
+    if not url:
+        return False
+    # Absolute Unix path or file:// URI
+    if url.startswith("/") or url.startswith("file://"):
+        return True
+    # Absolute Windows path (e.g. C:\...)
+    if len(url) > 2 and url[1] == ":" and url[2] in ("/", "\\"):
+        return True
+    return False
+
+
+def fetch_bytes(url: str, config: dict, timeout: int = 60) -> bytes:
+    """Fetch raw bytes from either a local filesystem path or a remote URL.
+
+    When *url* looks like a local path (starts with ``/``, ``file://``, or a
+    Windows drive letter) the file is read directly from disk; no HTTP request
+    is made.  For all other values an authenticated HTTP GET is performed using
+    the shared ``request_kwargs`` helper so mutual-TLS and other config keys
+    are honoured automatically.
+
+    This function is used by the CSV and GeoJSON connectors to transparently
+    support operator-uploaded source files stored in MEDIA_ROOT alongside
+    regular remote-URL data sources.
+    """
+    if is_local_path(url):
+        path = url.replace("file://", "")
+        if not os.path.isfile(path):
+            raise FileNotFoundError(f"Local source file not found: {path}")
+        with open(path, "rb") as fh:
+            return fh.read()
+
+    import requests  # noqa: PLC0415 — lazy import to keep module light
+
+    response = requests.get(url, timeout=timeout, **request_kwargs(config))
+    response.raise_for_status()
+    return response.content

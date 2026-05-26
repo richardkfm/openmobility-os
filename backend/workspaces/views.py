@@ -41,7 +41,9 @@ def dashboard(request, workspace_slug: str):
 
 def workspace_map(request, workspace_slug: str):
     ws = get_active_workspace(workspace_slug)
-    feature_sets = NormalizedFeatureSet.objects.filter(workspace=ws)
+    # Only include layer kinds from *enabled* sources so the checkbox panel
+    # stays in sync with what the map API will actually return.
+    feature_sets = NormalizedFeatureSet.objects.filter(workspace=ws, source__is_enabled=True)
     kind_values = list(feature_sets.values_list("layer_kind", flat=True).distinct())
 
     # Map every kind to its translated LayerKind label; fall back to the raw

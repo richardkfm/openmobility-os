@@ -81,6 +81,24 @@ class DataSource(models.Model):
 
     error_message = models.TextField(blank=True)
 
+    # Admin-controlled on/off switch — disabled sources are hidden from the map
+    # and excluded from layer queries without being deleted.
+    is_enabled = models.BooleanField(
+        default=True,
+        verbose_name=_("Enabled"),
+        help_text=_("Disabled sources are not shown on the map."),
+    )
+
+    # Optional uploaded source file (CSV, GeoJSON). When set, the connector
+    # reads from this file instead of fetching a remote URL.
+    source_file = models.FileField(
+        upload_to="datasource_files/%Y/%m/",
+        blank=True,
+        null=True,
+        verbose_name=_("Source file"),
+        help_text=_("Upload a CSV or GeoJSON file directly instead of providing a URL."),
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

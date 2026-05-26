@@ -1,9 +1,8 @@
 """GeoJSON URL connector — fetches and normalizes a FeatureCollection."""
 
+import json
 
-import requests
-
-from ._http import request_kwargs
+from ._http import fetch_bytes
 from .base import BaseConnector, ConnectorTestResult, FetchResult
 
 
@@ -42,11 +41,8 @@ class GeoJSONConnector(BaseConnector):
         return []
 
     def _fetch_raw(self, config: dict) -> dict:
-        response = requests.get(
-            config["url"], timeout=60, **request_kwargs(config)
-        )
-        response.raise_for_status()
-        return response.json()
+        content = fetch_bytes(config["url"], config, timeout=60)
+        return json.loads(content)
 
     def test_connection(self, config, workspace=None):
         errors = self.validate_config(config)

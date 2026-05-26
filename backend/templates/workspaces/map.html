@@ -31,7 +31,7 @@
         <div x-show="open" class="mt-3 flex flex-col gap-2 text-sm" id="layer-controls">
           {% for layer in layers %}
           <label class="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" checked class="layer-toggle" data-layer="{{ layer.value }}">
+            <input type="checkbox" class="layer-toggle" data-layer="{{ layer.value }}">
             <span>{{ layer.label }}</span>
           </label>
           {% empty %}
@@ -359,7 +359,8 @@ function addGeoJsonLayer(id, url, color) {
 // Shared state between the layer-toggle checkbox and the accident filter
 // component, so each can restore the right accidents sublayer (circles vs
 // heatmap) without overwriting the other's choice.
-const accidentsState = { enabled: true, mode: "circles" };
+// Default enabled=false because all layer checkboxes start unchecked.
+const accidentsState = { enabled: false, mode: "circles" };
 
 function syncAccidentLayers() {
   if (!map.getLayer("accidents-circle") || !map.getLayer("accidents-heat")) return;
