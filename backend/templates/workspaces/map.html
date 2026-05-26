@@ -5,10 +5,12 @@
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.5.2/dist/maplibre-gl.css">
 <script src="https://unpkg.com/maplibre-gl@4.5.2/dist/maplibre-gl.js"></script>
 <style>
-  /* Give the map an explicit height so the overflow-hidden wrapper does not
-     collapse it on small viewports or in flex-col layout. */
-  #map-wrapper { height: calc(100vh - 220px); min-height: 480px; }
-  #map { width: 100%; height: 100%; }
+  /* #map gets an absolute viewport-relative height so that MapLibre can
+     always read a non-zero clientHeight, regardless of the flex chain.
+     Using height:100% on the canvas div is unreliable when no ancestor
+     in the flex chain carries a concrete pixel height.
+     #map-wrapper auto-sizes to its child and applies the rounded border. */
+  #map { width: 100%; height: calc(100vh - 220px); min-height: 480px; }
 </style>
 {% endblock %}
 
