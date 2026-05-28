@@ -29,12 +29,27 @@ from __future__ import annotations
 import requests
 
 from ._http import cert_from_config
-from .base import BaseConnector, ConnectorTestResult
+from .base import (
+    BaseConnector,
+    CatalogEntry,
+    CatalogPage,
+    ConnectorTestResult,
+)
 from .csv_connector import CSVConnector
 from .geojson_connector import GeoJSONConnector
 from .gtfs_connector import GTFSConnector
 
 SUPPORTED_FORMATS = ("gtfs", "geojson", "json", "csv")
+
+# Map a Mobilithek distribution format_hint to the OpenMobility OS LayerKind
+# value that best represents the data. Operators can still change it on the
+# "Add to workspace" confirmation step.
+_FORMAT_TO_LAYER = {
+    "gtfs": "transit_stops",
+    "geojson": "custom",
+    "json": "custom",
+    "csv": "custom",
+}
 
 
 class MobilithekConnector(BaseConnector):
@@ -165,3 +180,69 @@ class MobilithekConnector(BaseConnector):
         if fmt == "csv":
             return CSVConnector().fetch(inner, workspace=workspace)
         raise RuntimeError(f"Unsupported format_hint: {fmt}")
+
+    # ------------------------------------------------------------------
+    # Catalog discovery — fetches the Mobilithek DCAT-AP feed and returns
+    # supported distributions as one-click "Add to workspace" candidates.
+    # ------------------------------------------------------------------
+
+    def supports_discovery(self) -> bool:
+        return True
+
+    def discover(self, query=None, facets=None, workspace=None, *, _xml_bytes=None):
+        from .mobilithek_catalog import browse_catalog
+
+        try:
+            datasets = browse_catalog(keyword=query, _xml_bytes=_xml_bytes)
+        except Exception as exc:  # noqa: BLE001
+            return CatalogPage(message=f"Catalog fetch failed: {exc}")
+
+        existing_urls: set[str] = set()
+        if workspace is not None:
+            for src in workspace.data_sources.filter(source_type=self.id):
+                url = (src.config or {}).get("distribution_url")
+                if url:
+                    existing_urls.add(url)
+
+        supported_only = True
+        if facets and str(facets.get("show_all", "")).lower() in ("1", "true", "yes"):
+            supported_only = False
+
+        format_counts: dict[str, int] = {}
+        entries: list[CatalogEntry] = []
+        for ds in datasets:
+            best = ds.best_distribution()
+            if not best:
+                continue
+            fmt = (best.format_hint or "").lower()
+            format_counts[fmt or "unknown"] = format_counts.get(fmt or "unknown", 0) + 1
+            if supported_only and fmt not in SUPPORTED_FORMATS:
+                continue
+            entries.append(
+                CatalogEntry(
+                    entry_id=ds.uid,
+                    title=ds.title or ds.uid,
+                    subtitle=ds.publisher,
+                    description=ds.description,
+                    format_hint=fmt,
+                    source_url=ds.uid,
+                    attribution=ds.publisher,
+                    license=best.license_url,
+                    suggested_name=ds.title or ds.uid,
+                    suggested_layer_kind=_FORMAT_TO_LAYER.get(fmt, "custom"),
+                    suggested_config={
+                        "distribution_url": best.url,
+                        "format_hint": fmt,
+                        "mode": "open",
+                        "subscription_id": ds.uid,
+                    },
+                    badges=ds.keywords[:4],
+                    already_added=best.url in existing_urls,
+                )
+            )
+
+        return CatalogPage(
+            entries=entries,
+            total=len(entries),
+            facets={"format_counts": format_counts, "supported_only": supported_only},
+        )

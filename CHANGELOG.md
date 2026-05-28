@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Data hub catalog browser** — admins can now browse and add
+  Mobilithek (German NAP) datasets and Unfallatlas (Destatis) yearly
+  accident files end-to-end from the Data hub UI. A new "Browse catalog"
+  page (`/<workspace>/data/catalog/`) lists every connector that exposes
+  an upstream catalog, with search, format filters, and one-click "Add to
+  workspace" that materialises a DataSource and runs the initial sync.
+  Replaces the previous CLI-only workflow (`browse_mobilithek`,
+  `seed_unfallatlas`) for routine additions; the management commands
+  remain available for scripting.
+- **Database-readiness signals on the Data hub** — the workspace transit
+  and accident KPI cards (with the existing traffic-light sufficiency
+  rating) now also render at the top of the Data hub so admins can judge
+  coverage without leaving the page. Each source row gains a "Ready /
+  Thin / Stale / No data / Error" badge derived from its status, record
+  count, and last-sync timestamp.
+
+### Changed
+- **Connector interface gains optional `discover()`** — `BaseConnector`
+  now defines `supports_discovery()` and `discover(query, facets,
+  workspace) -> CatalogPage` as opt-in methods, allowing connectors
+  with an upstream catalog to drive a UI without bespoke wiring. CSV,
+  GeoJSON, and Overpass connectors are unchanged (they continue to use
+  the plain "Add source" form).
+
 ### Fixed
 - **Map container simplified** — removed the `{# ... #}` Django template comment
   (it was appearing as literal text in the browser, indicating a Docker layer

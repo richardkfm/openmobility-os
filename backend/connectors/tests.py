@@ -10,6 +10,8 @@ import zipfile
 from dataclasses import dataclass
 from unittest import TestCase, mock
 
+from django.test import TestCase as _DjangoTestCase
+
 from connectors.bikemaps_connector import BikeMapsConnector, _record_to_feature
 from connectors.gtfs_connector import GTFSConnector, _circle_ring, _is_night_time
 from connectors.unfallat_connector import UnfallatlasConnector, _parse_bbox, _row_to_feature
@@ -1689,3 +1691,143 @@ class CityNormalizationTests(TestCase):
         self.assertEqual(_normalize_city("  Köln  "), "koln")
         self.assertEqual(_normalize_city("Düsseldorf"), "dusseldorf")
         self.assertEqual(_normalize_city("Freiburg im Breisgau"), "freiburg im breisgau")
+
+
+class MobilithekDiscoveryTests(TestCase):
+    """`MobilithekConnector.discover` against the in-memory DCAT-AP fixture."""
+
+    def _connector(self):
+        from connectors.mobilithek_connector import MobilithekConnector
+
+        return MobilithekConnector()
+
+    def test_supports_discovery(self):
+        self.assertTrue(self._connector().supports_discovery())
+
+    def test_discover_supported_only_filters_datexii(self):
+        page = self._connector().discover(_xml_bytes=_DCAT_AP_FIXTURE)
+        # GTFS + GeoJSON datasets are kept; the DATEX II dataset is filtered.
+        self.assertEqual(page.total, 2)
+        hints = {e.format_hint for e in page.entries}
+        self.assertEqual(hints, {"gtfs", "geojson"})
+
+    def test_discover_show_all_includes_datexii(self):
+        page = self._connector().discover(
+            facets={"show_all": "1"}, _xml_bytes=_DCAT_AP_FIXTURE
+        )
+        self.assertEqual(page.total, 3)
+        hints = {e.format_hint for e in page.entries}
+        self.assertIn("datexii", hints)
+
+    def test_discover_keyword_filter(self):
+        page = self._connector().discover(query="GTFS", _xml_bytes=_DCAT_AP_FIXTURE)
+        self.assertEqual(page.total, 1)
+        self.assertEqual(page.entries[0].format_hint, "gtfs")
+
+    def test_discover_gtfs_maps_to_transit_stops_layer(self):
+        page = self._connector().discover(query="GTFS", _xml_bytes=_DCAT_AP_FIXTURE)
+        entry = page.entries[0]
+        self.assertEqual(entry.suggested_layer_kind, "transit_stops")
+        self.assertEqual(
+            entry.suggested_config["distribution_url"],
+            "https://download.example.com/db-gtfs.zip",
+        )
+        self.assertEqual(entry.suggested_config["format_hint"], "gtfs")
+        self.assertEqual(entry.suggested_config["mode"], "open")
+
+    def test_discover_format_counts_facet(self):
+        page = self._connector().discover(_xml_bytes=_DCAT_AP_FIXTURE)
+        counts = page.facets["format_counts"]
+        # Each catalog dataset contributes once via its best_distribution.
+        self.assertEqual(counts.get("gtfs"), 1)
+        self.assertEqual(counts.get("geojson"), 1)
+        self.assertEqual(counts.get("datexii"), 1)
+
+
+class UnfallatlasCatalogTests(_DjangoTestCase):
+    """`unfallat_catalog.load_year_sources` reads YAML, the connector turns
+    each year into a CatalogEntry, and `already_added` reflects existing rows."""
+
+    def setUp(self):
+        from django.contrib.gis.geos import Polygon
+
+        from workspaces.models import Workspace
+
+        self.workspace = Workspace.objects.create(
+            slug="catalog-test",
+            name="Catalog Test",
+            country_code="DE",
+            bounds=Polygon(((0, 0), (1, 0), (1, 1), (0, 1), (0, 0))),
+        )
+
+    def _patched_load(self, data):
+        from connectors import unfallat_catalog
+
+        def fake_loader(workspace_slug=None):
+            return [
+                unfallat_catalog.YearSpec(
+                    year=y["year"], url=y["url"], encoding=y["encoding"]
+                )
+                for y in data
+            ]
+
+        return mock.patch(
+            "connectors.unfallat_connector.load_year_sources", side_effect=fake_loader
+        )
+
+    def test_discover_returns_one_entry_per_year(self):
+        from connectors.unfallat_connector import UnfallatlasConnector
+
+        with self._patched_load(
+            [
+                {"year": 2022, "url": "https://example.org/u-2022.csv", "encoding": "utf-8"},
+                {"year": 2023, "url": "https://example.org/u-2023.csv", "encoding": "utf-8"},
+            ]
+        ):
+            page = UnfallatlasConnector().discover(workspace=self.workspace)
+        self.assertEqual(page.total, 2)
+        self.assertEqual({e.entry_id for e in page.entries}, {"unfallatlas-2022", "unfallatlas-2023"})
+
+    def test_already_added_flag(self):
+        from connectors.unfallat_connector import UnfallatlasConnector
+        from datasets.models import DataSource
+
+        DataSource.objects.create(
+            workspace=self.workspace,
+            name="Unfallatlas 2023",
+            source_type="unfallat",
+            layer_kind=DataSource.LayerKind.ACCIDENTS,
+            config={"url": "https://example.org/u-2023.csv"},
+        )
+        with self._patched_load(
+            [
+                {"year": 2022, "url": "https://example.org/u-2022.csv", "encoding": "utf-8"},
+                {"year": 2023, "url": "https://example.org/u-2023.csv", "encoding": "utf-8"},
+            ]
+        ):
+            page = UnfallatlasConnector().discover(workspace=self.workspace)
+        by_id = {e.entry_id: e for e in page.entries}
+        self.assertTrue(by_id["unfallatlas-2023"].already_added)
+        self.assertFalse(by_id["unfallatlas-2022"].already_added)
+
+    def test_discover_empty_yaml_carries_message(self):
+        from connectors.unfallat_connector import UnfallatlasConnector
+
+        with self._patched_load([]):
+            page = UnfallatlasConnector().discover(workspace=self.workspace)
+        self.assertEqual(page.total, 0)
+        self.assertIn("Unfallatlas", page.message)
+
+    def test_suggested_config_clips_to_workspace(self):
+        from connectors.unfallat_connector import UnfallatlasConnector
+
+        with self._patched_load(
+            [{"year": 2024, "url": "https://example.org/u-2024.csv", "encoding": "latin-1"}]
+        ):
+            page = UnfallatlasConnector().discover(workspace=self.workspace)
+        entry = page.entries[0]
+        self.assertEqual(entry.suggested_config["url"], "https://example.org/u-2024.csv")
+        self.assertEqual(entry.suggested_config["encoding"], "latin-1")
+        self.assertTrue(entry.suggested_config["clip_to_workspace"])
+        self.assertEqual(entry.suggested_layer_kind, "accidents")
+        self.assertEqual(entry.license, "dl-de/by-2-0")

@@ -3,7 +3,7 @@
 
 # OpenMobility OS
 
-**Version:** 0.15.3 (pre-release) — see [CHANGELOG.md](CHANGELOG.md)
+**Version:** 0.16.0 (pre-release) — see [CHANGELOG.md](CHANGELOG.md)
 **License:** See [LICENSE](LICENSE)
 
 > The open, free, self-hostable operating system between open mobility data
@@ -44,6 +44,7 @@ language, data source, or administrative structure.
   - [Admin: logging in](#admin-logging-in)
   - [Admin: adding a workspace](#admin-adding-a-workspace)
   - [Admin: data hub and syncing data](#admin-data-hub-and-syncing-data)
+  - [Browsing catalogs from the UI](#browsing-catalogs-from-the-ui)
   - [Adding Unfallatlas accident data](#adding-unfallatlas-accident-data)
   - [Mobilithek catalog browser](#mobilithek-catalog-browser)
   - [Django admin (alternative)](#django-admin-alternative)
@@ -371,7 +372,20 @@ The data hub at `/<slug>/data/` is the control centre for all data sources.
 An alternative full-featured management interface is available at
 `/django-admin/datasets/datasource/` (see [Django admin](#django-admin-alternative) below).
 
-**Adding a data source:**
+**Database-readiness signals.** The top of the hub mirrors the dashboard's
+transit and accident KPI cards (including the green/amber/red sufficiency
+rating) so admins can judge coverage without leaving the page. Each row in
+the source list also shows a *Ready / Thin / Stale / No data / Error*
+badge derived from the source's status, record count, and last-sync time.
+
+**Two ways to add a source:**
+
+- **Browse catalog** (`/<slug>/data/catalog/`) — pick from a connector's
+  upstream catalog with search and one-click "Add to workspace".
+  Mobilithek's DCAT-AP feed and Unfallatlas's year list are both
+  browsable here. See [Browsing catalogs from the UI](#browsing-catalogs-from-the-ui).
+- **Add source** — the generic form below for connectors without a
+  catalog (CSV upload, Overpass templates, etc.).
 
 1. Click **Add data source**.
 2. Choose the **connector type** (the form shows a description and the expected
@@ -430,6 +444,25 @@ docker compose exec web python manage.py sync_datasources your-city-slug
 # Sync all workspaces
 docker compose exec web python manage.py sync_datasources
 ```
+
+---
+
+### Browsing catalogs from the UI
+
+`/<slug>/data/catalog/` lists every connector that exposes an upstream
+catalog. Currently:
+
+- **Mobilithek** — search the DCAT-AP feed by keyword, filter by format
+  (GTFS / GeoJSON / CSV / JSON / DATEX II), and click *Add to workspace*
+  on any supported entry. The platform builds the DataSource with the
+  right `distribution_url` and `format_hint` and runs an initial sync.
+- **Unfallatlas** — pick a year from the year→URL mapping in
+  `config/unfallatlas.yaml` (or the per-workspace override at
+  `config/unfallatlas/<slug>.yaml`). Each year becomes its own
+  DataSource with `clip_to_workspace: true`.
+
+The matching `browse_mobilithek` and `seed_unfallatlas` management
+commands still work for scripting and CI.
 
 ---
 

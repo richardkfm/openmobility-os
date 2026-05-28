@@ -22,6 +22,40 @@ class FetchResult:
     warnings: list = field(default_factory=list)
 
 
+@dataclass
+class CatalogEntry:
+    """One discoverable item exposed by a connector's catalog browser.
+
+    Returned by `BaseConnector.discover()`. The data hub renders each entry
+    as a row with an "Add to workspace" button that materialises a
+    `DataSource` from `suggested_*` and runs an initial sync.
+    """
+
+    entry_id: str
+    title: str
+    subtitle: str = ""
+    description: str = ""
+    format_hint: str = ""
+    source_url: str = ""
+    attribution: str = ""
+    license: str = ""
+    suggested_name: str = ""
+    suggested_layer_kind: str = ""
+    suggested_config: dict = field(default_factory=dict)
+    badges: list = field(default_factory=list)
+    already_added: bool = False
+
+
+@dataclass
+class CatalogPage:
+    """A page of catalog entries plus open-ended faceting metadata."""
+
+    entries: list = field(default_factory=list)
+    total: int = 0
+    facets: dict = field(default_factory=dict)
+    message: str = ""
+
+
 class BaseConnector:
     """Subclass and register via @register_connector."""
 
@@ -43,3 +77,26 @@ class BaseConnector:
 
     def fetch(self, config: dict, workspace: Any = None) -> FetchResult:
         raise NotImplementedError
+
+    # ------------------------------------------------------------------
+    # Optional catalog discovery — implemented by connectors that have an
+    # upstream catalog the operator can browse (Mobilithek DCAT-AP feed,
+    # Unfallatlas year list, …).
+    # ------------------------------------------------------------------
+
+    def supports_discovery(self) -> bool:
+        """Opt-in flag — True if this connector implements `discover`."""
+        return False
+
+    def discover(
+        self,
+        query: str | None = None,
+        facets: dict | None = None,
+        workspace: Any = None,
+    ) -> CatalogPage:
+        """Browse the connector's upstream catalog.
+
+        Default implementation returns an empty page. Connectors that
+        override `supports_discovery` to True must override this too.
+        """
+        return CatalogPage()

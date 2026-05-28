@@ -1,0 +1,38 @@
+{% extends "workspaces/base_workspace.html" %}
+{% load i18n %}
+
+{% block content %}
+<div class="flex flex-col gap-6">
+
+  <div class="flex items-center justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-bold">{{ connector.display_name_de }}</h1>
+      <p class="text-sm text-slate-500 mt-1">{{ connector.description_de|truncatewords:40 }}</p>
+    </div>
+    <a href="{% url 'catalog_index' workspace.slug %}" class="rounded border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50 shrink-0">
+      {% trans "Other sources" %}
+    </a>
+  </div>
+
+  {# Search bar — HTMX swaps in the results partial as you type. #}
+  <form hx-get="{% url 'catalog_browse' workspace.slug connector.id %}"
+        hx-target="#catalog-results"
+        hx-trigger="submit, keyup changed delay:400ms from:input[name=q]"
+        hx-indicator="#catalog-spinner"
+        method="get"
+        class="flex gap-2 items-center">
+    <input type="text" name="q" value="{{ query }}"
+      placeholder="{% trans 'Search the catalog…' %}"
+      class="flex-1 rounded border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400">
+    <button class="rounded bg-slate-900 text-white px-3 py-2 text-sm hover:bg-slate-700">
+      {% trans "Search" %}
+    </button>
+    <span id="catalog-spinner" class="htmx-indicator text-xs text-slate-500">{% trans "Loading…" %}</span>
+  </form>
+
+  <div id="catalog-results">
+    {% include "datasets/_catalog_results.html" %}
+  </div>
+
+</div>
+{% endblock %}

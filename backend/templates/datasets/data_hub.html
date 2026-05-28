@@ -7,21 +7,44 @@
   <div class="flex items-center justify-between gap-4">
     <h1 class="text-2xl font-bold">{% trans "Data hub" %} — {{ workspace.name }}</h1>
     {% if is_admin %}
-    <a href="{% url 'data_source_add' workspace.slug %}" class="rounded bg-slate-900 text-white px-3 py-2 text-sm hover:bg-slate-700 flex items-center gap-1.5">
-      <span>+</span> {% trans "Add source" %}
-    </a>
+    <div class="flex gap-2 shrink-0">
+      <a href="{% url 'catalog_index' workspace.slug %}" class="rounded border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50 flex items-center gap-1.5">
+        {% trans "Browse catalog" %}
+      </a>
+      <a href="{% url 'data_source_add' workspace.slug %}" class="rounded bg-slate-900 text-white px-3 py-2 text-sm hover:bg-slate-700 flex items-center gap-1.5">
+        <span>+</span> {% trans "Add source" %}
+      </a>
+    </div>
     {% endif %}
   </div>
 
-  {% if sources %}
+  {# Database readiness banner — same KPI partials the dashboard uses. #}
+  {% if transit_kpis or accident_kpis %}
+  <div class="flex flex-col gap-6">
+    {% include "workspaces/_transit_kpi_cards.html" %}
+    {% include "workspaces/_accident_kpi_cards.html" %}
+  </div>
+  {% endif %}
+
+  {% if sources_with_readiness %}
   <div class="rounded-lg border bg-white divide-y">
-    {% for source in sources %}
+    {% for source, readiness in sources_with_readiness %}
     <div class="p-4 flex flex-col sm:flex-row sm:items-center gap-3 {% if not source.is_enabled %}opacity-60{% endif %}">
       <div class="flex-1 min-w-0">
         <div class="flex flex-wrap items-center gap-2">
           <a href="{% url 'data_source_detail' workspace.slug source.pk %}" class="font-medium hover:underline">{{ source.name }}</a>
           <span class="text-xs rounded px-1.5 py-0.5 bg-slate-100 text-slate-600">{{ source.source_type }}</span>
           <span class="text-xs rounded px-1.5 py-0.5 bg-slate-100 text-slate-600">{{ source.layer_kind }}</span>
+          {# Readiness badge — derived from status + record count + last sync #}
+          <span title="{{ readiness.hint }}"
+            class="text-xs rounded-full px-2 py-0.5
+            {% if readiness.level == 'good' %}bg-emerald-100 text-emerald-800
+            {% elif readiness.level == 'thin' %}bg-amber-100 text-amber-800
+            {% elif readiness.level == 'stale' %}bg-orange-100 text-orange-800
+            {% elif readiness.level == 'error' %}bg-red-100 text-red-800
+            {% else %}bg-slate-100 text-slate-600{% endif %}">
+            {{ readiness.label }}
+          </span>
           {# Sync status badge #}
           <span class="text-xs rounded-full px-2 py-0.5
             {% if source.status == 'active' %}bg-emerald-100 text-emerald-800
@@ -83,16 +106,16 @@
   {# Summary row #}
   <p class="text-xs text-slate-400">
     {{ sources|length }} {% trans "data source(s)" %} ·
-    {% with active_count=sources|dictsort:"status"|length %}
     {{ data_sources_active }} {% trans "active" %}
-    {% endwith %}
   </p>
 
   {% else %}
   <div class="rounded-lg border-2 border-dashed bg-white p-10 text-center text-slate-400">
     {% trans "No data sources yet." %}
     {% if is_admin %}<br>
-    <a href="{% url 'data_source_add' workspace.slug %}" class="underline mt-2 inline-block">{% trans "Add the first data source" %}</a>
+    <a href="{% url 'catalog_index' workspace.slug %}" class="underline mt-2 inline-block">{% trans "Browse the catalog" %}</a>
+    {% trans "or" %}
+    <a href="{% url 'data_source_add' workspace.slug %}" class="underline mt-2 inline-block">{% trans "add a custom source" %}</a>
     {% endif %}
   </div>
   {% endif %}
