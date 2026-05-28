@@ -85,3 +85,37 @@ def fetch_bytes(url: str, config: dict, timeout: int = 60) -> bytes:
     response = requests.get(url, timeout=timeout, **request_kwargs(config))
     response.raise_for_status()
     return response.content
+
+
+_ZIP_MAGIC = b"PK\x03\x04"
+
+
+def extract_member_if_zip(content: bytes, extensions: tuple[str, ...] = (".csv",)) -> bytes:
+    """If *content* is a ZIP archive, return the bytes of the first member whose
+    filename ends with one of *extensions* (case-insensitive). Otherwise return
+    *content* unchanged.
+
+    Used by the CSV and Unfallatlas connectors so admins can upload (or link
+    to) the original ZIP that Destatis / open-data portals publish without
+    having to unpack it by hand. Walks every entry in the archive — handles
+    Destatis-style nested directories like ``UnfaelleMitPersonenschaden_2023/
+    CSV/Unfaelle_2023.csv``.
+    """
+    if not content[:4] == _ZIP_MAGIC:
+        return content
+
+    import io  # noqa: PLC0415
+    import zipfile  # noqa: PLC0415
+
+    with zipfile.ZipFile(io.BytesIO(content)) as archive:
+        wanted = tuple(e.lower() for e in extensions)
+        for member in archive.namelist():
+            if member.endswith("/"):
+                continue  # directory entry
+            if member.lower().endswith(wanted):
+                return archive.read(member)
+        names = archive.namelist()
+        raise ValueError(
+            f"ZIP archive contains no {'/'.join(extensions)} file. "
+            f"Members: {names[:6]}{'…' if len(names) > 6 else ''}"
+        )

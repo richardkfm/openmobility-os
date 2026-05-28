@@ -10,7 +10,7 @@ License: dl-de/by-2-0 (Datenlizenz Deutschland – Namensnennung)
 import csv
 import io
 
-from ._http import fetch_bytes
+from ._http import extract_member_if_zip, fetch_bytes
 from .base import (
     BaseConnector,
     CatalogEntry,
@@ -84,6 +84,7 @@ class UnfallatlasConnector(BaseConnector):
         url = config["url"]
         encoding = config.get("encoding", "utf-8")
         content = fetch_bytes(url, config, timeout=120)
+        content = extract_member_if_zip(content, extensions=(".csv", ".txt"))
         text = content.decode(encoding, errors="replace")
         reader = csv.DictReader(io.StringIO(text), delimiter=";")
         rows = list(reader)

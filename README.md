@@ -3,7 +3,7 @@
 
 # OpenMobility OS
 
-**Version:** 0.17.0 (pre-release) — see [CHANGELOG.md](CHANGELOG.md)
+**Version:** 0.18.0 (pre-release) — see [CHANGELOG.md](CHANGELOG.md)
 **License:** See [LICENSE](LICENSE)
 
 > The open, free, self-hostable operating system between open mobility data
@@ -409,8 +409,11 @@ badge derived from the source's status, record count, and last-sync time.
 
 3. Select the **layer kind** that best describes what this data represents
    (e.g. `bike_network`, `schools`, `accidents`).
-4. Optionally upload a local CSV or GeoJSON file — the file is stored on disk and
-   its path is auto-filled into `config["url"]` so the connector picks it up.
+4. Optionally upload a local CSV, GeoJSON, or ZIP file — the file is stored on
+   disk and its path is auto-filled into `config["url"]` so the connector picks
+   it up. ZIP archives are auto-extracted at sync time: the first matching
+   `.csv` / `.geojson` member is read, including nested layouts like
+   `UnfaelleMitPersonenschaden_2024/CSV/Unfaelle_2024.csv`.
 5. Click **Add data source**.
 
 **Enabling and disabling sources:**
@@ -484,7 +487,8 @@ German decimal comma). No env changes are needed — just a URL or a file upload
 1. Go to [unfallatlas.statistikportal.de](https://unfallatlas.statistikportal.de)
 2. Click **Daten herunterladen**
 3. Choose year(s) and federal state (e.g. *Sachsen* for Leipzig, *Bayern* for Munich)
-4. Download the ZIP and extract the CSV
+4. Download the ZIP — you can upload it as-is (the connector auto-extracts
+   the inner CSV) or extract it manually if you prefer
 
 **Step 2 — Add the data source:**
 

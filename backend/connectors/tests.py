@@ -1929,3 +1929,114 @@ class UnfallatlasCatalogTests(_DjangoTestCase):
         self.assertTrue(entry.suggested_config["clip_to_workspace"])
         self.assertEqual(entry.suggested_layer_kind, "accidents")
         self.assertEqual(entry.license, "dl-de/by-2-0")
+
+
+class ZipExtractionTests(TestCase):
+    """`extract_member_if_zip` and end-to-end ZIP support in the CSV +
+    Unfallatlas + GeoJSON connectors."""
+
+    @staticmethod
+    def _make_zip(members):
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w") as zf:
+            for name, content in members.items():
+                zf.writestr(name, content)
+        return buf.getvalue()
+
+    # ------------------------------------------------------------------
+    # helper
+    # ------------------------------------------------------------------
+
+    def test_passthrough_when_not_zip(self):
+        from connectors._http import extract_member_if_zip
+
+        raw = b"col1,col2\n1,2\n"
+        self.assertEqual(extract_member_if_zip(raw), raw)
+
+    def test_extracts_first_csv(self):
+        from connectors._http import extract_member_if_zip
+
+        archive = self._make_zip({"unfaelle_2024.csv": b"A;B\n1;2\n"})
+        self.assertEqual(extract_member_if_zip(archive), b"A;B\n1;2\n")
+
+    def test_walks_nested_destatis_layout(self):
+        from connectors._http import extract_member_if_zip
+
+        archive = self._make_zip(
+            {
+                "UnfaelleMitPersonenschaden_2024/CSV/Unfaelle_2024.csv": b"X;Y\n3;4\n",
+                "UnfaelleMitPersonenschaden_2024/readme.txt": b"ignore",
+            }
+        )
+        self.assertEqual(extract_member_if_zip(archive), b"X;Y\n3;4\n")
+
+    def test_zip_without_matching_member_raises(self):
+        from connectors._http import extract_member_if_zip
+
+        archive = self._make_zip({"readme.txt": b"x", "image.png": b"\x89PNG"})
+        with self.assertRaises(ValueError) as ctx:
+            extract_member_if_zip(archive, extensions=(".csv",))
+        self.assertIn(".csv", str(ctx.exception))
+
+    # ------------------------------------------------------------------
+    # CSV connector
+    # ------------------------------------------------------------------
+
+    def test_csv_connector_reads_zipped_csv(self):
+        from connectors.csv_connector import CSVConnector
+
+        archive = self._make_zip(
+            {"data.csv": b"name,lat,lon\nstop,50.0,12.0\n"}
+        )
+        # `csv_connector` re-exports `fetch_bytes` after the `from ._http import`
+        # statement, so we patch that bound name.
+        with mock.patch(
+            "connectors.csv_connector.fetch_bytes", return_value=archive
+        ):
+            result = CSVConnector().fetch({"url": "http://example/x.zip"})
+        self.assertEqual(result.record_count, 1)
+
+    # ------------------------------------------------------------------
+    # Unfallatlas connector
+    # ------------------------------------------------------------------
+
+    def test_unfallatlas_connector_reads_zipped_csv(self):
+        from connectors.unfallat_connector import UnfallatlasConnector
+
+        archive = self._make_zip(
+            {
+                "UnfaelleMitPersonenschaden_2024/CSV/Unfaelle_2024.csv": (
+                    UNFALLATLAS_CSV.encode("utf-8")
+                )
+            }
+        )
+        with mock.patch(
+            "connectors.unfallat_connector.fetch_bytes", return_value=archive
+        ):
+            result = UnfallatlasConnector().fetch(
+                {"url": "http://example/u.zip", "clip_to_workspace": False}
+            )
+        # The fixture has 3 rows; with no clipping all 3 land as features.
+        self.assertEqual(result.record_count, 3)
+
+    # ------------------------------------------------------------------
+    # GeoJSON connector
+    # ------------------------------------------------------------------
+
+    def test_geojson_connector_reads_zipped_geojson(self):
+        from connectors.geojson_connector import GeoJSONConnector
+
+        archive = self._make_zip(
+            {
+                "layer.geojson": (
+                    b'{"type":"FeatureCollection","features":['
+                    b'{"type":"Feature","geometry":{"type":"Point","coordinates":[12,51]},'
+                    b'"properties":{"name":"a"}}]}'
+                )
+            }
+        )
+        with mock.patch(
+            "connectors.geojson_connector.fetch_bytes", return_value=archive
+        ):
+            result = GeoJSONConnector().fetch({"url": "http://example/x.zip"})
+        self.assertEqual(result.record_count, 1)
