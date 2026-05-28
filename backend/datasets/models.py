@@ -81,6 +81,11 @@ class DataSource(models.Model):
 
     error_message = models.TextField(blank=True)
 
+    # Non-fatal warnings from the most recent sync attempt (e.g. "workspace
+    # bounds clipped every row — imported unclipped fallback"). Shown on the
+    # data source detail page until the next sync. Plain list of strings.
+    last_sync_warnings = models.JSONField(default=list, blank=True)
+
     # Admin-controlled on/off switch — disabled sources are hidden from the map
     # and excluded from layer queries without being deleted.
     is_enabled = models.BooleanField(

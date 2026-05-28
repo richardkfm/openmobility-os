@@ -90,32 +90,52 @@ def fetch_bytes(url: str, config: dict, timeout: int = 60) -> bytes:
 _ZIP_MAGIC = b"PK\x03\x04"
 
 
-def extract_member_if_zip(content: bytes, extensions: tuple[str, ...] = (".csv",)) -> bytes:
-    """If *content* is a ZIP archive, return the bytes of the first member whose
-    filename ends with one of *extensions* (case-insensitive). Otherwise return
-    *content* unchanged.
+def extract_member_if_zip(
+    content: bytes,
+    extensions: tuple[str, ...] = (".csv",),
+    *,
+    return_member_name: bool = False,
+):
+    """If *content* is a ZIP archive, return the bytes of the largest member
+    whose filename ends with one of *extensions* (case-insensitive). Otherwise
+    return *content* unchanged.
 
-    Used by the CSV and Unfallatlas connectors so admins can upload (or link
-    to) the original ZIP that Destatis / open-data portals publish without
-    having to unpack it by hand. Walks every entry in the archive — handles
-    Destatis-style nested directories like ``UnfaelleMitPersonenschaden_2023/
-    CSV/Unfaelle_2023.csv``.
+    Picking the **largest** matching member (by uncompressed size) is what
+    most operators expect: a real-world archive typically contains one data
+    file plus a few metadata / readme / sidecar files. The Destatis mfdz
+    mirror, for instance, ships ``body.zip`` with both the main accident
+    CSV and small metadata CSVs alongside it; reading the first member by
+    archive order would silently pick the wrong file.
+
+    Walks every entry — handles nested directories like
+    ``UnfaelleMitPersonenschaden_2023/CSV/Unfaelle_2023.csv``.
+
+    When ``return_member_name=True`` returns a ``(bytes, member_name)``
+    tuple instead, with ``member_name`` set to ``None`` for non-ZIP input.
+    Used by the diagnostic panel so operators can see which file was
+    actually read.
     """
     if not content[:4] == _ZIP_MAGIC:
-        return content
+        return (content, None) if return_member_name else content
 
     import io  # noqa: PLC0415
     import zipfile  # noqa: PLC0415
 
     with zipfile.ZipFile(io.BytesIO(content)) as archive:
         wanted = tuple(e.lower() for e in extensions)
-        for member in archive.namelist():
-            if member.endswith("/"):
-                continue  # directory entry
-            if member.lower().endswith(wanted):
-                return archive.read(member)
-        names = archive.namelist()
-        raise ValueError(
-            f"ZIP archive contains no {'/'.join(extensions)} file. "
-            f"Members: {names[:6]}{'…' if len(names) > 6 else ''}"
-        )
+        matching = [
+            info
+            for info in archive.infolist()
+            if not info.is_dir() and info.filename.lower().endswith(wanted)
+        ]
+        if not matching:
+            names = archive.namelist()
+            raise ValueError(
+                f"ZIP archive contains no {'/'.join(extensions)} file. "
+                f"Members: {names[:6]}{'…' if len(names) > 6 else ''}"
+            )
+        best = max(matching, key=lambda i: i.file_size)
+        data = archive.read(best.filename)
+        if return_member_name:
+            return data, best.filename
+        return data

@@ -99,16 +99,27 @@ class UnfallatlasConnector(BaseConnector):
         return errors
 
     def _fetch_rows(self, config):
+        """Returns (rows, fieldnames, meta) — meta carries the resolved
+        delimiter/encoding and the zip member name (if any) so callers can
+        surface them in diagnostics."""
         url = config["url"]
         encoding = config.get("encoding", "utf-8")
         content = fetch_bytes(url, config, timeout=120)
-        content = extract_member_if_zip(content, extensions=(".csv", ".txt"))
+        content, archive_member = extract_member_if_zip(
+            content, extensions=(".csv", ".txt"), return_member_name=True
+        )
         text = content.decode(encoding, errors="replace")
         delimiter = _resolve_delimiter(text, config.get("delimiter"))
         reader = csv.DictReader(io.StringIO(text), delimiter=delimiter)
         rows = list(reader)
         fieldnames = reader.fieldnames or []
-        return rows, fieldnames
+        meta = {
+            "delimiter": delimiter,
+            "encoding": encoding,
+            "archive_member": archive_member,
+            "byte_size": len(content),
+        }
+        return rows, fieldnames, meta
 
     def _resolve_bbox(self, config, workspace):
         bbox = _parse_bbox(config.get("bbox"))
@@ -131,11 +142,18 @@ class UnfallatlasConnector(BaseConnector):
         if errors:
             return ConnectorTestResult(False, "; ".join(errors))
         try:
-            rows, fieldnames = self._fetch_rows(config)
+            rows, fieldnames, meta = self._fetch_rows(config)
         except Exception as exc:  # noqa: BLE001
             return ConnectorTestResult(False, f"Fetch failed: {exc}")
-        present = {f.strip() for f in fieldnames}
-        present_lower = {f.lower() for f in present}
+
+        diagnostics = dict(meta)
+        diagnostics.update({
+            "row_count": len(rows),
+            "columns": list(fieldnames),
+            "workspace_slug": getattr(workspace, "slug", None),
+        })
+
+        present_lower = {f.strip().lower() for f in fieldnames}
         missing = []
         if not any(a.lower() in present_lower for a in LON_ALIASES):
             missing.append(f"longitude ({'/'.join(LON_ALIASES)})")
@@ -144,30 +162,108 @@ class UnfallatlasConnector(BaseConnector):
         if "ukategorie" not in present_lower:
             missing.append("UKATEGORIE")
         if missing:
+            diagnostics["missing_columns"] = missing
             return ConnectorTestResult(
                 False,
                 (
                     f"Missing required columns: {missing}. "
                     f"Found: {fieldnames[:24]}"
                 ),
+                diagnostics=diagnostics,
             )
+
+        # Build all features so we get an accurate coordinate range and an
+        # unbiased "inside bounds" percentage. Destatis files are sorted by
+        # state (ULAND); the previous "first 50 rows" sample was almost
+        # always Schleswig-Holstein, hiding mismatches for southern cities.
         bbox = self._resolve_bbox(config, workspace)
-        preview = [_row_to_feature(r, bbox) for r in rows[:50]]
-        kept = [f for f in preview if f]
-        suffix = f" (bbox-clip active, sample {len(kept)}/{len(preview)} kept)" if bbox else ""
+        all_features = [
+            f for r in rows if (f := _row_to_feature(r, None)) is not None
+        ]
+        coord_range = _coord_range(all_features)
+        diagnostics["coord_range"] = coord_range  # (west, south, east, north)
+        diagnostics["valid_geometry_count"] = len(all_features)
+
+        bounds_extent = None
+        inside_count = None
+        if bbox is not None:
+            bounds_extent = list(bbox)
+            inside_count = sum(
+                1 for f in all_features if _point_in_bbox(f, bbox)
+            )
+            diagnostics["workspace_bounds"] = bounds_extent
+            diagnostics["inside_bounds_count"] = inside_count
+            if all_features:
+                diagnostics["inside_bounds_pct"] = round(
+                    100.0 * inside_count / len(all_features), 1
+                )
+
+        # Map preview: spread sample across the file so we don't bias toward
+        # one state. Up to 200 points.
+        preview = _evenly_sampled(all_features, 200)
+        diagnostics["preview_total"] = len(preview)
+
+        message = f"Unfallatlas CSV OK. {len(rows)} rows parsed."
+        if bbox is not None:
+            if inside_count == 0 and len(all_features) > 0:
+                message += (
+                    " None of them fall inside the workspace bounds — the sync"
+                    " will fall back to importing the full dataset. Check that"
+                    " your workspace polygon matches the geographic area the"
+                    " file covers."
+                )
+            elif inside_count is not None:
+                message += (
+                    f" {inside_count} of {len(all_features)} points"
+                    f" ({diagnostics.get('inside_bounds_pct', 0)}%) inside"
+                    " workspace bounds."
+                )
+
         return ConnectorTestResult(
             True,
-            f"Unfallatlas CSV OK. {len(rows)} rows, required columns detected{suffix}.",
-            kept[:3],
+            message,
+            preview,
+            diagnostics=diagnostics,
         )
 
     def fetch(self, config, workspace=None):
-        rows, _ = self._fetch_rows(config)
+        rows, _, meta = self._fetch_rows(config)
         bbox = self._resolve_bbox(config, workspace)
-        features = [f for r in rows if (f := _row_to_feature(r, bbox)) is not None]
+        warnings = []
+
+        clipped = [f for r in rows if (f := _row_to_feature(r, bbox)) is not None]
+        unclipped_count = sum(
+            1 for r in rows if _row_to_feature(r, None) is not None
+        )
+
+        # Auto-fallback: if a workspace clip drops every row but the file
+        # itself parses fine, import the full dataset so the user sees
+        # something on the map. Operators almost always prefer this over a
+        # silent zero-result sync — they can re-narrow the bounds later.
+        features = clipped
+        if bbox is not None and len(clipped) == 0 and unclipped_count > 0:
+            features = [
+                f for r in rows if (f := _row_to_feature(r, None)) is not None
+            ]
+            warnings.append(
+                "Workspace bounds dropped every row — imported the full "
+                "dataset instead so the data is visible. Adjust the "
+                "workspace bounds, then re-sync to apply the clip."
+            )
+
+        diagnostics = dict(meta)
+        diagnostics.update({
+            "row_count": len(rows),
+            "valid_geometry_count": unclipped_count,
+            "inside_bounds_count": len(clipped) if bbox is not None else None,
+            "workspace_bounds": list(bbox) if bbox is not None else None,
+            "imported_unclipped": bool(warnings),
+        })
         return FetchResult(
             feature_collection={"type": "FeatureCollection", "features": features},
             record_count=len(features),
+            warnings=warnings,
+            diagnostics=diagnostics,
         )
 
     # ------------------------------------------------------------------
@@ -424,3 +520,29 @@ def _resolve_delimiter(text: str, override: str | None) -> str:
     if semi == 0 and comma == 0:
         return ";"
     return ";" if semi >= comma else ","
+
+
+def _coord_range(features):
+    """Return (west, south, east, north) of all point features, or None."""
+    if not features:
+        return None
+    lons = [f["geometry"]["coordinates"][0] for f in features]
+    lats = [f["geometry"]["coordinates"][1] for f in features]
+    return [min(lons), min(lats), max(lons), max(lats)]
+
+
+def _point_in_bbox(feature, bbox):
+    lon, lat = feature["geometry"]["coordinates"]
+    west, south, east, north = bbox
+    return west <= lon <= east and south <= lat <= north
+
+
+def _evenly_sampled(items, k):
+    """Return at most *k* items spaced evenly across *items*. Preserves
+    chronological / geographic spread so a map preview isn't biased toward
+    the start of the file (Destatis sorts by ULAND = state)."""
+    n = len(items)
+    if n <= k:
+        return list(items)
+    step = n / k
+    return [items[int(i * step)] for i in range(k)]

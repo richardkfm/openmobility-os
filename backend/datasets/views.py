@@ -426,16 +426,59 @@ def test_data_source(request, workspace_slug, pk):
     try:
         connector = get_connector(source.source_type)
     except KeyError:
-        return JsonResponse({"success": False, "message": f"Unknown connector {source.source_type}"})
+        if request.headers.get("HX-Request"):
+            return render(
+                request,
+                "datasets/_test_panel.html",
+                {
+                    "success": False,
+                    "message": _("Unknown connector: %(t)s") % {"t": source.source_type},
+                    "diagnostics": {},
+                    "preview_features": [],
+                    "workspace": ws,
+                    "source": source,
+                },
+            )
+        return JsonResponse(
+            {"success": False, "message": f"Unknown connector {source.source_type}"}
+        )
 
     result = connector.test_connection(source.config, workspace=ws)
+
+    if request.headers.get("HX-Request"):
+        return render(
+            request,
+            "datasets/_test_panel.html",
+            {
+                "success": result.success,
+                "message": result.message,
+                "diagnostics": result.diagnostics or {},
+                "preview_features": result.preview_features or [],
+                "workspace": ws,
+                "source": source,
+                # Workspace bounds as a GeoJSON polygon for the mini-map.
+                "workspace_bounds_geojson": _workspace_bounds_geojson(ws),
+            },
+        )
     return JsonResponse(
         {
             "success": result.success,
             "message": result.message,
             "preview_features": result.preview_features,
+            "diagnostics": result.diagnostics,
         }
     )
+
+
+def _workspace_bounds_geojson(workspace) -> dict | None:
+    bounds = getattr(workspace, "bounds", None)
+    if bounds is None:
+        return None
+    try:
+        # GeoDjango Polygon → GeoJSON geometry
+        return json.loads(bounds.geojson)
+    except Exception:  # noqa: BLE001
+        return None
 
 
 @admin_required
@@ -505,12 +548,14 @@ def _run_sync(source: DataSource):
     source.error_message = ""
     source.last_synced_at = timezone.now()
     source.record_count = result.record_count
+    source.last_sync_warnings = list(getattr(result, "warnings", []) or [])
     source.save(
         update_fields=[
             "status",
             "error_message",
             "last_synced_at",
             "record_count",
+            "last_sync_warnings",
             "updated_at",
         ]
     )
@@ -521,7 +566,13 @@ def _run_sync(source: DataSource):
         start_time,
         feature_count=result.record_count,
     )
-    return True, _("Synced %(n)d records.") % {"n": result.record_count}
+    base_message = _("Synced %(n)d records.") % {"n": result.record_count}
+    if source.last_sync_warnings:
+        # Pass warnings back so views can surface them with a distinct
+        # styling (Django messages framework).
+        joined = " ".join(source.last_sync_warnings)
+        return True, f"{base_message} {joined}"
+    return True, base_message
 
 
 def _log_sync(
