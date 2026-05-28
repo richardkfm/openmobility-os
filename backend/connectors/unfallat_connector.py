@@ -157,8 +157,6 @@ class UnfallatlasConnector(BaseConnector):
 
         existing_names: set[str] = set()
         if workspace is not None:
-            from datasets.models import DataSource as _DS
-
             existing_names = set(
                 workspace.data_sources.filter(source_type=self.id).values_list(
                     "name", flat=True
