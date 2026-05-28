@@ -76,6 +76,12 @@ class Workspace(models.Model):
         help_text=_("Dimension → weight mapping. Defaults used if empty."),
     )
 
+    settings = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text=_("Free-form per-workspace UI state (catalog URLs, last filters, …)."),
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

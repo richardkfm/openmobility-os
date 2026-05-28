@@ -189,13 +189,85 @@ class MobilithekConnector(BaseConnector):
     def supports_discovery(self) -> bool:
         return True
 
+    quick_add_fields = [
+        {
+            "name": "name",
+            "label": "Source name",
+            "placeholder": "GTFS Sachsen",
+            "required": True,
+        },
+        {
+            "name": "distribution_url",
+            "label": "Distribution URL",
+            "placeholder": "https://download.example.com/feed.zip",
+            "required": True,
+        },
+        {
+            "name": "format_hint",
+            "label": "Format (gtfs / geojson / csv / json)",
+            "placeholder": "gtfs",
+            "default": "gtfs",
+            "required": True,
+        },
+    ]
+
+    def quick_add(self, form_data, workspace=None):
+        name = str(form_data.get("name") or "").strip()
+        url = str(form_data.get("distribution_url") or "").strip()
+        fmt = str(form_data.get("format_hint") or "").strip().lower()
+        if not name or not url or not fmt:
+            raise ValueError("Name, distribution URL and format are required.")
+        if fmt not in SUPPORTED_FORMATS:
+            raise ValueError(
+                f"format must be one of {', '.join(SUPPORTED_FORMATS)} (got {fmt!r})."
+            )
+        if not (url.startswith("http://") or url.startswith("https://")):
+            raise ValueError("Distribution URL must start with http:// or https://.")
+        return CatalogEntry(
+            entry_id=f"mobilithek-custom:{url}",
+            title=name,
+            subtitle="custom",
+            description="",
+            format_hint=fmt,
+            source_url=url,
+            attribution="",
+            license="",
+            suggested_name=name,
+            suggested_layer_kind=_FORMAT_TO_LAYER.get(fmt, "custom"),
+            suggested_config={
+                "distribution_url": url,
+                "format_hint": fmt,
+                "mode": "open",
+            },
+            badges=["custom"],
+        )
+
     def discover(self, query=None, facets=None, workspace=None, *, _xml_bytes=None):
-        from .mobilithek_catalog import browse_catalog
+        from .mobilithek_catalog import CATALOG_URL, browse_catalog
+
+        # Override chain: explicit facet > workspace.settings > settings.MOBILITHEK_CATALOG_URL > default.
+        catalog_url = ""
+        if facets:
+            catalog_url = str(facets.get("catalog_url") or "").strip()
+        if not catalog_url and workspace is not None:
+            catalog_url = (workspace.settings or {}).get("mobilithek_catalog_url", "")
+        if not catalog_url:
+            try:
+                from django.conf import settings as _dj_settings
+
+                catalog_url = getattr(_dj_settings, "MOBILITHEK_CATALOG_URL", "") or CATALOG_URL
+            except Exception:  # noqa: BLE001
+                catalog_url = CATALOG_URL
 
         try:
-            datasets = browse_catalog(keyword=query, _xml_bytes=_xml_bytes)
+            datasets = browse_catalog(
+                keyword=query, catalog_url=catalog_url, _xml_bytes=_xml_bytes
+            )
         except Exception as exc:  # noqa: BLE001
-            return CatalogPage(message=f"Catalog fetch failed: {exc}")
+            return CatalogPage(
+                message=f"Catalog fetch failed: {exc}",
+                facets={"catalog_url": catalog_url},
+            )
 
         existing_urls: set[str] = set()
         if workspace is not None:
@@ -244,5 +316,9 @@ class MobilithekConnector(BaseConnector):
         return CatalogPage(
             entries=entries,
             total=len(entries),
-            facets={"format_counts": format_counts, "supported_only": supported_only},
+            facets={
+                "format_counts": format_counts,
+                "supported_only": supported_only,
+                "catalog_url": catalog_url,
+            },
         )

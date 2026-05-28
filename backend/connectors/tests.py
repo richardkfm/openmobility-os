@@ -1743,6 +1743,58 @@ class MobilithekDiscoveryTests(TestCase):
         self.assertEqual(counts.get("geojson"), 1)
         self.assertEqual(counts.get("datexii"), 1)
 
+    def test_discover_catalog_url_override_via_facet(self):
+        captured = {}
+
+        def fake_browse(keyword=None, catalog_url=None, _xml_bytes=None, **_):
+            captured["url"] = catalog_url
+            return []
+
+        with mock.patch(
+            "connectors.mobilithek_catalog.browse_catalog", side_effect=fake_browse
+        ):
+            self._connector().discover(
+                facets={"catalog_url": "https://override.example/feed.rdf"}
+            )
+        self.assertEqual(captured["url"], "https://override.example/feed.rdf")
+
+    def test_discover_catalog_url_failure_returns_url_in_facets(self):
+        with mock.patch(
+            "connectors.mobilithek_catalog.browse_catalog",
+            side_effect=RuntimeError("404 Not Found"),
+        ):
+            page = self._connector().discover(
+                facets={"catalog_url": "https://broken.example/feed.rdf"}
+            )
+        self.assertIn("404", page.message)
+        self.assertEqual(page.facets["catalog_url"], "https://broken.example/feed.rdf")
+
+    def test_quick_add_happy_path(self):
+        entry = self._connector().quick_add(
+            {
+                "name": "GTFS Sachsen",
+                "distribution_url": "https://x.example/feed.zip",
+                "format_hint": "gtfs",
+            }
+        )
+        self.assertEqual(entry.suggested_name, "GTFS Sachsen")
+        self.assertEqual(entry.suggested_layer_kind, "transit_stops")
+        self.assertEqual(entry.suggested_config["distribution_url"], "https://x.example/feed.zip")
+        self.assertEqual(entry.suggested_config["format_hint"], "gtfs")
+        self.assertIn("custom", entry.badges)
+
+    def test_quick_add_rejects_unsupported_format(self):
+        with self.assertRaises(ValueError):
+            self._connector().quick_add(
+                {"name": "x", "distribution_url": "https://x.example/y", "format_hint": "pdf"}
+            )
+
+    def test_quick_add_requires_https(self):
+        with self.assertRaises(ValueError):
+            self._connector().quick_add(
+                {"name": "x", "distribution_url": "ftp://example.com/y", "format_hint": "gtfs"}
+            )
+
 
 class UnfallatlasCatalogTests(_DjangoTestCase):
     """`unfallat_catalog.load_year_sources` reads YAML, the connector turns
@@ -1817,6 +1869,52 @@ class UnfallatlasCatalogTests(_DjangoTestCase):
             page = UnfallatlasConnector().discover(workspace=self.workspace)
         self.assertEqual(page.total, 0)
         self.assertIn("Unfallatlas", page.message)
+
+    def test_quick_add_happy_path(self):
+        from connectors.unfallat_connector import UnfallatlasConnector
+
+        entry = UnfallatlasConnector().quick_add(
+            {"year": "2024", "url": "https://x.example/u.csv", "encoding": "latin-1"},
+            workspace=self.workspace,
+        )
+        self.assertEqual(entry.entry_id, "unfallatlas-2024")
+        self.assertEqual(entry.suggested_name, "Unfallatlas 2024")
+        self.assertEqual(entry.suggested_config["url"], "https://x.example/u.csv")
+        self.assertEqual(entry.suggested_config["encoding"], "latin-1")
+        self.assertTrue(entry.suggested_config["clip_to_workspace"])
+        self.assertEqual(entry.suggested_layer_kind, "accidents")
+
+    def test_quick_add_rejects_non_integer_year(self):
+        from connectors.unfallat_connector import UnfallatlasConnector
+
+        with self.assertRaises(ValueError):
+            UnfallatlasConnector().quick_add(
+                {"year": "abc", "url": "https://x/u.csv"}, workspace=self.workspace
+            )
+
+    def test_quick_add_rejects_out_of_range_year(self):
+        from connectors.unfallat_connector import UnfallatlasConnector
+
+        with self.assertRaises(ValueError):
+            UnfallatlasConnector().quick_add(
+                {"year": "1900", "url": "https://x/u.csv"}, workspace=self.workspace
+            )
+
+    def test_quick_add_rejects_bad_url_scheme(self):
+        from connectors.unfallat_connector import UnfallatlasConnector
+
+        with self.assertRaises(ValueError):
+            UnfallatlasConnector().quick_add(
+                {"year": "2024", "url": "ftp://x/u.csv"}, workspace=self.workspace
+            )
+
+    def test_quick_add_defaults_encoding_to_utf8(self):
+        from connectors.unfallat_connector import UnfallatlasConnector
+
+        entry = UnfallatlasConnector().quick_add(
+            {"year": "2024", "url": "https://x/u.csv"}, workspace=self.workspace
+        )
+        self.assertEqual(entry.suggested_config["encoding"], "utf-8")
 
     def test_suggested_config_clips_to_workspace(self):
         from connectors.unfallat_connector import UnfallatlasConnector

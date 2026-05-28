@@ -3,7 +3,7 @@
 
 # OpenMobility OS
 
-**Version:** 0.16.0 (pre-release) — see [CHANGELOG.md](CHANGELOG.md)
+**Version:** 0.17.0 (pre-release) — see [CHANGELOG.md](CHANGELOG.md)
 **License:** See [LICENSE](LICENSE)
 
 > The open, free, self-hostable operating system between open mobility data
@@ -456,10 +456,18 @@ catalog. Currently:
   (GTFS / GeoJSON / CSV / JSON / DATEX II), and click *Add to workspace*
   on any supported entry. The platform builds the DataSource with the
   right `distribution_url` and `format_hint` and runs an initial sync.
+  If BMDV rotates the feed URL, override it inline via the *Catalog URL*
+  field at the top of the Mobilithek catalog page — it is remembered per
+  workspace. A deployment-wide default lives in `MOBILITHEK_CATALOG_URL`.
 - **Unfallatlas** — pick a year from the year→URL mapping in
   `config/unfallatlas.yaml` (or the per-workspace override at
   `config/unfallatlas/<slug>.yaml`). Each year becomes its own
   DataSource with `clip_to_workspace: true`.
+
+Both connectors also expose an **Add a custom entry** form on their
+catalog page, so admins can enter a year + URL (Unfallatlas) or
+name + distribution URL + format (Mobilithek) without editing any
+YAML — the form creates a DataSource and syncs immediately.
 
 The matching `browse_mobilithek` and `seed_unfallatlas` management
 commands still work for scripting and CI.

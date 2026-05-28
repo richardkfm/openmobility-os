@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Catalog quick-add** — both Mobilithek and Unfallatlas now expose an
+  inline "Add a custom entry" form on their catalog page so admins can
+  enter a year + URL (Unfallatlas) or name + distribution URL + format
+  (Mobilithek) directly from the UI. Removes the previous requirement to
+  pre-seed `config/unfallatlas.yaml` before any year shows up; the YAML
+  still works as the curated default catalog when present.
+- **Configurable Mobilithek catalog URL** — BMDV occasionally rotates the
+  DCAT-AP feed URL, which previously broke discovery with no UI recourse.
+  Admins can now override the URL inline on the Mobilithek catalog page;
+  the override is remembered per workspace. A new
+  `MOBILITHEK_CATALOG_URL` env var provides a deployment-wide default.
+
+### Added
 - **Data hub catalog browser** — admins can now browse and add
   Mobilithek (German NAP) datasets and Unfallatlas (Destatis) yearly
   accident files end-to-end from the Data hub UI. A new "Browse catalog"
