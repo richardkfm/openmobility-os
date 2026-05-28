@@ -7,7 +7,7 @@ auto-detection of common coordinate column names, and WKT geometry column.
 import csv
 import io
 
-from ._http import fetch_bytes
+from ._http import extract_member_if_zip, fetch_bytes
 from .base import BaseConnector, ConnectorTestResult, FetchResult
 
 LAT_CANDIDATES = ("lat", "latitude", "y", "y_coord", "ycoord", "breitengrad")
@@ -50,6 +50,7 @@ class CSVConnector(BaseConnector):
         skip = int(config.get("skip_rows", 0) or 0)
 
         content = fetch_bytes(url, config, timeout=60)
+        content = extract_member_if_zip(content, extensions=(".csv", ".txt"))
         text = content.decode(encoding, errors="replace")
 
         lines = text.splitlines()

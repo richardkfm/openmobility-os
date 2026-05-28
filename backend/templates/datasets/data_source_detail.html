@@ -105,11 +105,11 @@
   <div class="rounded-lg border bg-white p-5">
     <h2 class="font-semibold mb-3">{% trans "Upload / replace source file" %}</h2>
     <p class="text-sm text-slate-500 mb-3">
-      {% trans "Upload a CSV or GeoJSON file to use as the data source instead of a remote URL. The file path will be auto-injected into the config." %}
+      {% trans "Upload a CSV, GeoJSON, or ZIP file to use as the data source instead of a remote URL. ZIP archives are auto-extracted (first matching CSV is used). The file path will be auto-injected into the config." %}
     </p>
     <form method="post" enctype="multipart/form-data" class="flex flex-col gap-3">
       {% csrf_token %}
-      <input type="file" name="source_file" accept=".csv,.geojson,.json,.txt"
+      <input type="file" name="source_file" accept=".csv,.geojson,.json,.txt,.zip"
         class="text-sm text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border file:text-xs file:bg-white file:text-slate-700 hover:file:bg-slate-50">
       <div>
         <button type="submit"

@@ -109,8 +109,8 @@
       <template x-if="selectedId && info && info.supports_file">
         <div class="rounded bg-slate-50 border border-slate-200 p-4 flex flex-col gap-2">
           <p class="text-sm font-medium">{% trans "Upload local file" %} <span class="font-normal text-slate-400">({% trans "optional — instead of a URL" %})</span></p>
-          <p class="text-xs text-slate-500">{% trans "Upload a CSV or GeoJSON file from your computer. The path will be auto-filled into the config." %}</p>
-          <input type="file" name="source_file" accept=".csv,.geojson,.json,.txt"
+          <p class="text-xs text-slate-500">{% trans "Upload a CSV, GeoJSON, or ZIP file from your computer. ZIP archives are auto-extracted (first matching CSV is used). The path will be auto-filled into the config." %}</p>
+          <input type="file" name="source_file" accept=".csv,.geojson,.json,.txt,.zip"
             class="text-sm text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border file:text-xs file:bg-white file:text-slate-700 hover:file:bg-slate-50">
         </div>
       </template>

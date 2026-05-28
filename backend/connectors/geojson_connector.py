@@ -2,7 +2,7 @@
 
 import json
 
-from ._http import fetch_bytes
+from ._http import extract_member_if_zip, fetch_bytes
 from .base import BaseConnector, ConnectorTestResult, FetchResult
 
 
@@ -42,6 +42,7 @@ class GeoJSONConnector(BaseConnector):
 
     def _fetch_raw(self, config: dict) -> dict:
         content = fetch_bytes(config["url"], config, timeout=60)
+        content = extract_member_if_zip(content, extensions=(".geojson", ".json"))
         return json.loads(content)
 
     def test_connection(self, config, workspace=None):

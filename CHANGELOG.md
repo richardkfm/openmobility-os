@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **ZIP upload + URL support** — admins can now upload a ZIP archive (or
+  point a URL at one) in the CSV, Unfallatlas, and GeoJSON connectors.
+  The first matching file inside the archive is auto-extracted — handles
+  Destatis-style nested layouts like `UnfaelleMitPersonenschaden_2024/
+  CSV/Unfaelle_2024.csv` without manual unpacking. The accept-attribute
+  on the upload widgets is extended accordingly.
+
+### Added
 - **Catalog quick-add** — both Mobilithek and Unfallatlas now expose an
   inline "Add a custom entry" form on their catalog page so admins can
   enter a year + URL (Unfallatlas) or name + distribution URL + format
