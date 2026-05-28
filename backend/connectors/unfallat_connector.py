@@ -11,7 +11,14 @@ import csv
 import io
 
 from ._http import fetch_bytes
-from .base import BaseConnector, ConnectorTestResult, FetchResult
+from .base import (
+    BaseConnector,
+    CatalogEntry,
+    CatalogPage,
+    ConnectorTestResult,
+    FetchResult,
+)
+from .unfallat_catalog import load_year_sources
 
 SEVERITY_MAP = {"1": "fatal", "2": "serious", "3": "minor"}
 
@@ -131,6 +138,71 @@ class UnfallatlasConnector(BaseConnector):
         return FetchResult(
             feature_collection={"type": "FeatureCollection", "features": features},
             record_count=len(features),
+        )
+
+    # ------------------------------------------------------------------
+    # Catalog discovery — exposes the year→URL mapping from
+    # config/unfallatlas.yaml as an admin-facing year picker.
+    # ------------------------------------------------------------------
+
+    def supports_discovery(self) -> bool:
+        return True
+
+    def discover(self, query=None, facets=None, workspace=None):
+        slug = getattr(workspace, "slug", None)
+        specs = load_year_sources(workspace_slug=slug)
+        if query:
+            q = str(query).strip()
+            specs = [s for s in specs if q in str(s.year)]
+
+        existing_names: set[str] = set()
+        if workspace is not None:
+            existing_names = set(
+                workspace.data_sources.filter(source_type=self.id).values_list(
+                    "name", flat=True
+                )
+            )
+
+        entries = []
+        for spec in specs:
+            name = f"Unfallatlas {spec.year}"
+            already = name in existing_names
+            entries.append(
+                CatalogEntry(
+                    entry_id=f"unfallatlas-{spec.year}",
+                    title=name,
+                    subtitle=str(spec.year),
+                    description=(
+                        "Polizeilich erfasste Unfaelle mit Personenschaden "
+                        f"({spec.year})."
+                    ),
+                    format_hint="csv",
+                    source_url="https://unfallatlas.statistikportal.de/",
+                    attribution="© Statistische Ämter des Bundes und der Länder",
+                    license="dl-de/by-2-0",
+                    suggested_name=name,
+                    suggested_layer_kind="accidents",
+                    suggested_config={
+                        "url": spec.url,
+                        "encoding": spec.encoding,
+                        "clip_to_workspace": True,
+                    },
+                    badges=["bbox-clip"],
+                    already_added=already,
+                )
+            )
+
+        message = ""
+        if not specs:
+            message = (
+                "No Unfallatlas years configured. Add year→URL entries to "
+                "config/unfallatlas.yaml or config/unfallatlas/<slug>.yaml."
+            )
+        return CatalogPage(
+            entries=entries,
+            total=len(entries),
+            facets={"available_years": [s.year for s in specs]},
+            message=message,
         )
 
 

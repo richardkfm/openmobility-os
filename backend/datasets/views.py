@@ -15,28 +15,152 @@ from django.views.decorators.http import require_POST
 from connectors.registry import get_connector, list_connectors
 from core.decorators import admin_required
 from core.utils import get_active_workspace
+from measures.accident_kpis import compute_accident_kpis
+from measures.transit_kpis import compute_transit_kpis
 from workspaces.models import ConnectorAuditLog
 
 from .models import DataSource, NormalizedFeatureSet
+from .readiness import source_readiness
 
 logger = logging.getLogger(__name__)
 
 
 def data_hub(request, workspace_slug):
     ws = get_active_workspace(workspace_slug)
-    sources = ws.data_sources.all().order_by("layer_kind", "name")
+    sources = list(ws.data_sources.all().order_by("layer_kind", "name"))
+    sources_with_readiness = [(s, source_readiness(s)) for s in sources]
+    feature_sets = NormalizedFeatureSet.objects.filter(workspace=ws)
     return render(
         request,
         "datasets/data_hub.html",
         {
             "workspace": ws,
             "sources": sources,
+            "sources_with_readiness": sources_with_readiness,
             "status_choices": dict(DataSource.Status.choices),
-            "data_sources_active": sources.filter(
-                status=DataSource.Status.ACTIVE, is_enabled=True
-            ).count(),
+            "data_sources_active": sum(1 for s in sources if s.status == DataSource.Status.ACTIVE and s.is_enabled),
+            "transit_kpis": compute_transit_kpis(ws, feature_sets),
+            "accident_kpis": compute_accident_kpis(ws, feature_sets),
             "page_title": _("Data hub — %(name)s") % {"name": ws.name},
         },
+    )
+
+
+def _get_discoverable(connector_id: str):
+    try:
+        connector = get_connector(connector_id)
+    except KeyError:
+        return None
+    if not connector.supports_discovery():
+        return None
+    return connector
+
+
+def catalog_index(request, workspace_slug):
+    ws = get_active_workspace(workspace_slug)
+    connectors = [c for c in list_connectors() if c.supports_discovery()]
+    return render(
+        request,
+        "datasets/catalog_index.html",
+        {
+            "workspace": ws,
+            "connectors": connectors,
+            "page_title": _("Browse data catalog"),
+        },
+    )
+
+
+def catalog_browse(request, workspace_slug, connector_id):
+    ws = get_active_workspace(workspace_slug)
+    connector = _get_discoverable(connector_id)
+    if connector is None:
+        messages.error(request, _("Unknown or non-discoverable connector."))
+        return redirect(reverse("data_hub", kwargs={"workspace_slug": ws.slug}))
+
+    query = request.GET.get("q", "").strip() or None
+    facets = {k: v for k, v in request.GET.items() if k != "q"}
+    page = connector.discover(query=query, facets=facets, workspace=ws)
+
+    template = (
+        "datasets/_catalog_results.html"
+        if request.headers.get("HX-Request")
+        else "datasets/catalog_browse.html"
+    )
+    return render(
+        request,
+        template,
+        {
+            "workspace": ws,
+            "connector": connector,
+            "page": page,
+            "query": query or "",
+            "page_title": _("Catalog: %(name)s") % {"name": connector.display_name_de},
+        },
+    )
+
+
+@admin_required
+@require_POST
+def catalog_add(request, workspace_slug, connector_id):
+    ws = get_active_workspace(workspace_slug)
+    connector = _get_discoverable(connector_id)
+    if connector is None:
+        messages.error(request, _("Unknown or non-discoverable connector."))
+        return redirect(reverse("data_hub", kwargs={"workspace_slug": ws.slug}))
+
+    entry_id = request.POST.get("entry_id", "").strip()
+    if not entry_id:
+        messages.error(request, _("Missing catalog entry id."))
+        return redirect(
+            reverse(
+                "catalog_browse",
+                kwargs={"workspace_slug": ws.slug, "connector_id": connector_id},
+            )
+        )
+
+    query = request.POST.get("q") or None
+    page = connector.discover(query=query, facets=None, workspace=ws)
+    entry = next((e for e in page.entries if e.entry_id == entry_id), None)
+    if entry is None:
+        page_all = connector.discover(query=None, facets=None, workspace=ws)
+        entry = next((e for e in page_all.entries if e.entry_id == entry_id), None)
+    if entry is None:
+        messages.error(request, _("Catalog entry no longer available."))
+        return redirect(
+            reverse(
+                "catalog_browse",
+                kwargs={"workspace_slug": ws.slug, "connector_id": connector_id},
+            )
+        )
+
+    source, created = DataSource.objects.update_or_create(
+        workspace=ws,
+        name=entry.suggested_name or entry.title,
+        defaults={
+            "source_type": connector.id,
+            "layer_kind": entry.suggested_layer_kind or DataSource.LayerKind.CUSTOM,
+            "config": entry.suggested_config or {},
+            "license": entry.license or "",
+            "attribution": entry.attribution or "",
+            "source_url": entry.source_url or "",
+        },
+    )
+    if request.POST.get("skip_sync"):
+        verb = _("created") if created else _("updated")
+        messages.success(
+            request, _("Data source %(verb)s: %(n)s") % {"verb": verb, "n": source.name}
+        )
+        return redirect(
+            reverse("data_source_detail", kwargs={"workspace_slug": ws.slug, "pk": source.pk})
+        )
+
+    success, message = _run_sync(source)
+    if success:
+        messages.success(request, message)
+    else:
+        messages.error(request, message)
+    return redirect(
+        reverse("data_source_detail", kwargs={"workspace_slug": ws.slug, "pk": source.pk})
     )
 
 

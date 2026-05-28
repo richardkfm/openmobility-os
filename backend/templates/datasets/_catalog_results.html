@@ -1,0 +1,87 @@
+{% load i18n %}
+
+{% if page.message %}
+<div class="rounded border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 mb-4">
+  {{ page.message }}
+</div>
+{% endif %}
+
+{% if page.facets.format_counts %}
+<div class="flex flex-wrap gap-2 mb-4 text-xs">
+  <span class="text-slate-500">{% trans "Formats:" %}</span>
+  {% for fmt, count in page.facets.format_counts.items %}
+  <span class="rounded-full bg-slate-100 text-slate-700 px-2 py-0.5">{{ fmt }} ({{ count }})</span>
+  {% endfor %}
+  {% if page.facets.supported_only %}
+  <a href="?show_all=1{% if query %}&q={{ query }}{% endif %}" class="text-slate-500 underline">
+    {% trans "Show unsupported formats too" %}
+  </a>
+  {% endif %}
+</div>
+{% endif %}
+
+{% if page.entries %}
+<div class="rounded-lg border bg-white divide-y">
+  {% for entry in page.entries %}
+  <div class="p-4 flex flex-col sm:flex-row sm:items-start gap-3">
+    <div class="flex-1 min-w-0">
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="font-medium">{{ entry.title }}</span>
+        {% if entry.format_hint %}
+        <span class="text-xs rounded px-1.5 py-0.5 bg-slate-100 text-slate-600">{{ entry.format_hint }}</span>
+        {% endif %}
+        {% if entry.already_added %}
+        <span class="text-xs rounded-full px-2 py-0.5 bg-emerald-100 text-emerald-800">{% trans "Already added" %}</span>
+        {% endif %}
+        {% for badge in entry.badges %}
+        <span class="text-xs rounded px-1.5 py-0.5 bg-slate-100 text-slate-500">{{ badge }}</span>
+        {% endfor %}
+      </div>
+      {% if entry.subtitle %}
+      <div class="text-xs text-slate-500 mt-0.5">{{ entry.subtitle }}</div>
+      {% endif %}
+      {% if entry.description %}
+      <p class="text-sm text-slate-600 mt-1">{{ entry.description|truncatewords:30 }}</p>
+      {% endif %}
+      {% if entry.attribution %}
+      <div class="text-xs text-slate-400 mt-1">{{ entry.attribution }}</div>
+      {% endif %}
+    </div>
+    {% if is_admin %}
+    <div class="shrink-0 flex flex-col gap-1">
+      <form method="post" action="{% url 'catalog_add' workspace.slug connector.id %}">
+        {% csrf_token %}
+        <input type="hidden" name="entry_id" value="{{ entry.entry_id }}">
+        {% if query %}<input type="hidden" name="q" value="{{ query }}">{% endif %}
+        <button {% if entry.already_added %}disabled{% endif %}
+          class="rounded px-3 py-1.5 text-sm
+          {% if entry.already_added %}bg-slate-100 text-slate-400 cursor-not-allowed
+          {% else %}bg-slate-900 text-white hover:bg-slate-700{% endif %}">
+          {% if entry.already_added %}{% trans "Added" %}{% else %}{% trans "Add to workspace" %}{% endif %}
+        </button>
+      </form>
+      {% if not entry.already_added %}
+      <form method="post" action="{% url 'catalog_add' workspace.slug connector.id %}">
+        {% csrf_token %}
+        <input type="hidden" name="entry_id" value="{{ entry.entry_id }}">
+        <input type="hidden" name="skip_sync" value="1">
+        {% if query %}<input type="hidden" name="q" value="{{ query }}">{% endif %}
+        <button class="text-xs text-slate-500 underline hover:text-slate-700">
+          {% trans "Add without syncing" %}
+        </button>
+      </form>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+<p class="text-xs text-slate-400 mt-3">
+  {% blocktrans count counter=page.total %}{{ counter }} result{% plural %}{{ counter }} results{% endblocktrans %}
+</p>
+{% else %}
+<div class="rounded-lg border-2 border-dashed bg-white p-10 text-center text-slate-400">
+  {% if query %}{% trans "No catalog entries match your search." %}
+  {% else %}{% trans "No catalog entries available." %}{% endif %}
+</div>
+{% endif %}

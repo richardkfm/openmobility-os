@@ -1,0 +1,42 @@
+{% extends "workspaces/base_workspace.html" %}
+{% load i18n %}
+
+{% block content %}
+<div class="flex flex-col gap-6">
+
+  <div class="flex items-center justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-bold">{% trans "Browse data catalog" %}</h1>
+      <p class="text-sm text-slate-500 mt-1">
+        {% trans "Pick a source provider to browse available datasets and add them to this workspace." %}
+      </p>
+    </div>
+    <a href="{% url 'data_hub' workspace.slug %}" class="rounded border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50">
+      {% trans "Back to data hub" %}
+    </a>
+  </div>
+
+  {% if connectors %}
+  <div class="grid gap-4 sm:grid-cols-2">
+    {% for connector in connectors %}
+    <a href="{% url 'catalog_browse' workspace.slug connector.id %}"
+      class="block rounded-lg border bg-white p-5 hover:border-slate-400 hover:shadow-sm transition">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <div class="font-semibold">{{ connector.display_name_de }}</div>
+          <div class="text-xs text-slate-500 mt-0.5">{{ connector.display_name_en }}</div>
+        </div>
+        <span class="text-xs rounded px-1.5 py-0.5 bg-slate-100 text-slate-600 shrink-0">{{ connector.id }}</span>
+      </div>
+      <p class="text-sm text-slate-600 mt-2">{{ connector.description_de|truncatewords:40 }}</p>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="rounded-lg border-2 border-dashed bg-white p-10 text-center text-slate-400">
+    {% trans "No catalog-aware connectors registered." %}
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

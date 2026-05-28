@@ -16,6 +16,17 @@ urlpatterns = [
     path("measures/<slug:measure_slug>/", views.measure_detail, name="measure_detail"),
     path("data/", dataset_views.data_hub, name="data_hub"),
     path("data/add/", dataset_views.add_data_source, name="data_source_add"),
+    path("data/catalog/", dataset_views.catalog_index, name="catalog_index"),
+    path(
+        "data/catalog/<slug:connector_id>/",
+        dataset_views.catalog_browse,
+        name="catalog_browse",
+    ),
+    path(
+        "data/catalog/<slug:connector_id>/add/",
+        dataset_views.catalog_add,
+        name="catalog_add",
+    ),
     path("data/<int:pk>/", dataset_views.data_source_detail, name="data_source_detail"),
     path("data/<int:pk>/sync/", dataset_views.sync_data_source, name="data_source_sync"),
     path("data/<int:pk>/test/", dataset_views.test_data_source, name="data_source_test"),

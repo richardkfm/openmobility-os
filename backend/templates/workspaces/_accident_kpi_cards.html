@@ -1,0 +1,63 @@
+{% load i18n %}
+{# Accident data sufficiency — only shown when an accidents layer is synced #}
+{% if accident_kpis %}
+<section>
+  <div class="flex items-center justify-between mb-3">
+    <h2 class="text-lg font-semibold">{% trans "Traffic safety" %}</h2>
+    <a href="{% url 'workspace_map' workspace.slug %}" class="text-sm text-slate-600 hover:underline">
+      {% trans "Show on map" %} →
+    </a>
+  </div>
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div class="rounded-lg border bg-white p-4">
+      <div class="text-xs text-slate-500">{% trans "Accident records" %}</div>
+      <div class="text-2xl font-bold mt-1">{{ accident_kpis.record_count }}</div>
+      {% if accident_kpis.year_range %}
+      <div class="text-xs text-slate-400">{{ accident_kpis.year_range.0 }}–{{ accident_kpis.year_range.1 }}</div>
+      {% endif %}
+    </div>
+    <div class="rounded-lg border bg-white p-4">
+      <div class="text-xs text-slate-500">{% trans "Severity breakdown" %}</div>
+      <div class="flex items-baseline gap-2 mt-1">
+        <span class="text-sm font-bold text-red-700">{{ accident_kpis.fatal_count }}</span>
+        <span class="text-xs text-slate-400">{% trans "fatal" %}</span>
+        <span class="text-sm font-bold text-orange-500">{{ accident_kpis.serious_count }}</span>
+        <span class="text-xs text-slate-400">{% trans "serious" %}</span>
+        <span class="text-sm font-bold text-yellow-500">{{ accident_kpis.minor_count }}</span>
+        <span class="text-xs text-slate-400">{% trans "minor" %}</span>
+      </div>
+    </div>
+    {% if accident_kpis.expected_per_year %}
+    <div class="rounded-lg border bg-white p-4">
+      <div class="text-xs text-slate-500">{% trans "Expected per year" %}</div>
+      <div class="text-2xl font-bold mt-1">~{{ accident_kpis.expected_per_year }}</div>
+      <div class="text-xs text-slate-400">{% trans "based on population" %}</div>
+    </div>
+    {% endif %}
+    <div class="rounded-lg border p-4
+      {% if accident_kpis.sufficiency == 'good' %}bg-emerald-50 border-emerald-200
+      {% elif accident_kpis.sufficiency == 'thin' %}bg-amber-50 border-amber-200
+      {% else %}bg-red-50 border-red-200{% endif %}">
+      <div class="text-xs text-slate-500">{% trans "Data sufficiency" %}</div>
+      <div class="text-lg font-bold mt-1
+        {% if accident_kpis.sufficiency == 'good' %}text-emerald-800
+        {% elif accident_kpis.sufficiency == 'thin' %}text-amber-800
+        {% else %}text-red-800{% endif %}">
+        {% if accident_kpis.sufficiency == "good" %}{% trans "Good" %}
+        {% elif accident_kpis.sufficiency == "thin" %}{% trans "Thin" %}
+        {% else %}{% trans "Placeholder" %}{% endif %}
+      </div>
+      {% if accident_kpis.coverage_pct is not None %}
+      <div class="text-xs text-slate-500">{{ accident_kpis.coverage_pct }}% {% trans "of expected volume" %}</div>
+      {% endif %}
+      {% if accident_kpis.sufficiency != "good" %}
+      <div class="text-xs mt-1
+        {% if accident_kpis.sufficiency == 'thin' %}text-amber-700
+        {% else %}text-red-700{% endif %}">
+        {% trans "Consider syncing Unfallatlas or additional sources." %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endif %}

@@ -33,18 +33,17 @@ rows and does not duplicate records.
 
 from __future__ import annotations
 
-from pathlib import Path
-
-import yaml
-from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
+from connectors.unfallat_catalog import (
+    CONFIG_FILENAME,
+    PER_WORKSPACE_DIR,
+    load_year_sources_dict,
+)
 from datasets.models import DataSource
 from datasets.views import _run_sync
 from workspaces.models import Workspace
 
-CONFIG_FILENAME = "unfallatlas.yaml"
-PER_WORKSPACE_DIR = "unfallatlas"
 SOURCE_TYPE = "unfallat"
 
 
@@ -224,36 +223,18 @@ def _load_year_sources(workspace_slug, url_pattern, encoding_override):
         # Defer expansion to per-year iteration; we still want a uniform shape.
         return _PatternMap(url_pattern, encoding_override or "utf-8"), encoding_override or "utf-8"
 
-    config_dir: Path = settings.REPO_ROOT / "config"
+    from django.conf import settings as _settings
+
+    config_dir = _settings.REPO_ROOT / "config"
     per_ws = config_dir / PER_WORKSPACE_DIR / f"{workspace_slug}.yaml"
     fallback = config_dir / CONFIG_FILENAME
-
-    paths = [p for p in (per_ws, fallback) if p.exists()]
-    if not paths:
+    if not per_ws.exists() and not fallback.exists():
         raise CommandError(
             f"No URL config found at {per_ws} or {fallback}. "
             "Either create one of these files, or pass --url-pattern."
         )
 
-    data = yaml.safe_load(paths[0].read_text()) or {}
-    default_encoding = encoding_override or data.get("default_encoding") or "utf-8"
-    raw_sources = data.get("sources") or {}
-
-    out: dict[int, dict] = {}
-    for year, spec in raw_sources.items():
-        try:
-            year_int = int(year)
-        except (TypeError, ValueError):
-            continue
-        if isinstance(spec, str):
-            spec = {"url": spec}
-        if not spec or not spec.get("url"):
-            continue
-        out[year_int] = {
-            "url": spec["url"],
-            "encoding": spec.get("encoding") or default_encoding,
-        }
-    return out, default_encoding
+    return load_year_sources_dict(workspace_slug, encoding_override)
 
 
 class _PatternMap:
