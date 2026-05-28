@@ -1,9 +1,17 @@
 """Unfallatlas connector — German Federal Statistics Office accident data.
 
-Reads the Destatis Unfallatlas CSV format (semicolon-delimited) and normalizes
-it to the OpenMobility OS standard accident property schema.
+Reads the Destatis Unfallatlas CSV format and normalises it to the OpenMobility
+OS standard accident property schema. The original Destatis files are
+semicolon-delimited with column names like ``XGCSWGS84``/``YGCSWGS84`` and
+``IstSonstige``. Re-published mirrors (e.g. mfdz.de) often switch to
+comma-delimited CSV with renamed columns (``LON``/``LAT``, ``IstSonstig``,
+``STRZUSTAND``) — both layouts are accepted via column aliases and delimiter
+auto-detection.
 
-Data source: https://unfallatlas.statistikportal.de/ (Destatis)
+Data sources:
+  - https://unfallatlas.statistikportal.de/ (Destatis, original)
+  - https://data.mfdz.de/destatis_Unfalldaten/ (Mobility Data Foundation mirror)
+
 License: dl-de/by-2-0 (Datenlizenz Deutschland – Namensnennung)
 """
 
@@ -22,16 +30,22 @@ from .unfallat_catalog import load_year_sources
 
 SEVERITY_MAP = {"1": "fatal", "2": "serious", "3": "minor"}
 
+# Each mode flag may appear under either its original Destatis name or the
+# mfdz-style abbreviation (without the trailing 'e'). Mode flag column values
+# are "1" when the given mode was involved and "0" otherwise.
 MODE_FLAGS = [
-    ("IstRad", "cyclist"),
-    ("IstPKW", "car"),
-    ("IstFuss", "pedestrian"),
-    ("IstKrad", "motorbike"),
-    ("IstGkfz", "truck"),
-    ("IstSonstige", "other"),
+    (("IstRad",), "cyclist"),
+    (("IstPKW",), "car"),
+    (("IstFuss",), "pedestrian"),
+    (("IstKrad",), "motorbike"),
+    (("IstGkfz",), "truck"),
+    (("IstSonstige", "IstSonstig"), "other"),
 ]
 
-REQUIRED_COLUMNS = {"XGCSWGS84", "YGCSWGS84", "UKATEGORIE"}
+# Column aliases (canonical name → all names we accept, case-insensitive).
+LON_ALIASES = ("XGCSWGS84", "LON", "LONGITUDE", "LNG")
+LAT_ALIASES = ("YGCSWGS84", "LAT", "LATITUDE")
+WEATHER_ALIASES = ("USTRZUSTAND", "STRZUSTAND")
 
 
 class UnfallatlasConnector(BaseConnector):
@@ -55,6 +69,10 @@ class UnfallatlasConnector(BaseConnector):
             "type": "string",
             "default": "utf-8",
             "label": "File encoding (utf-8 or latin-1)",
+        },
+        "delimiter": {
+            "type": "string",
+            "label": "CSV delimiter (auto-detected when blank: ',' or ';')",
         },
         "bbox": {
             "type": "string",
@@ -86,7 +104,8 @@ class UnfallatlasConnector(BaseConnector):
         content = fetch_bytes(url, config, timeout=120)
         content = extract_member_if_zip(content, extensions=(".csv", ".txt"))
         text = content.decode(encoding, errors="replace")
-        reader = csv.DictReader(io.StringIO(text), delimiter=";")
+        delimiter = _resolve_delimiter(text, config.get("delimiter"))
+        reader = csv.DictReader(io.StringIO(text), delimiter=delimiter)
         rows = list(reader)
         fieldnames = reader.fieldnames or []
         return rows, fieldnames
@@ -116,11 +135,21 @@ class UnfallatlasConnector(BaseConnector):
         except Exception as exc:  # noqa: BLE001
             return ConnectorTestResult(False, f"Fetch failed: {exc}")
         present = {f.strip() for f in fieldnames}
-        missing = REQUIRED_COLUMNS - present
+        present_lower = {f.lower() for f in present}
+        missing = []
+        if not any(a.lower() in present_lower for a in LON_ALIASES):
+            missing.append(f"longitude ({'/'.join(LON_ALIASES)})")
+        if not any(a.lower() in present_lower for a in LAT_ALIASES):
+            missing.append(f"latitude ({'/'.join(LAT_ALIASES)})")
+        if "ukategorie" not in present_lower:
+            missing.append("UKATEGORIE")
         if missing:
             return ConnectorTestResult(
                 False,
-                f"Missing required columns: {sorted(missing)}. Found: {fieldnames[:12]}",
+                (
+                    f"Missing required columns: {missing}. "
+                    f"Found: {fieldnames[:24]}"
+                ),
             )
         bbox = self._resolve_bbox(config, workspace)
         preview = [_row_to_feature(r, bbox) for r in rows[:50]]
@@ -259,8 +288,8 @@ class UnfallatlasConnector(BaseConnector):
 
 
 def _row_to_feature(row, bbox=None):
-    lon = _safe_float_de(row.get("XGCSWGS84") or row.get("xgcswgs84"))
-    lat = _safe_float_de(row.get("YGCSWGS84") or row.get("ygcswgs84"))
+    lon = _safe_float_de(_lookup(row, LON_ALIASES))
+    lat = _safe_float_de(_lookup(row, LAT_ALIASES))
     if lon is None or lat is None:
         return None
     if bbox is not None:
@@ -268,16 +297,18 @@ def _row_to_feature(row, bbox=None):
         if not (west <= lon <= east and south <= lat <= north):
             return None
 
-    severity_code = str(row.get("UKATEGORIE", "")).strip()
+    severity_code = str(_lookup(row, ("UKATEGORIE",)) or "").strip()
     severity = SEVERITY_MAP.get(severity_code, "minor")
 
     involved_modes = [
-        mode for col, mode in MODE_FLAGS if str(row.get(col, "0")).strip() == "1"
+        mode
+        for aliases, mode in MODE_FLAGS
+        if str(_lookup(row, aliases) or "0").strip() == "1"
     ]
     vru = any(m in involved_modes for m in ("cyclist", "pedestrian"))
 
-    year_str = str(row.get("UJAHR", "")).strip()
-    month = str(row.get("UMONAT", "")).strip().zfill(2)
+    year_str = str(_lookup(row, ("UJAHR",)) or "").strip()
+    month = str(_lookup(row, ("UMONAT",)) or "").strip().zfill(2)
     date = f"{year_str}-{month}" if year_str and month else None
     year_int: int | None
     try:
@@ -285,10 +316,10 @@ def _row_to_feature(row, bbox=None):
     except ValueError:
         year_int = None
 
-    hour_str = str(row.get("USTUNDE", "")).strip()
+    hour_str = str(_lookup(row, ("USTUNDE",)) or "").strip()
     time_of_day = _time_of_day(hour_str)
 
-    weather_code = str(row.get("USTRZUSTAND", "")).strip()
+    weather_code = str(_lookup(row, WEATHER_ALIASES) or "").strip()
     weather = {"0": "dry", "1": "wet", "2": "snow"}.get(weather_code, "unknown")
 
     return {
@@ -356,5 +387,40 @@ def _time_of_day(hour_str):
 
 
 def _intersection_type(row):
-    utyp = str(row.get("UTYP1", "")).strip()
+    utyp = str(_lookup(row, ("UTYP1",)) or "").strip()
     return {"1": "t_junction", "2": "crossing", "3": "roundabout"}.get(utyp, "none")
+
+
+def _lookup(row, aliases):
+    """Return the first non-empty cell from *row* whose column name (case-
+    insensitive) matches one of *aliases*. ``None`` when nothing matches.
+
+    Cached lookup map is built on first call per row dict — the cost is a
+    handful of microseconds for the few hundred rows in a typical Destatis
+    annual export and keeps the alias rule self-contained here rather than
+    leaking into csv.DictReader.
+    """
+    lookup_map = row.get("__alias_index__")
+    if lookup_map is None:
+        lookup_map = {k.lower(): k for k in row if isinstance(k, str)}
+        row["__alias_index__"] = lookup_map
+    for alias in aliases:
+        original = lookup_map.get(alias.lower())
+        if original is None:
+            continue
+        value = row.get(original)
+        if value not in (None, ""):
+            return value
+    return None
+
+
+def _resolve_delimiter(text: str, override: str | None) -> str:
+    """Pick ',' or ';' based on the header line. Honour an explicit override."""
+    if override:
+        return override
+    first_line = text.split("\n", 1)[0]
+    semi = first_line.count(";")
+    comma = first_line.count(",")
+    if semi == 0 and comma == 0:
+        return ";"
+    return ";" if semi >= comma else ","

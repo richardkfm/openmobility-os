@@ -2040,3 +2040,98 @@ class ZipExtractionTests(TestCase):
         ):
             result = GeoJSONConnector().fetch({"url": "http://example/x.zip"})
         self.assertEqual(result.record_count, 1)
+
+
+class UnfallatlasMfdzLayoutTests(TestCase):
+    """The Mobility Data Foundation mirror (data.mfdz.de) re-publishes the
+    Destatis accident files as comma-delimited CSV with renamed columns:
+    LON/LAT instead of XGCSWGS84/YGCSWGS84, IstSonstig instead of IstSonstige,
+    STRZUSTAND instead of USTRZUSTAND. The connector must accept both."""
+
+    MFDZ_CSV = (
+        "OBJECTID,ULAND,UREGBEZ,UKREIS,UGEMEINDE,UJAHR,UMONAT,USTUNDE,UWOCHENTAG,"
+        "UKATEGORIE,UART,UTYP1,ULICHTVERH,IstRad,IstPKW,IstFuss,IstKrad,IstGkfz,"
+        "IstSonstig,STRZUSTAND,LON,LAT\n"
+        "1,14,01,001,001,2024,5,14,3,2,5,1,0,1,1,0,0,0,0,0,12.3731,51.3397\n"
+        "2,14,01,001,001,2024,7,22,5,3,1,2,0,0,1,1,0,0,0,0,12.4000,51.3500\n"
+    ).encode("utf-8")
+
+    def test_fetch_reads_comma_delimited_with_lon_lat_columns(self):
+        from connectors.unfallat_connector import UnfallatlasConnector
+
+        with mock.patch(
+            "connectors.unfallat_connector.fetch_bytes", return_value=self.MFDZ_CSV
+        ):
+            result = UnfallatlasConnector().fetch(
+                {"url": "http://example/u.csv", "clip_to_workspace": False}
+            )
+        self.assertEqual(result.record_count, 2)
+        first = result.feature_collection["features"][0]
+        self.assertEqual(first["geometry"]["coordinates"], [12.3731, 51.3397])
+        self.assertEqual(first["properties"]["severity"], "serious")
+        # IstRad=1, IstPKW=1 → cyclist + car
+        self.assertEqual(
+            sorted(first["properties"]["involved_modes"]), ["car", "cyclist"]
+        )
+        # IstSonstig column under its renamed alias still works (was 0 here)
+        self.assertNotIn("other", first["properties"]["involved_modes"])
+
+    def test_test_connection_accepts_mfdz_layout(self):
+        from connectors.unfallat_connector import UnfallatlasConnector
+
+        with mock.patch(
+            "connectors.unfallat_connector.fetch_bytes", return_value=self.MFDZ_CSV
+        ):
+            result = UnfallatlasConnector().test_connection(
+                {"url": "http://example/u.csv", "clip_to_workspace": False}
+            )
+        self.assertTrue(result.success, result.message)
+        self.assertIn("required columns detected", result.message)
+
+    def test_test_connection_reports_aliases_when_columns_missing(self):
+        from connectors.unfallat_connector import UnfallatlasConnector
+
+        bad = b"OBJECTID,UJAHR,LON,LAT\n1,2024,12.0,51.0\n"
+        with mock.patch(
+            "connectors.unfallat_connector.fetch_bytes", return_value=bad
+        ):
+            result = UnfallatlasConnector().test_connection(
+                {"url": "http://example/u.csv", "clip_to_workspace": False}
+            )
+        self.assertFalse(result.success)
+        # UKATEGORIE is missing; LON/LAT present so they shouldn't be flagged.
+        self.assertIn("UKATEGORIE", result.message)
+        self.assertNotIn("longitude", result.message)
+
+    def test_explicit_delimiter_overrides_auto_detection(self):
+        from connectors.unfallat_connector import UnfallatlasConnector
+
+        # Header contains both ',' and ';' — auto-detect would pick whichever
+        # is more frequent (here, ';'). Forcing ',' must still work.
+        weird = (
+            "OBJECTID,UKATEGORIE,LON,LAT,extra;col\n"
+            "1,2,12.0,51.0,;\n"
+        ).encode("utf-8")
+        with mock.patch(
+            "connectors.unfallat_connector.fetch_bytes", return_value=weird
+        ):
+            result = UnfallatlasConnector().fetch(
+                {
+                    "url": "http://example/u.csv",
+                    "clip_to_workspace": False,
+                    "delimiter": ",",
+                }
+            )
+        self.assertEqual(result.record_count, 1)
+
+    def test_delimiter_auto_detection_picks_semicolon_for_destatis(self):
+        from connectors.unfallat_connector import _resolve_delimiter
+
+        header = "OBJECTID;UJAHR;UMONAT;UKATEGORIE;XGCSWGS84;YGCSWGS84\nrow\n"
+        self.assertEqual(_resolve_delimiter(header, None), ";")
+
+    def test_delimiter_auto_detection_picks_comma_for_mfdz(self):
+        from connectors.unfallat_connector import _resolve_delimiter
+
+        header = "OBJECTID,UJAHR,UMONAT,UKATEGORIE,LON,LAT\nrow\n"
+        self.assertEqual(_resolve_delimiter(header, None), ",")
