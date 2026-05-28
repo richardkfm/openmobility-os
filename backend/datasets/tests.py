@@ -459,3 +459,60 @@ class DataHubReadinessRenderingTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Untouched source")
         self.assertContains(response, "No data")
+
+
+@override_settings(ADMIN_TOKEN="test-token")
+class AddDataSourceFormTests(TestCase):
+    """Ensure the Add-source form preserves operator input on validation
+    errors and reports JSON parse failures with line/column info — the
+    previous behaviour was to flash a generic error and redirect, losing
+    everything the operator had pasted."""
+
+    def setUp(self):
+        self.workspace = Workspace.objects.create(
+            slug="add-form",
+            name="Add Form",
+            country_code="DE",
+            bounds=Polygon(((0, 0), (1, 0), (1, 1), (0, 1), (0, 0))),
+        )
+        self.client = Client()
+        self.admin_headers = {"HTTP_AUTHORIZATION": "Bearer test-token"}
+
+    def test_invalid_json_re_renders_with_input_preserved(self):
+        response = self.client.post(
+            reverse("data_source_add", kwargs={"workspace_slug": self.workspace.slug}),
+            {
+                "name": "My broken source",
+                "source_type": "unfallat",
+                "layer_kind": "accidents",
+                "config": "{not valid json",
+                "license": "dl-de/by-2-0",
+            },
+            **self.admin_headers,
+        )
+        # Re-renders the form (no redirect) and does NOT persist a row.
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(DataSource.objects.filter(workspace=self.workspace).exists())
+        # The operator's input is in the rendered HTML (so they can fix it).
+        self.assertContains(response, "My broken source")
+        self.assertContains(response, "{not valid json")
+        # The error message names the parser location.
+        self.assertContains(response, "line ")
+
+    def test_valid_json_creates_source(self):
+        response = self.client.post(
+            reverse("data_source_add", kwargs={"workspace_slug": self.workspace.slug}),
+            {
+                "name": "Unfallatlas 2024",
+                "source_type": "unfallat",
+                "layer_kind": "accidents",
+                "config": '{"url": "https://example.org/u.zip"}',
+            },
+            **self.admin_headers,
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(
+            DataSource.objects.filter(
+                workspace=self.workspace, name="Unfallatlas 2024"
+            ).exists()
+        )

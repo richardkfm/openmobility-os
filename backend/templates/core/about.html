@@ -17,8 +17,10 @@
   </ul>
 
   <h2 class="text-xl font-semibold mt-8 mb-2">{% trans "Self-hosting" %}</h2>
-  {# not-prose prevents Tailwind Typography from overriding the dark background
-     with a light one (components.css .prose pre rule). #}
+  {% comment %}
+  not-prose prevents Tailwind Typography from overriding the dark background
+  with a light one (components.css .prose pre rule).
+  {% endcomment %}
   <div class="not-prose">
     <pre style="background:#0f172a;color:#e2e8f0;border-radius:6px;padding:1rem;font-size:0.875rem;overflow-x:auto;line-height:1.6">git clone {{ project_repo_url }}.git
 cd openmobility-os

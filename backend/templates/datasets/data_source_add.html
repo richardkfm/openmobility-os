@@ -2,14 +2,16 @@
 {% load i18n %}
 
 {% block content %}
-{# connectors_json is injected via a <script> tag so that JSON double-quotes
-   never appear inside an HTML attribute (which would break the attribute
-   parser and cause Alpine.js to silently fail to initialise). #}
+{% comment %}
+connectors_json is injected via a <script> tag so that JSON double-quotes
+never appear inside an HTML attribute (which would break the attribute
+parser and cause Alpine.js to silently fail to initialise).
+{% endcomment %}
 <script>
   window._CONNECTOR_REGISTRY = {{ connectors_json }};
 </script>
 <div class="max-w-2xl flex flex-col gap-6"
-  x-data="connectorForm(window._CONNECTOR_REGISTRY)"
+  x-data="connectorForm(window._CONNECTOR_REGISTRY, '{{ form_values.source_type|escapejs }}')"
   x-init="init()">
 
   <nav class="text-sm text-slate-500">
@@ -30,6 +32,7 @@
       <div>
         <label class="block text-sm font-medium mb-1">{% trans "Name" %}</label>
         <input name="name" type="text" required class="w-full rounded border px-3 py-2 text-sm"
+          value="{{ form_values.name }}"
           placeholder="{% trans 'e.g. OSM bike network' %}">
       </div>
 
@@ -37,7 +40,7 @@
         <label class="block text-sm font-medium mb-1">{% trans "Layer kind" %}</label>
         <select name="layer_kind" class="w-full rounded border px-3 py-2 text-sm bg-white">
           {% for val, label in layer_choices %}
-          <option value="{{ val }}">{{ label }}</option>
+          <option value="{{ val }}" {% if form_values.layer_kind == val %}selected{% endif %}>{{ label }}</option>
           {% endfor %}
         </select>
       </div>
@@ -53,7 +56,7 @@
                 class="w-full rounded border px-3 py-2 text-sm bg-white">
           <option value="">{% trans "— select connector —" %}</option>
           {% for c in connectors %}
-          <option value="{{ c.id }}">{{ c.display_name_de }}</option>
+          <option value="{{ c.id }}" {% if form_values.source_type == c.id %}selected{% endif %}>{{ c.display_name_de }}</option>
           {% endfor %}
         </select>
       </div>
@@ -99,7 +102,7 @@
           <span class="font-normal text-slate-400 text-xs ml-1">{% trans "— fill in the fields listed above" %}</span>
         </label>
         <textarea name="config" rows="6" class="w-full rounded border px-3 py-2 text-sm font-mono"
-          :placeholder="configPlaceholder"></textarea>
+          :placeholder="configPlaceholder">{{ form_values.config }}</textarea>
         <p class="text-xs text-slate-400 mt-1">
           {% trans "See the" %} <a href="{% url 'workspace_methodology' workspace.slug %}" class="underline">{% trans "methodology page" %}</a> {% trans "for examples." %}
         </p>
@@ -123,17 +126,20 @@
         <div>
           <label class="block text-sm font-medium mb-1">{% trans "License" %}</label>
           <input name="license" type="text" class="w-full rounded border px-3 py-2 text-sm"
+            value="{{ form_values.license }}"
             placeholder="ODbL, CC0, dl-de/by-2-0 …">
         </div>
         <div>
           <label class="block text-sm font-medium mb-1">{% trans "Attribution" %}</label>
           <input name="attribution" type="text" class="w-full rounded border px-3 py-2 text-sm"
+            value="{{ form_values.attribution }}"
             placeholder="© OpenStreetMap contributors">
         </div>
       </div>
       <div>
         <label class="block text-sm font-medium mb-1">{% trans "Source URL (optional)" %}</label>
         <input name="source_url" type="url" class="w-full rounded border px-3 py-2 text-sm"
+          value="{{ form_values.source_url }}"
           placeholder="https://…">
       </div>
     </div>
@@ -149,9 +155,9 @@
 
 {% block extra_js %}
 <script>
-function connectorForm(registry) {
+function connectorForm(registry, initialSelectedId) {
   return {
-    selectedId: '',
+    selectedId: initialSelectedId || '',
     registry: registry,
 
     get info() {

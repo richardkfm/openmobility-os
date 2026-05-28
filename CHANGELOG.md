@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Literal `{# connectors_json is injected via a` text leaking on the
+  Add-source page** — Django's `{# … #}` is single-line only, so two
+  multi-line comments (one in `data_source_add.html`, one in
+  `about.html`) were rendering as literal text. Replaced with
+  `{% comment %}{% endcomment %}`.
+- **Add-source form lost everything on JSON parse error** — submitting
+  invalid JSON in the *Configuration* field used to flash a generic
+  "Config must be valid JSON" toast and redirect away, discarding the
+  operator's input. The form now re-renders with all fields preserved
+  (name, connector, layer, license, attribution, source URL, and the
+  raw config text) and the error message includes the parser line and
+  column.
+
 ### Added
 - **ZIP upload + URL support** — admins can now upload a ZIP archive (or
   point a URL at one) in the CSV, Unfallatlas, and GeoJSON connectors.
