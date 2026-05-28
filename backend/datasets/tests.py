@@ -329,6 +329,95 @@ class CatalogViewsTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertFalse(DataSource.objects.filter(workspace=self.workspace).exists())
 
+    def test_catalog_quickadd_creates_source_for_custom_year(self):
+        with mock.patch(
+            "datasets.views._run_sync", return_value=(True, "Synced 5.")
+        ):
+            response = self.client.post(
+                reverse(
+                    "catalog_quickadd",
+                    kwargs={
+                        "workspace_slug": self.workspace.slug,
+                        "connector_id": "unfallat",
+                    },
+                ),
+                {
+                    "year": "2024",
+                    "url": "https://destatis.example/u-2024.csv",
+                    "encoding": "utf-8",
+                },
+                **self.admin_headers,
+            )
+        self.assertEqual(response.status_code, 302)
+        src = DataSource.objects.get(workspace=self.workspace, name="Unfallatlas 2024")
+        self.assertEqual(src.config["url"], "https://destatis.example/u-2024.csv")
+
+    def test_catalog_quickadd_validation_error_redirects_with_message(self):
+        response = self.client.post(
+            reverse(
+                "catalog_quickadd",
+                kwargs={
+                    "workspace_slug": self.workspace.slug,
+                    "connector_id": "unfallat",
+                },
+            ),
+            {"year": "abc", "url": "https://example/x.csv"},
+            **self.admin_headers,
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(DataSource.objects.filter(workspace=self.workspace).exists())
+
+    def test_catalog_quickadd_requires_admin(self):
+        response = self.client.post(
+            reverse(
+                "catalog_quickadd",
+                kwargs={
+                    "workspace_slug": self.workspace.slug,
+                    "connector_id": "unfallat",
+                },
+            ),
+            {"year": "2024", "url": "https://example/u.csv"},
+        )
+        self.assertEqual(response.status_code, 403)
+
+    def test_catalog_browse_persists_mobilithek_url_override(self):
+        with mock.patch(
+            "connectors.mobilithek_catalog.browse_catalog", return_value=[]
+        ):
+            self.client.get(
+                reverse(
+                    "catalog_browse",
+                    kwargs={
+                        "workspace_slug": self.workspace.slug,
+                        "connector_id": "mobilithek",
+                    },
+                ),
+                {"catalog_url": "https://override.example/feed.rdf"},
+                **self.admin_headers,
+            )
+        self.workspace.refresh_from_db()
+        self.assertEqual(
+            self.workspace.settings.get("mobilithek_catalog_url"),
+            "https://override.example/feed.rdf",
+        )
+
+    def test_catalog_browse_does_not_persist_url_for_non_admin(self):
+        with mock.patch(
+            "connectors.mobilithek_catalog.browse_catalog", return_value=[]
+        ):
+            self.client.get(
+                reverse(
+                    "catalog_browse",
+                    kwargs={
+                        "workspace_slug": self.workspace.slug,
+                        "connector_id": "mobilithek",
+                    },
+                ),
+                {"catalog_url": "https://override.example/feed.rdf"},
+            )
+        self.workspace.refresh_from_db()
+        self.assertNotIn("mobilithek_catalog_url", self.workspace.settings or {})
+
     def test_catalog_add_requires_admin(self):
         response = self.client.post(
             reverse(

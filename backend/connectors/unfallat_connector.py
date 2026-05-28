@@ -148,6 +148,57 @@ class UnfallatlasConnector(BaseConnector):
     def supports_discovery(self) -> bool:
         return True
 
+    quick_add_fields = [
+        {"name": "year", "label": "Year", "placeholder": "2024", "required": True},
+        {
+            "name": "url",
+            "label": "CSV download URL",
+            "placeholder": "https://example.org/unfallatlas/2024.csv",
+            "required": True,
+        },
+        {
+            "name": "encoding",
+            "label": "Encoding",
+            "placeholder": "utf-8",
+            "default": "utf-8",
+            "required": False,
+        },
+    ]
+
+    def quick_add(self, form_data, workspace=None):
+        raw_year = str(form_data.get("year") or "").strip()
+        url = str(form_data.get("url") or "").strip()
+        encoding = str(form_data.get("encoding") or "").strip() or "utf-8"
+        if not raw_year or not url:
+            raise ValueError("Year and URL are required.")
+        try:
+            year = int(raw_year)
+        except ValueError as exc:
+            raise ValueError(f"Year must be an integer (got {raw_year!r}).") from exc
+        if year < 1990 or year > 2100:
+            raise ValueError(f"Year out of plausible range: {year}.")
+        if not (url.startswith("http://") or url.startswith("https://") or url.startswith("file://")):
+            raise ValueError("URL must start with http://, https://, or file://.")
+        name = f"Unfallatlas {year}"
+        return CatalogEntry(
+            entry_id=f"unfallatlas-{year}",
+            title=name,
+            subtitle=str(year),
+            description="Polizeilich erfasste Unfaelle mit Personenschaden.",
+            format_hint="csv",
+            source_url="https://unfallatlas.statistikportal.de/",
+            attribution="© Statistische Ämter des Bundes und der Länder",
+            license="dl-de/by-2-0",
+            suggested_name=name,
+            suggested_layer_kind="accidents",
+            suggested_config={
+                "url": url,
+                "encoding": encoding,
+                "clip_to_workspace": True,
+            },
+            badges=["custom"],
+        )
+
     def discover(self, query=None, facets=None, workspace=None):
         slug = getattr(workspace, "slug", None)
         specs = load_year_sources(workspace_slug=slug)

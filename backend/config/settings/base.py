@@ -54,6 +54,10 @@ ADMIN_TOKEN = env("ADMIN_TOKEN", default="")
 MAP_TILE_URL = env("MAP_TILE_URL")
 MAP_TILE_ATTRIBUTION = env("MAP_TILE_ATTRIBUTION")
 OSM_OVERPASS_API = env("OSM_OVERPASS_API")
+MOBILITHEK_CATALOG_URL = env(
+    "MOBILITHEK_CATALOG_URL",
+    default="https://mobilithek.info/mdp-api/files/catalogue/DCAT-AP.rdf",
+)
 
 AUTO_SEED_DEMO = env("AUTO_SEED_DEMO")
 

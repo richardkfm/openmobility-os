@@ -14,6 +14,24 @@
     </a>
   </div>
 
+  {# Connector-specific catalog URL override (Mobilithek). #}
+  {% if connector.id == "mobilithek" %}
+  <form method="get" action="{% url 'catalog_browse' workspace.slug connector.id %}"
+        class="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center rounded-lg border bg-slate-50 p-3">
+    <label class="text-xs text-slate-500 sm:w-40 shrink-0">
+      {% trans "Catalog URL" %}
+      <span class="block text-[10px] text-slate-400">{% trans "Override if BMDV rotated the DCAT-AP feed." %}</span>
+    </label>
+    <input type="url" name="catalog_url" value="{{ page.facets.catalog_url }}"
+      placeholder="https://mobilithek.info/mdp-api/files/catalogue/DCAT-AP.rdf"
+      class="flex-1 rounded border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400">
+    {% if query %}<input type="hidden" name="q" value="{{ query }}">{% endif %}
+    <button class="rounded border border-slate-300 px-3 py-2 text-sm hover:bg-white">
+      {% trans "Use this URL" %}
+    </button>
+  </form>
+  {% endif %}
+
   {# Search bar — HTMX swaps in the results partial as you type. #}
   <form hx-get="{% url 'catalog_browse' workspace.slug connector.id %}"
         hx-target="#catalog-results"
@@ -29,6 +47,41 @@
     </button>
     <span id="catalog-spinner" class="htmx-indicator text-xs text-slate-500">{% trans "Loading…" %}</span>
   </form>
+
+  {# Quick-add: add a custom entry without a pre-curated catalog row. #}
+  {% if is_admin and connector.quick_add_fields %}
+  <details class="rounded-lg border bg-white p-4" {% if not page.entries %}open{% endif %}>
+    <summary class="cursor-pointer text-sm font-medium">
+      {% trans "Add a custom entry" %}
+      <span class="text-xs text-slate-500 font-normal">
+        — {% trans "skip the catalog and enter the source URL directly" %}
+      </span>
+    </summary>
+    <form method="post" action="{% url 'catalog_quickadd' workspace.slug connector.id %}"
+      class="mt-3 grid gap-3 sm:grid-cols-2">
+      {% csrf_token %}
+      {% for field in connector.quick_add_fields %}
+      <label class="flex flex-col gap-1 text-xs text-slate-600">
+        <span>{{ field.label }}{% if field.required %} <span class="text-red-500">*</span>{% endif %}</span>
+        <input type="text" name="{{ field.name }}"
+          value="{{ field.default|default_if_none:'' }}"
+          placeholder="{{ field.placeholder }}"
+          {% if field.required %}required{% endif %}
+          class="rounded border border-slate-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400">
+      </label>
+      {% endfor %}
+      <div class="sm:col-span-2 flex gap-2 items-center mt-1">
+        <button class="rounded bg-slate-900 text-white px-3 py-1.5 text-sm hover:bg-slate-700">
+          {% trans "Add and sync" %}
+        </button>
+        <button name="skip_sync" value="1"
+          class="text-xs text-slate-500 underline hover:text-slate-700">
+          {% trans "Add without syncing" %}
+        </button>
+      </div>
+    </form>
+  </details>
+  {% endif %}
 
   <div id="catalog-results">
     {% include "datasets/_catalog_results.html" %}

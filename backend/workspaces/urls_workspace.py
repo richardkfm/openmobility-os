@@ -27,6 +27,11 @@ urlpatterns = [
         dataset_views.catalog_add,
         name="catalog_add",
     ),
+    path(
+        "data/catalog/<slug:connector_id>/quickadd/",
+        dataset_views.catalog_quickadd,
+        name="catalog_quickadd",
+    ),
     path("data/<int:pk>/", dataset_views.data_source_detail, name="data_source_detail"),
     path("data/<int:pk>/sync/", dataset_views.sync_data_source, name="data_source_sync"),
     path("data/<int:pk>/test/", dataset_views.test_data_source, name="data_source_test"),

@@ -100,3 +100,24 @@ class BaseConnector:
         override `supports_discovery` to True must override this too.
         """
         return CatalogPage()
+
+    # ------------------------------------------------------------------
+    # Optional ad-hoc quick-add — lets admins enter a custom entry
+    # (e.g. a year + URL for Unfallatlas, or a one-off Mobilithek
+    # distribution URL) without editing config files.
+    # ------------------------------------------------------------------
+
+    quick_add_fields: list = []
+    """Schema for the inline quick-add form rendered on the catalog page.
+
+    List of dicts with ``name``, ``label``, ``placeholder``, optional
+    ``required`` and ``default``. Empty list = no quick-add form.
+    """
+
+    def quick_add(self, form_data: dict, workspace: Any = None) -> CatalogEntry:
+        """Validate `form_data` and return a `CatalogEntry` to materialise.
+
+        Raise `ValueError` with a user-facing message on validation
+        errors. Default implementation rejects (no quick-add support).
+        """
+        raise ValueError("This connector does not support quick-add.")

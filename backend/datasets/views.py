@@ -77,6 +77,21 @@ def catalog_browse(request, workspace_slug, connector_id):
         messages.error(request, _("Unknown or non-discoverable connector."))
         return redirect(reverse("data_hub", kwargs={"workspace_slug": ws.slug}))
 
+    # The Mobilithek catalog URL can be overridden per workspace. When the
+    # admin passes ?catalog_url=… we persist it under workspace.settings
+    # so subsequent visits use the same override without re-typing.
+    catalog_url_override = request.GET.get("catalog_url", "").strip()
+    if (
+        request.is_admin
+        and connector_id == "mobilithek"
+        and catalog_url_override
+    ):
+        settings_blob = dict(ws.settings or {})
+        if settings_blob.get("mobilithek_catalog_url") != catalog_url_override:
+            settings_blob["mobilithek_catalog_url"] = catalog_url_override
+            ws.settings = settings_blob
+            ws.save(update_fields=["settings"])
+
     query = request.GET.get("q", "").strip() or None
     facets = {k: v for k, v in request.GET.items() if k != "q"}
     page = connector.discover(query=query, facets=facets, workspace=ws)
@@ -96,6 +111,58 @@ def catalog_browse(request, workspace_slug, connector_id):
             "query": query or "",
             "page_title": _("Catalog: %(name)s") % {"name": connector.display_name_de},
         },
+    )
+
+
+@admin_required
+@require_POST
+def catalog_quickadd(request, workspace_slug, connector_id):
+    """Inline form on the catalog page → create a DataSource without a
+    pre-existing catalog entry (e.g. an Unfallatlas year not in the YAML)."""
+    ws = get_active_workspace(workspace_slug)
+    connector = _get_discoverable(connector_id)
+    browse_url = reverse(
+        "catalog_browse",
+        kwargs={"workspace_slug": ws.slug, "connector_id": connector_id},
+    )
+    if connector is None:
+        messages.error(request, _("Unknown or non-discoverable connector."))
+        return redirect(reverse("data_hub", kwargs={"workspace_slug": ws.slug}))
+
+    try:
+        entry = connector.quick_add(request.POST.dict(), workspace=ws)
+    except ValueError as exc:
+        messages.error(request, str(exc))
+        return redirect(browse_url)
+
+    source, created = DataSource.objects.update_or_create(
+        workspace=ws,
+        name=entry.suggested_name or entry.title,
+        defaults={
+            "source_type": connector.id,
+            "layer_kind": entry.suggested_layer_kind or DataSource.LayerKind.CUSTOM,
+            "config": entry.suggested_config or {},
+            "license": entry.license or "",
+            "attribution": entry.attribution or "",
+            "source_url": entry.source_url or "",
+        },
+    )
+    if request.POST.get("skip_sync"):
+        verb = _("created") if created else _("updated")
+        messages.success(
+            request, _("Data source %(verb)s: %(n)s") % {"verb": verb, "n": source.name}
+        )
+        return redirect(
+            reverse("data_source_detail", kwargs={"workspace_slug": ws.slug, "pk": source.pk})
+        )
+
+    success, message = _run_sync(source)
+    if success:
+        messages.success(request, message)
+    else:
+        messages.error(request, message)
+    return redirect(
+        reverse("data_source_detail", kwargs={"workspace_slug": ws.slug, "pk": source.pk})
     )
 
 
