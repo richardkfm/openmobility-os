@@ -236,30 +236,58 @@ def add_data_source(request, workspace_slug):
     ws = get_active_workspace(workspace_slug)
     connectors = list_connectors()
 
-    if request.method == "POST":
-        source_type = request.POST.get("source_type")
-        name = request.POST.get("name", "").strip()
-        layer_kind = request.POST.get("layer_kind", DataSource.LayerKind.CUSTOM)
-        config_raw = request.POST.get("config", "{}")
-        license_ = request.POST.get("license", "")
-        attribution = request.POST.get("attribution", "")
-        source_url = request.POST.get("source_url", "")
+    form_values = {
+        "source_type": "",
+        "name": "",
+        "layer_kind": DataSource.LayerKind.CUSTOM,
+        "config": "",
+        "license": "",
+        "attribution": "",
+        "source_url": "",
+    }
 
-        try:
-            config = json.loads(config_raw) if config_raw else {}
-        except json.JSONDecodeError:
-            messages.error(request, _("Config must be valid JSON."))
-            return redirect(reverse("data_source_add", kwargs={"workspace_slug": ws.slug}))
+    if request.method == "POST":
+        form_values.update(
+            {
+                "source_type": request.POST.get("source_type", ""),
+                "name": request.POST.get("name", "").strip(),
+                "layer_kind": request.POST.get("layer_kind", DataSource.LayerKind.CUSTOM),
+                "config": request.POST.get("config", ""),
+                "license": request.POST.get("license", ""),
+                "attribution": request.POST.get("attribution", ""),
+                "source_url": request.POST.get("source_url", ""),
+            }
+        )
+
+        config_raw = form_values["config"]
+        config = None
+        if config_raw.strip():
+            try:
+                config = json.loads(config_raw)
+            except json.JSONDecodeError as exc:
+                # Don't redirect — re-render with the values so the operator
+                # can fix the JSON in place instead of re-typing.
+                messages.error(
+                    request,
+                    _(
+                        "Config is not valid JSON (%(err)s). "
+                        "Expected an object like {\"url\": \"https://…\"}."
+                    )
+                    % {"err": f"line {exc.lineno}, col {exc.colno}: {exc.msg}"},
+                )
+                return _render_add_form(request, ws, connectors, form_values)
+        if config is None:
+            config = {}
 
         source = DataSource.objects.create(
             workspace=ws,
-            name=name or source_type,
-            source_type=source_type,
-            layer_kind=layer_kind,
+            name=form_values["name"] or form_values["source_type"],
+            source_type=form_values["source_type"],
+            layer_kind=form_values["layer_kind"],
             config=config,
-            license=license_,
-            attribution=attribution,
-            source_url=source_url,
+            license=form_values["license"],
+            attribution=form_values["attribution"],
+            source_url=form_values["source_url"],
         )
 
         # Handle optional file upload: store file and inject its absolute path
@@ -277,6 +305,15 @@ def add_data_source(request, workspace_slug):
             reverse("data_source_detail", kwargs={"workspace_slug": ws.slug, "pk": source.pk})
         )
 
+    return _render_add_form(request, ws, connectors, form_values)
+
+
+def _render_add_form(request, ws, connectors, form_values):
+    """Render the Add-source page, preserving any values the operator typed.
+
+    Used both for the initial GET and to re-render after a validation
+    error so the operator does not lose what they pasted.
+    """
     # Serialize connector metadata (id, names, description, config_schema) so
     # the add-form template can render dynamic connector descriptions and field
     # hints via Alpine.js without a round-trip.
@@ -303,6 +340,7 @@ def add_data_source(request, workspace_slug):
             "connectors": connectors,
             "connectors_json": connectors_json,
             "layer_choices": DataSource.LayerKind.choices,
+            "form_values": form_values,
             "page_title": _("Add data source"),
         },
     )
