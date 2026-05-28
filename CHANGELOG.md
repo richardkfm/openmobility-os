@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Unfallatlas connector accepts mirrored layouts** — the Mobility Data
+  Foundation mirror at data.mfdz.de re-publishes Destatis accident files
+  as comma-delimited CSV with renamed columns (`LON`/`LAT` instead of
+  `XGCSWGS84`/`YGCSWGS84`, `IstSonstig` instead of `IstSonstige`,
+  `STRZUSTAND` instead of `USTRZUSTAND`). Both layouts now work
+  out-of-the-box. Delimiter is auto-detected from the header (`,` vs
+  `;`); an explicit `delimiter` field is available in the connector
+  config for edge cases.
+
 ### Fixed
 - **Literal `{# connectors_json is injected via a` text leaking on the
   Add-source page** — Django's `{# … #}` is single-line only, so two
