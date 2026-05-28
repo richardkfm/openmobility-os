@@ -13,6 +13,11 @@ class ConnectorTestResult:
     success: bool
     message: str
     preview_features: list = field(default_factory=list)
+    # Free-form diagnostics surfaced in the data hub's Test panel.
+    # See `connectors.unfallat_connector.UnfallatlasConnector.test_connection`
+    # for the keys the renderer understands (archive_member, row_count,
+    # columns, delimiter, encoding, coord_range, inside_bounds_pct, …).
+    diagnostics: dict = field(default_factory=dict)
 
 
 @dataclass
@@ -20,6 +25,10 @@ class FetchResult:
     feature_collection: dict
     record_count: int
     warnings: list = field(default_factory=list)
+    # Free-form diagnostics persisted on the DataSource after a successful
+    # sync. Same shape as `ConnectorTestResult.diagnostics` so the panel
+    # can render either result with the same template.
+    diagnostics: dict = field(default_factory=dict)
 
 
 @dataclass

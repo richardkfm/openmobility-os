@@ -8,6 +8,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Data-hub Test panel is now a rich diagnostic view** — clicking
+  *Test* on a data source no longer dumps raw JSON; it renders a panel
+  showing which file was read from the ZIP, how many rows parsed, the
+  CSV delimiter and encoding picked, the data's coordinate bounding
+  box, the workspace bounding box, and the % of points inside. A
+  MapLibre mini-map overlays the workspace polygon and a sample of the
+  data so geographic mismatches are visible at a glance.
+
+### Changed
+- **ZIP archives now extract the *largest* matching member, not the
+  first** — Destatis mirrors like `body.zip` from mfdz.de ship a small
+  `metadata.csv` next to the multi-million-row `body.csv`, so the
+  previous "first member in archive order" rule silently picked the
+  wrong file and produced apparent ~2k-row imports of the metadata.
+  The new picker uses uncompressed size as the tiebreaker. The Test
+  panel surfaces the picked filename so operators can verify.
+- **Unfallatlas falls back to unclipped import when workspace bounds
+  drop every row** — previously, a workspace bbox mismatch caused a
+  silent 0-row sync. The connector now imports the full dataset and
+  attaches a warning (visible on the source detail page) so operators
+  see the data immediately and know to adjust their bounds.
+
+### Added
 - **Unfallatlas connector accepts mirrored layouts** — the Mobility Data
   Foundation mirror at data.mfdz.de re-publishes Destatis accident files
   as comma-delimited CSV with renamed columns (`LON`/`LAT` instead of

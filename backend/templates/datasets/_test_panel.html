@@ -1,0 +1,180 @@
+{% load i18n %}
+{# Rich diagnostic panel for the "Test connection" button.
+   Replaces the legacy raw-JSON response so operators can see exactly what
+   the connector parsed, where the data lives geographically, and how that
+   compares to the workspace bounds. Renders a small MapLibre preview with
+   the workspace polygon and a sample of the data points.
+#}
+<div class="rounded-lg border bg-white p-4 flex flex-col gap-4">
+  {# ── Verdict line ── #}
+  <div class="flex items-start gap-2">
+    {% if success %}
+      <span class="inline-block mt-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 shrink-0" aria-hidden="true"></span>
+      <p class="text-sm text-emerald-900">{{ message }}</p>
+    {% else %}
+      <span class="inline-block mt-0.5 h-2.5 w-2.5 rounded-full bg-red-500 shrink-0" aria-hidden="true"></span>
+      <p class="text-sm text-red-900">{{ message }}</p>
+    {% endif %}
+  </div>
+
+  {# ── Diagnostics grid ── #}
+  {% if diagnostics %}
+  <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-xs">
+    {% if diagnostics.archive_member %}
+    <dt class="text-slate-500">{% trans "File read from ZIP" %}</dt>
+    <dd class="font-mono break-all">{{ diagnostics.archive_member }}</dd>
+    {% endif %}
+    {% if diagnostics.byte_size %}
+    <dt class="text-slate-500">{% trans "Decoded bytes" %}</dt>
+    <dd>{{ diagnostics.byte_size|stringformat:"d" }}</dd>
+    {% endif %}
+    {% if diagnostics.delimiter %}
+    <dt class="text-slate-500">{% trans "CSV delimiter" %}</dt>
+    <dd class="font-mono">{{ diagnostics.delimiter }}</dd>
+    {% endif %}
+    {% if diagnostics.encoding %}
+    <dt class="text-slate-500">{% trans "Encoding" %}</dt>
+    <dd class="font-mono">{{ diagnostics.encoding }}</dd>
+    {% endif %}
+    {% if diagnostics.row_count is not None %}
+    <dt class="text-slate-500">{% trans "Rows parsed" %}</dt>
+    <dd>{{ diagnostics.row_count|stringformat:"d" }}</dd>
+    {% endif %}
+    {% if diagnostics.valid_geometry_count is not None %}
+    <dt class="text-slate-500">{% trans "Valid points" %}</dt>
+    <dd>{{ diagnostics.valid_geometry_count|stringformat:"d" }}</dd>
+    {% endif %}
+    {% if diagnostics.coord_range %}
+    <dt class="text-slate-500">{% trans "Data bbox (W,S,E,N)" %}</dt>
+    <dd class="font-mono">{{ diagnostics.coord_range.0|floatformat:3 }},
+      {{ diagnostics.coord_range.1|floatformat:3 }},
+      {{ diagnostics.coord_range.2|floatformat:3 }},
+      {{ diagnostics.coord_range.3|floatformat:3 }}</dd>
+    {% endif %}
+    {% if diagnostics.workspace_bounds %}
+    <dt class="text-slate-500">{% trans "Workspace bbox" %}</dt>
+    <dd class="font-mono">{{ diagnostics.workspace_bounds.0|floatformat:3 }},
+      {{ diagnostics.workspace_bounds.1|floatformat:3 }},
+      {{ diagnostics.workspace_bounds.2|floatformat:3 }},
+      {{ diagnostics.workspace_bounds.3|floatformat:3 }}</dd>
+    {% endif %}
+    {% if diagnostics.inside_bounds_pct is not None %}
+    <dt class="text-slate-500">{% trans "Inside workspace bounds" %}</dt>
+    <dd>
+      {{ diagnostics.inside_bounds_count|stringformat:"d" }}
+      <span class="text-slate-400">/ {{ diagnostics.valid_geometry_count|stringformat:"d" }}</span>
+      <span class="ml-1
+        {% if diagnostics.inside_bounds_count == 0 %}text-red-700 font-medium
+        {% elif diagnostics.inside_bounds_pct < 1 %}text-amber-700 font-medium
+        {% else %}text-emerald-700{% endif %}">
+        ({{ diagnostics.inside_bounds_pct }}%)
+      </span>
+    </dd>
+    {% endif %}
+    {% if diagnostics.columns %}
+    <dt class="text-slate-500 col-span-full">{% trans "Columns detected" %}</dt>
+    <dd class="col-span-full font-mono text-[11px] text-slate-700 break-all">
+      {{ diagnostics.columns|join:", " }}
+    </dd>
+    {% endif %}
+    {% if diagnostics.missing_columns %}
+    <dt class="text-slate-500 col-span-full text-red-700">{% trans "Missing columns" %}</dt>
+    <dd class="col-span-full font-mono text-[11px] text-red-700">
+      {{ diagnostics.missing_columns|join:", " }}
+    </dd>
+    {% endif %}
+  </dl>
+  {% endif %}
+
+  {# ── Mini-map: workspace polygon + sample of data points ── #}
+  {% if preview_features or workspace_bounds_geojson %}
+  <div>
+    <p class="text-xs text-slate-500 mb-1">
+      {% trans "Map preview" %} —
+      <span class="inline-block h-2 w-2 rounded-full bg-blue-500 align-middle mr-1"></span>{% trans "workspace polygon" %} ·
+      <span class="inline-block h-2 w-2 rounded-full bg-red-500 align-middle mr-1"></span>{% trans "sample data points" %}
+      {% if preview_features %}({{ preview_features|length }}){% endif %}
+    </p>
+    {{ preview_features|json_script:"test-preview-points" }}
+    {{ workspace_bounds_geojson|json_script:"test-preview-bounds" }}
+    <div id="test-preview-map-{{ source.pk }}"
+         data-tile-url="{{ map_tile_url }}"
+         data-tile-attr="{{ map_tile_attribution }}"
+         style="height:280px;width:100%;border-radius:8px;overflow:hidden;border:1px solid #e2e8f0">
+    </div>
+    <script>
+      (function(){
+        const el = document.getElementById("test-preview-map-{{ source.pk }}");
+        if (!el || typeof maplibregl === "undefined") return;
+        const ptsEl = document.getElementById("test-preview-points");
+        const bndEl = document.getElementById("test-preview-bounds");
+        let points = []; let bounds = null;
+        try { if (ptsEl) points = JSON.parse(ptsEl.textContent) || []; } catch (e) {}
+        try { if (bndEl) bounds = JSON.parse(bndEl.textContent); } catch (e) {}
+
+        const tileUrl = el.dataset.tileUrl;
+        const tileAttr = el.dataset.tileAttr;
+
+        const map = new maplibregl.Map({
+          container: el,
+          style: {
+            version: 8,
+            sources: { osm: { type: "raster", tiles: [tileUrl], tileSize: 256, attribution: tileAttr } },
+            layers: [{ id: "osm", type: "raster", source: "osm" }],
+          },
+          center: [10.5, 51.0],
+          zoom: 4,
+        });
+
+        map.on("load", () => {
+          // Workspace boundary
+          if (bounds) {
+            map.addSource("ws", { type: "geojson", data: bounds });
+            map.addLayer({
+              id: "ws-fill", type: "fill", source: "ws",
+              paint: { "fill-color": "#3b82f6", "fill-opacity": 0.12 },
+            });
+            map.addLayer({
+              id: "ws-line", type: "line", source: "ws",
+              paint: { "line-color": "#3b82f6", "line-width": 2 },
+            });
+          }
+          // Sample data points
+          if (points && points.length) {
+            map.addSource("pts", {
+              type: "geojson",
+              data: { type: "FeatureCollection", features: points },
+            });
+            map.addLayer({
+              id: "pts", type: "circle", source: "pts",
+              paint: {
+                "circle-color": "#ef4444",
+                "circle-radius": 3,
+                "circle-opacity": 0.7,
+                "circle-stroke-color": "#ffffff",
+                "circle-stroke-width": 0.5,
+              },
+            });
+          }
+
+          // Fit to whichever extent we have. Prefer points (data) over bounds
+          // (workspace) so the viewport actually shows the data when both
+          // overlap.
+          const fitBounds = new maplibregl.LngLatBounds();
+          let any = false;
+          if (points && points.length) {
+            points.forEach(p => { fitBounds.extend(p.geometry.coordinates); any = true; });
+          }
+          if (bounds && bounds.coordinates) {
+            // GeoJSON Polygon: coordinates[0] is the outer ring
+            (bounds.coordinates[0] || []).forEach(c => { fitBounds.extend(c); any = true; });
+          }
+          if (any) {
+            map.fitBounds(fitBounds, { padding: 20, maxZoom: 12, duration: 0 });
+          }
+        });
+      })();
+    </script>
+  </div>
+  {% endif %}
+</div>

@@ -1978,6 +1978,40 @@ class ZipExtractionTests(TestCase):
             extract_member_if_zip(archive, extensions=(".csv",))
         self.assertIn(".csv", str(ctx.exception))
 
+    def test_picks_largest_matching_member(self):
+        """A real-world archive ships one small metadata CSV plus the big
+        data CSV. The picker must choose the data file, not the first one in
+        archive order. This is the bug that gave the mfdz body.zip a 2888-row
+        result instead of millions."""
+        from connectors._http import extract_member_if_zip
+
+        archive = self._make_zip(
+            {
+                "metadata.csv": b"key,value\nbuild,2024-01\n",
+                "body.csv": b"col,a,b\n" + b"x,1,2\n" * 5000,
+            }
+        )
+        out = extract_member_if_zip(archive, extensions=(".csv",))
+        self.assertIn(b"x,1,2", out)
+        self.assertNotIn(b"build,2024-01", out)
+
+    def test_return_member_name_round_trips(self):
+        from connectors._http import extract_member_if_zip
+
+        archive = self._make_zip({"data.csv": b"a,b\n1,2\n"})
+        out, member = extract_member_if_zip(
+            archive, extensions=(".csv",), return_member_name=True
+        )
+        self.assertEqual(out, b"a,b\n1,2\n")
+        self.assertEqual(member, "data.csv")
+
+        raw = b"plain,csv\n1,2\n"
+        out, member = extract_member_if_zip(
+            raw, extensions=(".csv",), return_member_name=True
+        )
+        self.assertEqual(out, raw)
+        self.assertIsNone(member)
+
     # ------------------------------------------------------------------
     # CSV connector
     # ------------------------------------------------------------------
@@ -2135,3 +2169,103 @@ class UnfallatlasMfdzLayoutTests(TestCase):
 
         header = "OBJECTID,UJAHR,UMONAT,UKATEGORIE,LON,LAT\nrow\n"
         self.assertEqual(_resolve_delimiter(header, None), ",")
+
+
+class UnfallatlasDiagnosticsAndFallbackTests(TestCase):
+    """Behaviour the operator depends on when the test/sync result is 0:
+    diagnostics expose what the connector saw, and sync falls back to an
+    unclipped import when workspace bounds would drop every row."""
+
+    NATIONWIDE_CSV = (
+        # Two rows, neither in the (10, 50, 11, 51) bbox below.
+        "OBJECTID,UJAHR,UMONAT,USTUNDE,UWOCHENTAG,UKATEGORIE,UART,UTYP1,ULICHTVERH,"
+        "IstRad,IstPKW,IstFuss,IstKrad,IstGkfz,IstSonstig,STRZUSTAND,LON,LAT\n"
+        "1,2024,5,14,3,2,5,1,0,1,1,0,0,0,0,0,12.3731,51.3397\n"
+        "2,2024,7,22,5,3,1,2,0,0,1,1,0,0,0,0,12.4000,51.3500\n"
+    ).encode("utf-8")
+
+    class _FakeBounds:
+        extent = (10.0, 50.0, 11.0, 51.0)
+
+    class _FakeWS:
+        bounds = None
+        slug = "fake"
+
+    def _ws(self):
+        ws = self._FakeWS()
+        ws.bounds = self._FakeBounds()
+        return ws
+
+    def test_fetch_imports_unclipped_when_bbox_drops_everything(self):
+        from connectors.unfallat_connector import UnfallatlasConnector
+
+        with mock.patch(
+            "connectors.unfallat_connector.fetch_bytes",
+            return_value=self.NATIONWIDE_CSV,
+        ):
+            result = UnfallatlasConnector().fetch(
+                {"url": "x", "clip_to_workspace": True}, workspace=self._ws()
+            )
+        self.assertEqual(result.record_count, 2)
+        self.assertTrue(
+            any("dropped" in w for w in result.warnings),
+            f"Expected a fallback warning, got: {result.warnings}",
+        )
+
+    def test_fetch_keeps_clip_when_at_least_one_row_is_inside(self):
+        from connectors.unfallat_connector import UnfallatlasConnector
+
+        # Bbox covers the second row (12.4/51.35) but not the first.
+        ws = self._ws()
+        ws.bounds.extent = (12.39, 51.34, 12.42, 51.36)
+        with mock.patch(
+            "connectors.unfallat_connector.fetch_bytes",
+            return_value=self.NATIONWIDE_CSV,
+        ):
+            result = UnfallatlasConnector().fetch(
+                {"url": "x", "clip_to_workspace": True}, workspace=ws
+            )
+        self.assertEqual(result.record_count, 1)
+        self.assertEqual(result.warnings, [])
+
+    def test_test_connection_diagnostics_contain_geographic_summary(self):
+        from connectors.unfallat_connector import UnfallatlasConnector
+
+        with mock.patch(
+            "connectors.unfallat_connector.fetch_bytes",
+            return_value=self.NATIONWIDE_CSV,
+        ):
+            result = UnfallatlasConnector().test_connection(
+                {"url": "x", "clip_to_workspace": True}, workspace=self._ws()
+            )
+        self.assertTrue(result.success)
+        d = result.diagnostics
+        # All four bbox numbers — west/south/east/north
+        self.assertEqual(len(d["coord_range"]), 4)
+        self.assertEqual(d["workspace_bounds"], [10.0, 50.0, 11.0, 51.0])
+        # Both rows are outside the workspace bbox → inside count is 0,
+        # which is exactly the case where the message must warn the user.
+        self.assertEqual(d["inside_bounds_count"], 0)
+        self.assertIn("None of them fall inside", result.message)
+        self.assertIn("the full dataset", result.message)
+
+    def test_test_connection_diagnostics_record_archive_member(self):
+        from connectors.unfallat_connector import UnfallatlasConnector
+
+        # Wrap the CSV in a zip that also contains a small metadata file.
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w") as zf:
+            zf.writestr("metadata.csv", b"key,value\nbuild,2024-01\n")
+            zf.writestr("body.csv", self.NATIONWIDE_CSV)
+        archive = buf.getvalue()
+
+        with mock.patch(
+            "connectors.unfallat_connector.fetch_bytes",
+            return_value=archive,
+        ):
+            result = UnfallatlasConnector().test_connection(
+                {"url": "x.zip", "clip_to_workspace": False}, workspace=None
+            )
+        self.assertTrue(result.success, result.message)
+        self.assertEqual(result.diagnostics["archive_member"], "body.csv")
+        self.assertEqual(result.diagnostics["row_count"], 2)
