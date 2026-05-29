@@ -29,23 +29,6 @@ class YearSpec:
     encoding: str
 
 
-@dataclass
-class CuratedSource:
-    """A ready-to-add Unfallatlas release shown in the catalog browser.
-
-    Unlike the per-year ``sources`` map (official Destatis URLs that rotate
-    yearly), curated entries point at stable mirrors that can be added with
-    one click — e.g. the MobilityData Foundation combined mirror.
-    """
-
-    id: str
-    name: str
-    url: str
-    description: str
-    encoding: str
-    years: str  # human label, e.g. "2016–2023"
-
-
 def load_year_sources(workspace_slug: str | None = None) -> list[YearSpec]:
     """Return the list of configured Unfallatlas years for a workspace.
 
@@ -74,28 +57,6 @@ def load_year_sources(workspace_slug: str | None = None) -> list[YearSpec]:
             )
         )
     out.sort(key=lambda y: y.year)
-    return out
-
-
-def load_curated_catalog(workspace_slug: str | None = None) -> list[CuratedSource]:
-    """Return curated, ready-to-add Unfallatlas releases from the YAML
-    ``catalog:`` list. Empty list when none are configured."""
-    data, _ = _load_data(workspace_slug)
-    default_encoding = data.get("default_encoding") or "utf-8"
-    out: list[CuratedSource] = []
-    for item in data.get("catalog") or []:
-        if not isinstance(item, dict) or not item.get("url"):
-            continue
-        out.append(
-            CuratedSource(
-                id=str(item.get("id") or item["url"]),
-                name=item.get("name") or item["url"],
-                url=item["url"],
-                description=item.get("description", ""),
-                encoding=item.get("encoding") or default_encoding,
-                years=str(item.get("years", "")),
-            )
-        )
     return out
 
 

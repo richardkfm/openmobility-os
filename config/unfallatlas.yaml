@@ -1,25 +1,14 @@
 # Unfallatlas (German Federal Statistics Office) source URLs
 # ---------------------------------------------------------------------------
 # Year → CSV download URL mapping consumed by the `seed_unfallatlas`
-# management command. The official Destatis Unfallatlas portal at
-# https://unfallatlas.statistikportal.de publishes a fresh CSV bundle for
-# each calendar year (typically released the following spring under the
-# "dl-de/by-2-0" license).
+# management command. Each annual Unfallatlas file is published under the
+# "dl-de/by-2-0" license and covers ALL of Germany.
 #
-# WHY YOU NEED TO FILL THIS IN YOURSELF
-# Destatis rotates download URLs and packaging (per-year, per-state, ZIPs
-# vs. plain CSVs) every release cycle. Hard-coding URLs in code would mean
-# a connector that silently breaks every year. Instead, this file is the
-# single source of truth — and the `seed_unfallatlas` command will tell
-# you exactly which years are configured.
-#
-# HOW TO POPULATE
-#   1. Visit https://unfallatlas.statistikportal.de/_opendata.html
-#   2. Download the per-year CSV (national or per-state) you want to use.
-#   3. Either: host the file yourself and put the URL below
-#      OR: copy the direct Destatis download URL.
-#   4. Set the encoding (utf-8 or latin-1 — Destatis used latin-1 for older
-#      bundles, switched to utf-8 in recent years).
+# The URLs below point at the NRW open-geodata mirror, which hosts the full
+# nationwide files at stable, predictable paths (unlike the official Destatis
+# portal at https://unfallatlas.statistikportal.de, whose download links
+# rotate each release cycle). If a year 404s, check the current filename at
+# the portal listing linked below and update it here.
 #
 # RUNNING
 #   python manage.py seed_unfallatlas --workspace <slug> --years 2021,2022,2023
@@ -30,35 +19,27 @@
 default_encoding: utf-8
 
 # ---------------------------------------------------------------------------
-# Curated, ready-to-add releases — shown in the data-hub catalog browser with
-# a one-click "Add to workspace" button. Use these for stable mirrors that do
-# NOT rotate their URLs. The data is nationwide; it is automatically clipped
-# to each workspace's bounding box on sync.
+# NATIONWIDE source — covers every German municipality (incl. Leipzig/Sachsen)
 #
-# The MobilityData Foundation (MFDZ) mirror combines all published years into
-# one stable archive, so operators don't have to chase the rotating Destatis
-# per-year download links.
-catalog:
-  - id: mfdz-combined
-    name: "Unfallatlas Deutschland (MFDZ-Mirror, alle Jahre)"
-    url: "https://data.mfdz.de/destatis_Unfalldaten/body.zip"
-    years: "2016–2023"
-    encoding: utf-8
-    description: >-
-      Bundesweite, zusammengeführte Unfalldaten des Statistischen Bundesamts,
-      gespiegelt von der MobilityData Foundation. Wird beim Sync automatisch
-      auf die Grenzen des Workspace zugeschnitten.
-
-# Per-year official Destatis URLs (rotate yearly — fill in as needed). The
-# `seed_unfallatlas` command and the catalog year-picker read this map.
-sources: {}
-  # Example — replace placeholders before use:
-  # 2021:
-  #   url: "https://example.org/unfallatlas/2021_national.csv"
-  #   encoding: utf-8
-  # 2022:
-  #   url: "https://example.org/unfallatlas/2022_national.csv"
-  # 2023:
-  #   url: "https://example.org/unfallatlas/2023_national.csv"
-  # 2024:
-  #   url: "https://example.org/unfallatlas/2024_national.csv"
+# The authoritative Unfallatlas files are mirrored, per calendar year, on the
+# NRW open-geodata portal (despite the NRW domain, each file is the FULL
+# Germany dataset). These URLs are far more stable than the rotating Destatis
+# download links. The CSV inside carries WGS84 columns (XGCSWGS84/YGCSWGS84),
+# which this connector reads; the data is clipped to each workspace's bounding
+# box on sync.
+#
+# To add a year to a workspace, use the data hub's "Add data source" form
+# (connector: Unfallatlas) and paste the URL — or run:
+#   python manage.py seed_unfallatlas --workspace <slug> --years 2023
+#
+# Verify the current filenames at:
+#   https://www.opengeodata.nrw.de/produkte/transport_verkehr/unfallatlas/
+sources:
+  2020:
+    url: "https://www.opengeodata.nrw.de/produkte/transport_verkehr/unfallatlas/Unfallorte2020_EPSG25832_CSV.zip"
+  2021:
+    url: "https://www.opengeodata.nrw.de/produkte/transport_verkehr/unfallatlas/Unfallorte2021_EPSG25832_CSV.zip"
+  2022:
+    url: "https://www.opengeodata.nrw.de/produkte/transport_verkehr/unfallatlas/Unfallorte2022_EPSG25832_CSV.zip"
+  2023:
+    url: "https://www.opengeodata.nrw.de/produkte/transport_verkehr/unfallatlas/Unfallorte2023_EPSG25832_CSV.zip"

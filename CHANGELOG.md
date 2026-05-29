@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Unfallatlas moved out of the catalog browser** — it's a single
+  nationwide dataset clipped to your workspace, not a searchable library,
+  so the catalogue page was confusing (a "search" box that searched
+  years, and an empty/Berlin-only "release"). Add it from the standard
+  **Add data source** form now: paste a CSV/ZIP URL or upload a file. The
+  catalogue browser is reserved for connectors with a genuinely
+  searchable upstream (Mobilithek).
+- **Unfallatlas now ships working nationwide download URLs** —
+  `config/unfallatlas.yaml` is pre-filled with the NRW open-geodata
+  mirror links (2020–2023), which host the full Germany files at stable
+  paths and cover every municipality (incl. Leipzig/Sachsen). The
+  previously-suggested MFDZ `body.zip` mirror turned out to be a partial
+  (Berlin-only) copy and has been removed.
+
+### Fixed
+- **`seed_unfallatlas your-city --years 2023` works out of the box** —
+  the shipped config now contains real, nationwide per-year URLs instead
+  of empty placeholders.
+
 ### Added
 - **Unfallatlas catalog ships a one-click default release** — the
   catalog browser now offers the MobilityData Foundation combined mirror

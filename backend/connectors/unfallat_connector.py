@@ -3,14 +3,19 @@
 Reads the Destatis Unfallatlas CSV format and normalises it to the OpenMobility
 OS standard accident property schema. The original Destatis files are
 semicolon-delimited with column names like ``XGCSWGS84``/``YGCSWGS84`` and
-``IstSonstige``. Re-published mirrors (e.g. mfdz.de) often switch to
-comma-delimited CSV with renamed columns (``LON``/``LAT``, ``IstSonstig``,
-``STRZUSTAND``) — both layouts are accepted via column aliases and delimiter
-auto-detection.
+``IstSonstige``. Re-published mirrors often switch to comma-delimited CSV with
+renamed columns (``LON``/``LAT``, ``IstSonstig``, ``STRZUSTAND``) — both
+layouts are accepted via column aliases and delimiter auto-detection.
 
-Data sources:
-  - https://unfallatlas.statistikportal.de/ (Destatis, original)
-  - https://data.mfdz.de/destatis_Unfalldaten/ (Mobility Data Foundation mirror)
+Add this source from the data hub's "Add data source" form: paste a CSV/ZIP
+URL or upload a file. The authoritative **nationwide** download (covers every
+German municipality, including e.g. Leipzig/Sachsen) is published per year at:
+
+  https://www.opengeodata.nrw.de/produkte/transport_verkehr/unfallatlas/
+      Unfallorte2023_EPSG25832_CSV.zip   (swap the year as needed)
+
+The data is nationwide; on sync it is automatically clipped to the workspace's
+bounding box.
 
 License: dl-de/by-2-0 (Datenlizenz Deutschland – Namensnennung)
 """
@@ -19,14 +24,7 @@ import csv
 import io
 
 from ._http import extract_member_if_zip, fetch_bytes
-from .base import (
-    BaseConnector,
-    CatalogEntry,
-    CatalogPage,
-    ConnectorTestResult,
-    FetchResult,
-)
-from .unfallat_catalog import load_curated_catalog, load_year_sources
+from .base import BaseConnector, ConnectorTestResult, FetchResult
 
 SEVERITY_MAP = {"1": "fatal", "2": "serious", "3": "minor"}
 
@@ -266,185 +264,6 @@ class UnfallatlasConnector(BaseConnector):
             diagnostics=diagnostics,
         )
 
-    # ------------------------------------------------------------------
-    # Catalog discovery — exposes the year→URL mapping from
-    # config/unfallatlas.yaml as an admin-facing year picker.
-    # ------------------------------------------------------------------
-
-    # The catalog is a short curated list, not a keyword-searchable library —
-    # Unfallatlas is one nationwide dataset, there is no per-city version.
-    catalog_searchable = False
-    catalog_intro_de = (
-        "Der Unfallatlas ist ein bundesweiter Datensatz des Statistischen "
-        "Bundesamts. Es gibt keine stadtspezifische Version — wähle unten eine "
-        "Veröffentlichung aus; sie wird beim Sync automatisch auf die Grenzen "
-        "dieses Workspace zugeschnitten. Eigene Quelle? Per URL oder Upload "
-        "hinzufügen."
-    )
-    catalog_intro_en = (
-        "Unfallatlas is a Germany-wide dataset from the Federal Statistical "
-        "Office. There is no per-city version — pick a release below; it is "
-        "automatically clipped to this workspace's bounds on sync. Have your "
-        "own file? Add it by URL or upload."
-    )
-
-    def supports_discovery(self) -> bool:
-        return True
-
-    quick_add_fields = [
-        {"name": "year", "label": "Year", "placeholder": "2024", "required": True},
-        {
-            "name": "url",
-            "label": "CSV / ZIP download URL",
-            "placeholder": "https://example.org/unfallatlas/2024.csv",
-            "required": False,
-            "help": "Paste a direct download URL, or upload a file below.",
-        },
-        {
-            "name": "source_file",
-            "label": "…or upload a CSV / ZIP file",
-            "type": "file",
-            "accept": ".csv,.txt,.zip",
-            "required": False,
-            "help": "Destatis publishes a ZIP — upload it as-is, we extract the CSV.",
-        },
-        {
-            "name": "encoding",
-            "label": "Encoding",
-            "placeholder": "utf-8",
-            "default": "utf-8",
-            "required": False,
-        },
-    ]
-
-    def quick_add(self, form_data, workspace=None):
-        raw_year = str(form_data.get("year") or "").strip()
-        url = str(form_data.get("url") or "").strip()
-        encoding = str(form_data.get("encoding") or "").strip() or "utf-8"
-        # The view sets this when a file was uploaded; the file path is filled
-        # in afterwards (we can't know it until the file is saved to storage).
-        has_upload = str(form_data.get("_has_upload") or "").strip() in ("1", "true", "yes")
-        if not raw_year:
-            raise ValueError("Year is required.")
-        if not url and not has_upload:
-            raise ValueError(
-                "Provide a download URL or upload a CSV / ZIP file."
-            )
-        try:
-            year = int(raw_year)
-        except ValueError as exc:
-            raise ValueError(f"Year must be an integer (got {raw_year!r}).") from exc
-        if year < 1990 or year > 2100:
-            raise ValueError(f"Year out of plausible range: {year}.")
-        if url and not _is_acceptable_url(url):
-            raise ValueError(
-                "URL must start with http://, https://, file://, or be an "
-                "absolute path."
-            )
-        name = f"Unfallatlas {year}"
-        config = {"encoding": encoding, "clip_to_workspace": True}
-        # When uploading, the view injects config["url"] from the saved file.
-        if url:
-            config["url"] = url
-        return CatalogEntry(
-            entry_id=f"unfallatlas-{year}",
-            title=name,
-            subtitle=str(year),
-            description="Polizeilich erfasste Unfaelle mit Personenschaden.",
-            format_hint="csv",
-            source_url="https://unfallatlas.statistikportal.de/",
-            attribution="© Statistische Ämter des Bundes und der Länder",
-            license="dl-de/by-2-0",
-            suggested_name=name,
-            suggested_layer_kind="accidents",
-            suggested_config=config,
-            badges=["custom"],
-        )
-
-    def discover(self, query=None, facets=None, workspace=None):
-        slug = getattr(workspace, "slug", None)
-        curated = load_curated_catalog(workspace_slug=slug)
-        specs = load_year_sources(workspace_slug=slug)
-
-        existing_names: set[str] = set()
-        if workspace is not None:
-            existing_names = set(
-                workspace.data_sources.filter(source_type=self.id).values_list(
-                    "name", flat=True
-                )
-            )
-
-        entries = []
-
-        # Curated, stable releases first (one-click "Add to workspace").
-        for src in curated:
-            already = src.name in existing_names
-            entries.append(
-                CatalogEntry(
-                    entry_id=f"curated:{src.id}",
-                    title=src.name,
-                    subtitle=src.years,
-                    description=src.description
-                    or "Bundesweite Unfalldaten — wird auf den Workspace zugeschnitten.",
-                    format_hint="csv",
-                    source_url="https://unfallatlas.statistikportal.de/",
-                    attribution="© Statistische Ämter des Bundes und der Länder",
-                    license="dl-de/by-2-0",
-                    suggested_name=src.name,
-                    suggested_layer_kind="accidents",
-                    suggested_config={
-                        "url": src.url,
-                        "encoding": src.encoding,
-                        "clip_to_workspace": True,
-                    },
-                    badges=["empfohlen", "bbox-clip"],
-                    already_added=already,
-                )
-            )
-
-        # Per-year official Destatis releases (if configured in YAML).
-        for spec in specs:
-            name = f"Unfallatlas {spec.year}"
-            already = name in existing_names
-            entries.append(
-                CatalogEntry(
-                    entry_id=f"unfallatlas-{spec.year}",
-                    title=name,
-                    subtitle=str(spec.year),
-                    description=(
-                        "Polizeilich erfasste Unfaelle mit Personenschaden "
-                        f"({spec.year})."
-                    ),
-                    format_hint="csv",
-                    source_url="https://unfallatlas.statistikportal.de/",
-                    attribution="© Statistische Ämter des Bundes und der Länder",
-                    license="dl-de/by-2-0",
-                    suggested_name=name,
-                    suggested_layer_kind="accidents",
-                    suggested_config={
-                        "url": spec.url,
-                        "encoding": spec.encoding,
-                        "clip_to_workspace": True,
-                    },
-                    badges=["bbox-clip"],
-                    already_added=already,
-                )
-            )
-
-        message = ""
-        if not entries:
-            message = (
-                "No preset releases yet. Use “Add a custom entry” below — paste "
-                "a Destatis download URL, or upload the CSV / ZIP you "
-                "downloaded from unfallatlas.statistikportal.de."
-            )
-        return CatalogPage(
-            entries=entries,
-            total=len(entries),
-            facets={"available_years": [s.year for s in specs]},
-            message=message,
-        )
-
 
 def _row_to_feature(row, bbox=None):
     lon = _safe_float_de(_lookup(row, LON_ALIASES))
@@ -496,17 +315,6 @@ def _row_to_feature(row, bbox=None):
             "intersection_type": _intersection_type(row),
         },
     }
-
-
-def _is_acceptable_url(url: str) -> bool:
-    """Accept remote URLs, file:// URIs, and absolute local paths (uploaded
-    files land at e.g. /app/mediafiles/… and are read via ``fetch_bytes``)."""
-    return (
-        url.startswith("http://")
-        or url.startswith("https://")
-        or url.startswith("file://")
-        or url.startswith("/")
-    )
 
 
 def _parse_bbox(raw):
