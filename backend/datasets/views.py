@@ -129,8 +129,16 @@ def catalog_quickadd(request, workspace_slug, connector_id):
         messages.error(request, _("Unknown or non-discoverable connector."))
         return redirect(reverse("data_hub", kwargs={"workspace_slug": ws.slug}))
 
+    form_data = request.POST.dict()
+    uploaded = request.FILES.get("source_file")
+    if uploaded:
+        # Signal to the connector that a file will provide the data, so it
+        # doesn't reject a missing URL. The actual path is injected after the
+        # file is saved to storage below.
+        form_data["_has_upload"] = "1"
+
     try:
-        entry = connector.quick_add(request.POST.dict(), workspace=ws)
+        entry = connector.quick_add(form_data, workspace=ws)
     except ValueError as exc:
         messages.error(request, str(exc))
         return redirect(browse_url)
@@ -147,6 +155,16 @@ def catalog_quickadd(request, workspace_slug, connector_id):
             "source_url": entry.source_url or "",
         },
     )
+
+    # Persist the uploaded file and point the connector config at its path.
+    if uploaded:
+        source.source_file = uploaded
+        source.save(update_fields=["source_file"])
+        config = dict(source.config or {})
+        config["url"] = source.source_file.path
+        source.config = config
+        source.save(update_fields=["config"])
+
     if request.POST.get("skip_sync"):
         verb = _("created") if created else _("updated")
         messages.success(

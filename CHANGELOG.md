@@ -8,6 +8,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Upload a file directly in the catalog quick-add** — the
+  Unfallatlas catalog page now offers an "…or upload a CSV / ZIP file"
+  field alongside the URL box. Since Destatis publishes accident data
+  through a JavaScript download portal with no stable per-city URL, you
+  can now download the CSV/ZIP and drop it straight into the catalog
+  form — it's stored, the config points at it, and an initial sync
+  runs. Quick-add forms render an upload control for any connector that
+  declares a `file`-type field.
+
+### Changed
+- **Friendlier Unfallatlas empty state** — when no preset years are
+  configured, the catalog no longer shows the developer-facing "edit
+  config/unfallatlas.yaml" note. It now points you to the "Add a custom
+  entry" form and explains you can paste a URL or upload a downloaded
+  file.
+
+### Added
 - **Data-hub Test panel is now a rich diagnostic view** — clicking
   *Test* on a data source no longer dumps raw JSON; it renders a panel
   showing which file was read from the ZIP, how many rows parsed, the

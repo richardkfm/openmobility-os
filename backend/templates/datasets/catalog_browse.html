@@ -54,20 +54,29 @@
     <summary class="cursor-pointer text-sm font-medium">
       {% trans "Add a custom entry" %}
       <span class="text-xs text-slate-500 font-normal">
-        — {% trans "skip the catalog and enter the source URL directly" %}
+        — {% trans "paste a download URL or upload a file" %}
       </span>
     </summary>
     <form method="post" action="{% url 'catalog_quickadd' workspace.slug connector.id %}"
+      enctype="multipart/form-data"
       class="mt-3 grid gap-3 sm:grid-cols-2">
       {% csrf_token %}
       {% for field in connector.quick_add_fields %}
-      <label class="flex flex-col gap-1 text-xs text-slate-600">
+      <label class="flex flex-col gap-1 text-xs text-slate-600 {% if field.type == 'file' %}sm:col-span-2{% endif %}">
         <span>{{ field.label }}{% if field.required %} <span class="text-red-500">*</span>{% endif %}</span>
+        {% if field.type == "file" %}
+        <input type="file" name="{{ field.name }}"
+          {% if field.accept %}accept="{{ field.accept }}"{% endif %}
+          {% if field.required %}required{% endif %}
+          class="text-sm text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border file:text-xs file:bg-white file:text-slate-700 hover:file:bg-slate-50">
+        {% else %}
         <input type="text" name="{{ field.name }}"
           value="{{ field.default|default_if_none:'' }}"
           placeholder="{{ field.placeholder }}"
           {% if field.required %}required{% endif %}
           class="rounded border border-slate-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400">
+        {% endif %}
+        {% if field.help %}<span class="text-[11px] text-slate-400">{{ field.help }}</span>{% endif %}
       </label>
       {% endfor %}
       <div class="sm:col-span-2 flex gap-2 items-center mt-1">
