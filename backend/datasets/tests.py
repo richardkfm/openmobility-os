@@ -380,6 +380,57 @@ class CatalogViewsTests(TestCase):
         )
         self.assertEqual(response.status_code, 403)
 
+    def test_catalog_quickadd_accepts_uploaded_file(self):
+        """Uploading a CSV in the catalog quick-add must create the source,
+        store the file, and point config['url'] at the saved path — the path
+        that solves the 'Destatis gives no direct URL' problem."""
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        csv_bytes = (
+            b"OBJECTID,UJAHR,UMONAT,USTUNDE,UWOCHENTAG,UKATEGORIE,UART,UTYP1,"
+            b"ULICHTVERH,IstRad,IstPKW,IstFuss,IstKrad,IstGkfz,IstSonstig,"
+            b"STRZUSTAND,LON,LAT\n"
+            b"1,2024,5,14,3,2,5,1,0,1,1,0,0,0,0,0,12.3731,51.3397\n"
+        )
+        upload = SimpleUploadedFile(
+            "unfaelle_2024.csv", csv_bytes, content_type="text/csv"
+        )
+        with mock.patch(
+            "datasets.views._run_sync", return_value=(True, "Synced 1.")
+        ):
+            response = self.client.post(
+                reverse(
+                    "catalog_quickadd",
+                    kwargs={
+                        "workspace_slug": self.workspace.slug,
+                        "connector_id": "unfallat",
+                    },
+                ),
+                {"year": "2024", "source_file": upload},
+                **self.admin_headers,
+            )
+        self.assertEqual(response.status_code, 302)
+        src = DataSource.objects.get(workspace=self.workspace, name="Unfallatlas 2024")
+        self.assertTrue(src.source_file)
+        # config url points at the stored file (absolute path), not a remote URL.
+        self.assertEqual(src.config["url"], src.source_file.path)
+        self.assertTrue(src.config["url"].endswith(".csv"))
+
+    def test_catalog_quickadd_rejects_no_url_no_file(self):
+        response = self.client.post(
+            reverse(
+                "catalog_quickadd",
+                kwargs={
+                    "workspace_slug": self.workspace.slug,
+                    "connector_id": "unfallat",
+                },
+            ),
+            {"year": "2024"},
+            **self.admin_headers,
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(DataSource.objects.filter(workspace=self.workspace).exists())
+
     def test_catalog_browse_persists_mobilithek_url_override(self):
         with mock.patch(
             "connectors.mobilithek_catalog.browse_catalog", return_value=[]

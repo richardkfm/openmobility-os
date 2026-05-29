@@ -278,9 +278,18 @@ class UnfallatlasConnector(BaseConnector):
         {"name": "year", "label": "Year", "placeholder": "2024", "required": True},
         {
             "name": "url",
-            "label": "CSV download URL",
+            "label": "CSV / ZIP download URL",
             "placeholder": "https://example.org/unfallatlas/2024.csv",
-            "required": True,
+            "required": False,
+            "help": "Paste a direct download URL, or upload a file below.",
+        },
+        {
+            "name": "source_file",
+            "label": "…or upload a CSV / ZIP file",
+            "type": "file",
+            "accept": ".csv,.txt,.zip",
+            "required": False,
+            "help": "Destatis publishes a ZIP — upload it as-is, we extract the CSV.",
         },
         {
             "name": "encoding",
@@ -295,17 +304,31 @@ class UnfallatlasConnector(BaseConnector):
         raw_year = str(form_data.get("year") or "").strip()
         url = str(form_data.get("url") or "").strip()
         encoding = str(form_data.get("encoding") or "").strip() or "utf-8"
-        if not raw_year or not url:
-            raise ValueError("Year and URL are required.")
+        # The view sets this when a file was uploaded; the file path is filled
+        # in afterwards (we can't know it until the file is saved to storage).
+        has_upload = str(form_data.get("_has_upload") or "").strip() in ("1", "true", "yes")
+        if not raw_year:
+            raise ValueError("Year is required.")
+        if not url and not has_upload:
+            raise ValueError(
+                "Provide a download URL or upload a CSV / ZIP file."
+            )
         try:
             year = int(raw_year)
         except ValueError as exc:
             raise ValueError(f"Year must be an integer (got {raw_year!r}).") from exc
         if year < 1990 or year > 2100:
             raise ValueError(f"Year out of plausible range: {year}.")
-        if not (url.startswith("http://") or url.startswith("https://") or url.startswith("file://")):
-            raise ValueError("URL must start with http://, https://, or file://.")
+        if url and not _is_acceptable_url(url):
+            raise ValueError(
+                "URL must start with http://, https://, file://, or be an "
+                "absolute path."
+            )
         name = f"Unfallatlas {year}"
+        config = {"encoding": encoding, "clip_to_workspace": True}
+        # When uploading, the view injects config["url"] from the saved file.
+        if url:
+            config["url"] = url
         return CatalogEntry(
             entry_id=f"unfallatlas-{year}",
             title=name,
@@ -317,11 +340,7 @@ class UnfallatlasConnector(BaseConnector):
             license="dl-de/by-2-0",
             suggested_name=name,
             suggested_layer_kind="accidents",
-            suggested_config={
-                "url": url,
-                "encoding": encoding,
-                "clip_to_workspace": True,
-            },
+            suggested_config=config,
             badges=["custom"],
         )
 
@@ -372,8 +391,9 @@ class UnfallatlasConnector(BaseConnector):
         message = ""
         if not specs:
             message = (
-                "No Unfallatlas years configured. Add year→URL entries to "
-                "config/unfallatlas.yaml or config/unfallatlas/<slug>.yaml."
+                "No preset years yet. Use “Add a custom entry” below to add a "
+                "year — paste a Destatis download URL, or upload the CSV / ZIP "
+                "you downloaded from unfallatlas.statistikportal.de."
             )
         return CatalogPage(
             entries=entries,
@@ -433,6 +453,17 @@ def _row_to_feature(row, bbox=None):
             "intersection_type": _intersection_type(row),
         },
     }
+
+
+def _is_acceptable_url(url: str) -> bool:
+    """Accept remote URLs, file:// URIs, and absolute local paths (uploaded
+    files land at e.g. /app/mediafiles/… and are read via ``fetch_bytes``)."""
+    return (
+        url.startswith("http://")
+        or url.startswith("https://")
+        or url.startswith("file://")
+        or url.startswith("/")
+    )
 
 
 def _parse_bbox(raw):

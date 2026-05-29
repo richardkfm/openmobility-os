@@ -1916,6 +1916,36 @@ class UnfallatlasCatalogTests(_DjangoTestCase):
         )
         self.assertEqual(entry.suggested_config["encoding"], "utf-8")
 
+    def test_quick_add_requires_url_or_upload(self):
+        from connectors.unfallat_connector import UnfallatlasConnector
+
+        with self.assertRaises(ValueError) as ctx:
+            UnfallatlasConnector().quick_add(
+                {"year": "2024"}, workspace=self.workspace
+            )
+        self.assertIn("upload", str(ctx.exception).lower())
+
+    def test_quick_add_accepts_upload_without_url(self):
+        from connectors.unfallat_connector import UnfallatlasConnector
+
+        # The view sets _has_upload when a file is attached; the URL is filled
+        # in afterwards from the saved file path.
+        entry = UnfallatlasConnector().quick_add(
+            {"year": "2024", "_has_upload": "1"}, workspace=self.workspace
+        )
+        self.assertEqual(entry.entry_id, "unfallatlas-2024")
+        self.assertNotIn("url", entry.suggested_config)
+        self.assertEqual(entry.suggested_layer_kind, "accidents")
+
+    def test_quick_add_accepts_absolute_local_path(self):
+        from connectors.unfallat_connector import UnfallatlasConnector
+
+        entry = UnfallatlasConnector().quick_add(
+            {"year": "2024", "url": "/app/mediafiles/x.zip"},
+            workspace=self.workspace,
+        )
+        self.assertEqual(entry.suggested_config["url"], "/app/mediafiles/x.zip")
+
     def test_suggested_config_clips_to_workspace(self):
         from connectors.unfallat_connector import UnfallatlasConnector
 
