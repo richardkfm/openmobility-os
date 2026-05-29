@@ -93,6 +93,17 @@ class BaseConnector:
     # Unfallatlas year list, …).
     # ------------------------------------------------------------------
 
+    # Catalog-page presentation hints (read by the data-hub catalog UI).
+    # `catalog_searchable` controls whether a free-text search box is shown —
+    # connectors backed by a true keyword catalog (Mobilithek's DCAT-AP feed)
+    # set True; connectors that just list a handful of curated releases
+    # (Unfallatlas) set False so the page doesn't imply a library search that
+    # doesn't exist. `catalog_intro_*` is a short explanation shown atop the
+    # page.
+    catalog_searchable: bool = True
+    catalog_intro_de: str = ""
+    catalog_intro_en: str = ""
+
     def supports_discovery(self) -> bool:
         """Opt-in flag — True if this connector implements `discover`."""
         return False

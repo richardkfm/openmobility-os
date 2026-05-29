@@ -265,7 +265,13 @@ class MobilithekConnector(BaseConnector):
             )
         except Exception as exc:  # noqa: BLE001
             return CatalogPage(
-                message=f"Catalog fetch failed: {exc}",
+                message=(
+                    "Could not load the Mobilithek catalogue feed "
+                    f"({exc}). The BMDV feed URL changes occasionally and may "
+                    "now require authentication. Set a different feed URL "
+                    "above if you have one — or skip the catalogue and add a "
+                    "dataset directly below by pasting its distribution URL."
+                ),
                 facets={"catalog_url": catalog_url},
             )
 

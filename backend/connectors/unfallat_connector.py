@@ -26,7 +26,7 @@ from .base import (
     ConnectorTestResult,
     FetchResult,
 )
-from .unfallat_catalog import load_year_sources
+from .unfallat_catalog import load_curated_catalog, load_year_sources
 
 SEVERITY_MAP = {"1": "fatal", "2": "serious", "3": "minor"}
 
@@ -271,6 +271,23 @@ class UnfallatlasConnector(BaseConnector):
     # config/unfallatlas.yaml as an admin-facing year picker.
     # ------------------------------------------------------------------
 
+    # The catalog is a short curated list, not a keyword-searchable library —
+    # Unfallatlas is one nationwide dataset, there is no per-city version.
+    catalog_searchable = False
+    catalog_intro_de = (
+        "Der Unfallatlas ist ein bundesweiter Datensatz des Statistischen "
+        "Bundesamts. Es gibt keine stadtspezifische Version — wähle unten eine "
+        "Veröffentlichung aus; sie wird beim Sync automatisch auf die Grenzen "
+        "dieses Workspace zugeschnitten. Eigene Quelle? Per URL oder Upload "
+        "hinzufügen."
+    )
+    catalog_intro_en = (
+        "Unfallatlas is a Germany-wide dataset from the Federal Statistical "
+        "Office. There is no per-city version — pick a release below; it is "
+        "automatically clipped to this workspace's bounds on sync. Have your "
+        "own file? Add it by URL or upload."
+    )
+
     def supports_discovery(self) -> bool:
         return True
 
@@ -346,10 +363,8 @@ class UnfallatlasConnector(BaseConnector):
 
     def discover(self, query=None, facets=None, workspace=None):
         slug = getattr(workspace, "slug", None)
+        curated = load_curated_catalog(workspace_slug=slug)
         specs = load_year_sources(workspace_slug=slug)
-        if query:
-            q = str(query).strip()
-            specs = [s for s in specs if q in str(s.year)]
 
         existing_names: set[str] = set()
         if workspace is not None:
@@ -360,6 +375,34 @@ class UnfallatlasConnector(BaseConnector):
             )
 
         entries = []
+
+        # Curated, stable releases first (one-click "Add to workspace").
+        for src in curated:
+            already = src.name in existing_names
+            entries.append(
+                CatalogEntry(
+                    entry_id=f"curated:{src.id}",
+                    title=src.name,
+                    subtitle=src.years,
+                    description=src.description
+                    or "Bundesweite Unfalldaten — wird auf den Workspace zugeschnitten.",
+                    format_hint="csv",
+                    source_url="https://unfallatlas.statistikportal.de/",
+                    attribution="© Statistische Ämter des Bundes und der Länder",
+                    license="dl-de/by-2-0",
+                    suggested_name=src.name,
+                    suggested_layer_kind="accidents",
+                    suggested_config={
+                        "url": src.url,
+                        "encoding": src.encoding,
+                        "clip_to_workspace": True,
+                    },
+                    badges=["empfohlen", "bbox-clip"],
+                    already_added=already,
+                )
+            )
+
+        # Per-year official Destatis releases (if configured in YAML).
         for spec in specs:
             name = f"Unfallatlas {spec.year}"
             already = name in existing_names
@@ -389,11 +432,11 @@ class UnfallatlasConnector(BaseConnector):
             )
 
         message = ""
-        if not specs:
+        if not entries:
             message = (
-                "No preset years yet. Use “Add a custom entry” below to add a "
-                "year — paste a Destatis download URL, or upload the CSV / ZIP "
-                "you downloaded from unfallatlas.statistikportal.de."
+                "No preset releases yet. Use “Add a custom entry” below — paste "
+                "a Destatis download URL, or upload the CSV / ZIP you "
+                "downloaded from unfallatlas.statistikportal.de."
             )
         return CatalogPage(
             entries=entries,
