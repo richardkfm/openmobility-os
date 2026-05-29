@@ -14,6 +14,13 @@
     </a>
   </div>
 
+  {# Connector-specific intro — explains what this catalog actually is. #}
+  {% if connector.catalog_intro_de %}
+  <div class="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
+    {{ connector.catalog_intro_de }}
+  </div>
+  {% endif %}
+
   {# Connector-specific catalog URL override (Mobilithek). #}
   {% if connector.id == "mobilithek" %}
   <form method="get" action="{% url 'catalog_browse' workspace.slug connector.id %}"
@@ -32,7 +39,11 @@
   </form>
   {% endif %}
 
-  {# Search bar — HTMX swaps in the results partial as you type. #}
+  {# Search bar — only for connectors backed by a real keyword catalogue
+     (e.g. Mobilithek's DCAT-AP feed). Connectors that just list a few
+     curated releases (Unfallatlas) hide it so the page doesn't imply a
+     library search that doesn't exist. #}
+  {% if connector.catalog_searchable %}
   <form hx-get="{% url 'catalog_browse' workspace.slug connector.id %}"
         hx-target="#catalog-results"
         hx-trigger="submit, keyup changed delay:400ms from:input[name=q]"
@@ -47,6 +58,7 @@
     </button>
     <span id="catalog-spinner" class="htmx-indicator text-xs text-slate-500">{% trans "Loading…" %}</span>
   </form>
+  {% endif %}
 
   {# Quick-add: add a custom entry without a pre-curated catalog row. #}
   {% if is_admin and connector.quick_add_fields %}

@@ -29,6 +29,28 @@
 
 default_encoding: utf-8
 
+# ---------------------------------------------------------------------------
+# Curated, ready-to-add releases — shown in the data-hub catalog browser with
+# a one-click "Add to workspace" button. Use these for stable mirrors that do
+# NOT rotate their URLs. The data is nationwide; it is automatically clipped
+# to each workspace's bounding box on sync.
+#
+# The MobilityData Foundation (MFDZ) mirror combines all published years into
+# one stable archive, so operators don't have to chase the rotating Destatis
+# per-year download links.
+catalog:
+  - id: mfdz-combined
+    name: "Unfallatlas Deutschland (MFDZ-Mirror, alle Jahre)"
+    url: "https://data.mfdz.de/destatis_Unfalldaten/body.zip"
+    years: "2016–2023"
+    encoding: utf-8
+    description: >-
+      Bundesweite, zusammengeführte Unfalldaten des Statistischen Bundesamts,
+      gespiegelt von der MobilityData Foundation. Wird beim Sync automatisch
+      auf die Grenzen des Workspace zugeschnitten.
+
+# Per-year official Destatis URLs (rotate yearly — fill in as needed). The
+# `seed_unfallatlas` command and the catalog year-picker read this map.
 sources: {}
   # Example — replace placeholders before use:
   # 2021:

@@ -1812,10 +1812,15 @@ class UnfallatlasCatalogTests(_DjangoTestCase):
             bounds=Polygon(((0, 0), (1, 0), (1, 1), (0, 1), (0, 0))),
         )
 
-    def _patched_load(self, data):
+    def _patched_load(self, data, curated=None):
+        """Patch both catalog loaders so year-focused tests stay isolated
+        from the shipped YAML's curated entries. ``curated`` defaults to an
+        empty list."""
+        from contextlib import ExitStack
+
         from connectors import unfallat_catalog
 
-        def fake_loader(workspace_slug=None):
+        def fake_years(workspace_slug=None):
             return [
                 unfallat_catalog.YearSpec(
                     year=y["year"], url=y["url"], encoding=y["encoding"]
@@ -1823,9 +1828,23 @@ class UnfallatlasCatalogTests(_DjangoTestCase):
                 for y in data
             ]
 
-        return mock.patch(
-            "connectors.unfallat_connector.load_year_sources", side_effect=fake_loader
+        def fake_curated(workspace_slug=None):
+            return list(curated or [])
+
+        stack = ExitStack()
+        stack.enter_context(
+            mock.patch(
+                "connectors.unfallat_connector.load_year_sources",
+                side_effect=fake_years,
+            )
         )
+        stack.enter_context(
+            mock.patch(
+                "connectors.unfallat_connector.load_curated_catalog",
+                side_effect=fake_curated,
+            )
+        )
+        return stack
 
     def test_discover_returns_one_entry_per_year(self):
         from connectors.unfallat_connector import UnfallatlasConnector
@@ -1868,7 +1887,79 @@ class UnfallatlasCatalogTests(_DjangoTestCase):
         with self._patched_load([]):
             page = UnfallatlasConnector().discover(workspace=self.workspace)
         self.assertEqual(page.total, 0)
-        self.assertIn("Unfallatlas", page.message)
+        self.assertIn("custom entry", page.message)
+
+    def test_discover_includes_curated_release(self):
+        from connectors import unfallat_catalog
+        from connectors.unfallat_connector import UnfallatlasConnector
+
+        curated = [
+            unfallat_catalog.CuratedSource(
+                id="mfdz-combined",
+                name="Unfallatlas Deutschland (MFDZ)",
+                url="https://data.mfdz.de/destatis_Unfalldaten/body.zip",
+                description="Bundesweit",
+                encoding="utf-8",
+                years="2016–2023",
+            )
+        ]
+        with self._patched_load([], curated=curated):
+            page = UnfallatlasConnector().discover(workspace=self.workspace)
+        self.assertEqual(page.total, 1)
+        entry = page.entries[0]
+        self.assertEqual(entry.entry_id, "curated:mfdz-combined")
+        self.assertEqual(
+            entry.suggested_config["url"],
+            "https://data.mfdz.de/destatis_Unfalldaten/body.zip",
+        )
+        self.assertTrue(entry.suggested_config["clip_to_workspace"])
+        self.assertIn("empfohlen", entry.badges)
+        # No misleading "no releases" message when a curated entry exists.
+        self.assertEqual(page.message, "")
+
+    def test_curated_already_added_flag(self):
+        from connectors import unfallat_catalog
+        from connectors.unfallat_connector import UnfallatlasConnector
+        from datasets.models import DataSource
+
+        DataSource.objects.create(
+            workspace=self.workspace,
+            name="Unfallatlas Deutschland (MFDZ)",
+            source_type="unfallat",
+            layer_kind=DataSource.LayerKind.ACCIDENTS,
+            config={"url": "https://data.mfdz.de/destatis_Unfalldaten/body.zip"},
+        )
+        curated = [
+            unfallat_catalog.CuratedSource(
+                id="mfdz-combined",
+                name="Unfallatlas Deutschland (MFDZ)",
+                url="https://data.mfdz.de/destatis_Unfalldaten/body.zip",
+                description="Bundesweit",
+                encoding="utf-8",
+                years="2016–2023",
+            )
+        ]
+        with self._patched_load([], curated=curated):
+            page = UnfallatlasConnector().discover(workspace=self.workspace)
+        self.assertTrue(page.entries[0].already_added)
+
+    def test_catalog_not_searchable_and_has_intro(self):
+        from connectors.unfallat_connector import UnfallatlasConnector
+
+        c = UnfallatlasConnector()
+        self.assertFalse(c.catalog_searchable)
+        self.assertIn("nationwide", c.catalog_intro_en.lower())
+
+    def test_shipped_yaml_exposes_mfdz_curated_entry(self):
+        """Guard against the shipped config/unfallatlas.yaml and the loader
+        drifting apart — the data hub depends on this entry being present."""
+        from connectors.unfallat_catalog import load_curated_catalog
+
+        curated = load_curated_catalog()
+        urls = {c.url for c in curated}
+        self.assertIn(
+            "https://data.mfdz.de/destatis_Unfalldaten/body.zip", urls
+        )
 
     def test_quick_add_happy_path(self):
         from connectors.unfallat_connector import UnfallatlasConnector

@@ -8,6 +8,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Unfallatlas catalog ships a one-click default release** — the
+  catalog browser now offers the MobilityData Foundation combined mirror
+  (all years, a stable URL that doesn't rotate like the Destatis
+  per-year links) as a ready-to-add entry. "Browse catalog →
+  Unfallatlas" is no longer an empty dead end: click *Add to workspace*
+  and it syncs, auto-clipped to your workspace. Configured in
+  `config/unfallatlas.yaml` under a new `catalog:` list, so operators
+  can add their own curated releases too.
+
+### Changed
+- **Catalog pages now explain themselves per connector** — Unfallatlas
+  shows an intro making clear it's a *nationwide* dataset clipped to the
+  workspace (there is no per-city version to search for), and its
+  misleading free-text "search the catalog" box is hidden in favour of a
+  short curated list. Connectors backed by a real keyword catalogue
+  (Mobilithek) keep the search box via a new `catalog_searchable` flag.
+- **Mobilithek catalogue-fetch failures are now actionable** — instead
+  of a bare `Catalog fetch failed: 404`, the page explains the BMDV feed
+  URL may have changed or need authentication, points to the feed-URL
+  override field, and reminds you that pasting a distribution URL
+  directly always works.
+
+### Added
 - **Upload a file directly in the catalog quick-add** — the
   Unfallatlas catalog page now offers an "…or upload a CSV / ZIP file"
   field alongside the URL box. Since Destatis publishes accident data
