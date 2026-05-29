@@ -205,15 +205,17 @@ class CatalogViewsTests(TestCase):
         # request — matches the production middleware contract.
         self.admin_headers = {"HTTP_AUTHORIZATION": "Bearer test-token"}
 
-    def test_catalog_index_lists_discoverable_connectors(self):
+    def test_catalog_index_lists_only_searchable_connectors(self):
         response = self.client.get(
             reverse("catalog_index", kwargs={"workspace_slug": self.workspace.slug}),
             **self.admin_headers,
         )
         self.assertEqual(response.status_code, 200)
-        # Both Mobilithek and Unfallatlas implement supports_discovery=True.
+        # Mobilithek is a real searchable catalogue and stays.
         self.assertContains(response, "Mobilithek")
-        self.assertContains(response, "Unfallat")
+        # Unfallatlas was removed from the catalog (single nationwide source —
+        # added via the standard "Add data source" form instead).
+        self.assertNotContains(response, "Unfallat")
 
     def test_catalog_browse_unknown_connector_redirects(self):
         response = self.client.get(
@@ -227,29 +229,40 @@ class CatalogViewsTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertIn(self.workspace.slug, response["Location"])
 
+    def test_catalog_browse_unfallat_no_longer_discoverable(self):
+        response = self.client.get(
+            reverse(
+                "catalog_browse",
+                kwargs={"workspace_slug": self.workspace.slug, "connector_id": "unfallat"},
+            ),
+            **self.admin_headers,
+        )
+        # Removed from the catalog → redirect back to the data hub.
+        self.assertEqual(response.status_code, 302)
+
     def test_catalog_add_creates_data_source_and_runs_sync(self):
         from connectors.base import CatalogEntry, CatalogPage
 
         fake_page = CatalogPage(
             entries=[
                 CatalogEntry(
-                    entry_id="unfallatlas-2024",
-                    title="Unfallatlas 2024",
-                    suggested_name="Unfallatlas 2024",
-                    suggested_layer_kind="accidents",
+                    entry_id="mobilithek:gtfs-1",
+                    title="GTFS Sachsen",
+                    suggested_name="GTFS Sachsen",
+                    suggested_layer_kind="transit_stops",
                     suggested_config={
-                        "url": "https://example.org/u-2024.csv",
-                        "encoding": "utf-8",
-                        "clip_to_workspace": True,
+                        "distribution_url": "https://example.org/feed.zip",
+                        "format_hint": "gtfs",
+                        "mode": "open",
                     },
                     license="dl-de/by-2-0",
-                    attribution="© Destatis",
+                    attribution="DB",
                 )
             ],
             total=1,
         )
         with mock.patch(
-            "connectors.unfallat_connector.UnfallatlasConnector.discover",
+            "connectors.mobilithek_connector.MobilithekConnector.discover",
             return_value=fake_page,
         ), mock.patch("datasets.views._run_sync", return_value=(True, "Synced 5 records.")):
             response = self.client.post(
@@ -257,17 +270,16 @@ class CatalogViewsTests(TestCase):
                     "catalog_add",
                     kwargs={
                         "workspace_slug": self.workspace.slug,
-                        "connector_id": "unfallat",
+                        "connector_id": "mobilithek",
                     },
                 ),
-                {"entry_id": "unfallatlas-2024"},
+                {"entry_id": "mobilithek:gtfs-1"},
                 **self.admin_headers,
             )
         self.assertEqual(response.status_code, 302)
-        src = DataSource.objects.get(workspace=self.workspace, name="Unfallatlas 2024")
-        self.assertEqual(src.source_type, "unfallat")
-        self.assertEqual(src.layer_kind, DataSource.LayerKind.ACCIDENTS)
-        self.assertEqual(src.config["url"], "https://example.org/u-2024.csv")
+        src = DataSource.objects.get(workspace=self.workspace, name="GTFS Sachsen")
+        self.assertEqual(src.source_type, "mobilithek")
+        self.assertEqual(src.config["distribution_url"], "https://example.org/feed.zip")
         self.assertEqual(src.license, "dl-de/by-2-0")
 
     def test_catalog_add_idempotent(self):
@@ -276,17 +288,17 @@ class CatalogViewsTests(TestCase):
         fake_page = CatalogPage(
             entries=[
                 CatalogEntry(
-                    entry_id="unfallatlas-2024",
-                    title="Unfallatlas 2024",
-                    suggested_name="Unfallatlas 2024",
-                    suggested_layer_kind="accidents",
-                    suggested_config={"url": "https://example.org/u-2024.csv"},
+                    entry_id="mobilithek:gtfs-1",
+                    title="GTFS Sachsen",
+                    suggested_name="GTFS Sachsen",
+                    suggested_layer_kind="transit_stops",
+                    suggested_config={"distribution_url": "https://example.org/feed.zip"},
                 )
             ],
             total=1,
         )
         with mock.patch(
-            "connectors.unfallat_connector.UnfallatlasConnector.discover",
+            "connectors.mobilithek_connector.MobilithekConnector.discover",
             return_value=fake_page,
         ), mock.patch("datasets.views._run_sync", return_value=(True, "ok")):
             for _ in range(2):
@@ -295,15 +307,15 @@ class CatalogViewsTests(TestCase):
                         "catalog_add",
                         kwargs={
                             "workspace_slug": self.workspace.slug,
-                            "connector_id": "unfallat",
+                            "connector_id": "mobilithek",
                         },
                     ),
-                    {"entry_id": "unfallatlas-2024"},
+                    {"entry_id": "mobilithek:gtfs-1"},
                     **self.admin_headers,
                 )
         self.assertEqual(
             DataSource.objects.filter(
-                workspace=self.workspace, name="Unfallatlas 2024"
+                workspace=self.workspace, name="GTFS Sachsen"
             ).count(),
             1,
         )
@@ -312,7 +324,7 @@ class CatalogViewsTests(TestCase):
         from connectors.base import CatalogPage
 
         with mock.patch(
-            "connectors.unfallat_connector.UnfallatlasConnector.discover",
+            "connectors.mobilithek_connector.MobilithekConnector.discover",
             return_value=CatalogPage(),
         ):
             response = self.client.post(
@@ -320,7 +332,7 @@ class CatalogViewsTests(TestCase):
                     "catalog_add",
                     kwargs={
                         "workspace_slug": self.workspace.slug,
-                        "connector_id": "unfallat",
+                        "connector_id": "mobilithek",
                     },
                 ),
                 {"entry_id": "nope"},
@@ -329,7 +341,7 @@ class CatalogViewsTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertFalse(DataSource.objects.filter(workspace=self.workspace).exists())
 
-    def test_catalog_quickadd_creates_source_for_custom_year(self):
+    def test_catalog_quickadd_creates_source_from_distribution_url(self):
         with mock.patch(
             "datasets.views._run_sync", return_value=(True, "Synced 5.")
         ):
@@ -338,19 +350,19 @@ class CatalogViewsTests(TestCase):
                     "catalog_quickadd",
                     kwargs={
                         "workspace_slug": self.workspace.slug,
-                        "connector_id": "unfallat",
+                        "connector_id": "mobilithek",
                     },
                 ),
                 {
-                    "year": "2024",
-                    "url": "https://destatis.example/u-2024.csv",
-                    "encoding": "utf-8",
+                    "name": "GTFS Sachsen",
+                    "distribution_url": "https://example.org/feed.zip",
+                    "format_hint": "gtfs",
                 },
                 **self.admin_headers,
             )
         self.assertEqual(response.status_code, 302)
-        src = DataSource.objects.get(workspace=self.workspace, name="Unfallatlas 2024")
-        self.assertEqual(src.config["url"], "https://destatis.example/u-2024.csv")
+        src = DataSource.objects.get(workspace=self.workspace, name="GTFS Sachsen")
+        self.assertEqual(src.config["distribution_url"], "https://example.org/feed.zip")
 
     def test_catalog_quickadd_validation_error_redirects_with_message(self):
         response = self.client.post(
@@ -358,10 +370,11 @@ class CatalogViewsTests(TestCase):
                 "catalog_quickadd",
                 kwargs={
                     "workspace_slug": self.workspace.slug,
-                    "connector_id": "unfallat",
+                    "connector_id": "mobilithek",
                 },
             ),
-            {"year": "abc", "url": "https://example/x.csv"},
+            # Unsupported format → quick_add raises ValueError.
+            {"name": "x", "distribution_url": "https://example/x", "format_hint": "pdf"},
             **self.admin_headers,
         )
         self.assertEqual(response.status_code, 302)
@@ -373,63 +386,16 @@ class CatalogViewsTests(TestCase):
                 "catalog_quickadd",
                 kwargs={
                     "workspace_slug": self.workspace.slug,
-                    "connector_id": "unfallat",
+                    "connector_id": "mobilithek",
                 },
             ),
-            {"year": "2024", "url": "https://example/u.csv"},
+            {
+                "name": "GTFS Sachsen",
+                "distribution_url": "https://example.org/feed.zip",
+                "format_hint": "gtfs",
+            },
         )
         self.assertEqual(response.status_code, 403)
-
-    def test_catalog_quickadd_accepts_uploaded_file(self):
-        """Uploading a CSV in the catalog quick-add must create the source,
-        store the file, and point config['url'] at the saved path — the path
-        that solves the 'Destatis gives no direct URL' problem."""
-        from django.core.files.uploadedfile import SimpleUploadedFile
-
-        csv_bytes = (
-            b"OBJECTID,UJAHR,UMONAT,USTUNDE,UWOCHENTAG,UKATEGORIE,UART,UTYP1,"
-            b"ULICHTVERH,IstRad,IstPKW,IstFuss,IstKrad,IstGkfz,IstSonstig,"
-            b"STRZUSTAND,LON,LAT\n"
-            b"1,2024,5,14,3,2,5,1,0,1,1,0,0,0,0,0,12.3731,51.3397\n"
-        )
-        upload = SimpleUploadedFile(
-            "unfaelle_2024.csv", csv_bytes, content_type="text/csv"
-        )
-        with mock.patch(
-            "datasets.views._run_sync", return_value=(True, "Synced 1.")
-        ):
-            response = self.client.post(
-                reverse(
-                    "catalog_quickadd",
-                    kwargs={
-                        "workspace_slug": self.workspace.slug,
-                        "connector_id": "unfallat",
-                    },
-                ),
-                {"year": "2024", "source_file": upload},
-                **self.admin_headers,
-            )
-        self.assertEqual(response.status_code, 302)
-        src = DataSource.objects.get(workspace=self.workspace, name="Unfallatlas 2024")
-        self.assertTrue(src.source_file)
-        # config url points at the stored file (absolute path), not a remote URL.
-        self.assertEqual(src.config["url"], src.source_file.path)
-        self.assertTrue(src.config["url"].endswith(".csv"))
-
-    def test_catalog_quickadd_rejects_no_url_no_file(self):
-        response = self.client.post(
-            reverse(
-                "catalog_quickadd",
-                kwargs={
-                    "workspace_slug": self.workspace.slug,
-                    "connector_id": "unfallat",
-                },
-            ),
-            {"year": "2024"},
-            **self.admin_headers,
-        )
-        self.assertEqual(response.status_code, 302)
-        self.assertFalse(DataSource.objects.filter(workspace=self.workspace).exists())
 
     def test_catalog_browse_persists_mobilithek_url_override(self):
         with mock.patch(

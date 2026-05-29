@@ -3,7 +3,7 @@
 
 # OpenMobility OS
 
-**Version:** 0.22.0 (pre-release) — see [CHANGELOG.md](CHANGELOG.md)
+**Version:** 0.23.0 (pre-release) — see [CHANGELOG.md](CHANGELOG.md)
 **License:** See [LICENSE](LICENSE)
 
 > The open, free, self-hostable operating system between open mobility data
@@ -380,12 +380,13 @@ badge derived from the source's status, record count, and last-sync time.
 
 **Two ways to add a source:**
 
-- **Browse catalog** (`/<slug>/data/catalog/`) — pick from a connector's
-  upstream catalog with search and one-click "Add to workspace".
-  Mobilithek's DCAT-AP feed and Unfallatlas's year list are both
-  browsable here. See [Browsing catalogs from the UI](#browsing-catalogs-from-the-ui).
-- **Add source** — the generic form below for connectors without a
-  catalog (CSV upload, Overpass templates, etc.).
+- **Browse catalog** (`/<slug>/data/catalog/`) — search a connector's
+  upstream catalogue and add a dataset with one click. Used for
+  connectors that expose a genuinely searchable library, such as
+  Mobilithek's DCAT-AP feed. See [Browsing catalogs from the UI](#browsing-catalogs-from-the-ui).
+- **Add source** — the generic form below for everything else, including
+  Unfallatlas (one nationwide dataset, no per-city catalogue to browse):
+  paste a CSV/ZIP URL or upload a file.
 
 1. Click **Add data source**.
 2. Choose the **connector type** (the form shows a description and the expected
@@ -452,8 +453,8 @@ docker compose exec web python manage.py sync_datasources
 
 ### Browsing catalogs from the UI
 
-`/<slug>/data/catalog/` lists every connector that exposes an upstream
-catalog. Currently:
+`/<slug>/data/catalog/` lists the connectors backed by a genuinely
+searchable upstream catalogue. Currently:
 
 - **Mobilithek** — search the DCAT-AP feed by keyword, filter by format
   (GTFS / GeoJSON / CSV / JSON / DATEX II), and click *Add to workspace*
@@ -462,15 +463,13 @@ catalog. Currently:
   If BMDV rotates the feed URL, override it inline via the *Catalog URL*
   field at the top of the Mobilithek catalog page — it is remembered per
   workspace. A deployment-wide default lives in `MOBILITHEK_CATALOG_URL`.
-- **Unfallatlas** — pick a year from the year→URL mapping in
-  `config/unfallatlas.yaml` (or the per-workspace override at
-  `config/unfallatlas/<slug>.yaml`). Each year becomes its own
-  DataSource with `clip_to_workspace: true`.
+  You can also use the **Add a custom entry** form to paste a single
+  distribution URL directly.
 
-Both connectors also expose an **Add a custom entry** form on their
-catalog page, so admins can enter a year + URL (Unfallatlas) or
-name + distribution URL + format (Mobilithek) without editing any
-YAML — the form creates a DataSource and syncs immediately.
+Single-source datasets like **Unfallatlas** are *not* in the catalogue
+browser — there is no per-city library to search; it is one nationwide
+dataset clipped to your workspace. Add it from the standard **Add data
+source** form (see [Adding Unfallatlas accident data](#adding-unfallatlas-accident-data)).
 
 The matching `browse_mobilithek` and `seed_unfallatlas` management
 commands still work for scripting and CI.
@@ -479,30 +478,41 @@ commands still work for scripting and CI.
 
 ### Adding Unfallatlas accident data
 
-The **Unfallatlas** connector reads Destatis accident CSVs (semicolon-delimited,
-German decimal comma). No env changes are needed — just a URL or a file upload.
+The **Unfallatlas** connector reads Destatis accident CSVs (semicolon- or
+comma-delimited; auto-detected). The file is **nationwide** — it covers every
+German municipality, and the connector clips it to your workspace bounds on
+sync. There is no per-city version to hunt for.
 
-**Step 1 — Download the CSV from Destatis:**
+**Easiest — paste the nationwide URL:**
 
-1. Go to [unfallatlas.statistikportal.de](https://unfallatlas.statistikportal.de)
-2. Click **Daten herunterladen**
-3. Choose year(s) and federal state (e.g. *Sachsen* for Leipzig, *Bayern* for Munich)
-4. Download the ZIP — you can upload it as-is (the connector auto-extracts
-   the inner CSV) or extract it manually if you prefer
+The authoritative annual files are mirrored at stable paths on the NRW
+open-geodata portal (each file is the full Germany dataset):
 
-**Step 2 — Add the data source:**
+```
+https://www.opengeodata.nrw.de/produkte/transport_verkehr/unfallatlas/Unfallorte2023_EPSG25832_CSV.zip
+```
 
-Option A — **Upload the file** (simplest):
-1. Go to `/<slug>/data/add/`, choose connector **Unfallatlas**, layer kind **Accidents**
-2. Scroll to "Upload local file" and select the downloaded CSV
-3. Leave config empty (the file path is auto-filled); click **Add data source**
+1. Go to `/<slug>/data/add/`, choose connector **Unfallatlas**, layer kind **Accidents**.
+2. Put the URL in the config: `{"url": "https://www.opengeodata.nrw.de/.../Unfallorte2023_EPSG25832_CSV.zip"}`
+3. Click **Add data source**, then **Sync**. The ZIP is auto-extracted and clipped to your workspace.
 
-Option B — **Remote URL**:
-1. Paste the direct CSV download URL into the config as `{"url": "https://…"}`
-2. If the file uses `latin-1` encoding (older exports): `{"url": "…", "encoding": "latin-1"}`
+These URLs are also pre-filled per year in `config/unfallatlas.yaml`, so the
+CLI works without any setup:
 
-The connector clips rows to the workspace bounding box by default (`clip_to_workspace: true`).
-Set `"clip_to_workspace": false` to import all rows regardless of location.
+```bash
+docker compose exec web python manage.py seed_unfallatlas your-city-slug --years 2023
+```
+
+**Alternative — upload a file:** download a CSV/ZIP yourself (e.g. from
+[unfallatlas.statistikportal.de](https://unfallatlas.statistikportal.de)) and
+attach it via "Upload local file" on the Add-source form. ⚠️ Make sure it's a
+*nationwide* or *your-state* export — some third-party mirrors ship only a
+single region (e.g. Berlin), which won't contain your city.
+
+The connector clips rows to the workspace bounding box by default
+(`clip_to_workspace: true`). Set `"clip_to_workspace": false` to import all
+rows. If a clip would drop every row, the sync imports unclipped and warns you,
+so you never get a silent empty result.
 
 **Bootstrapping via command line:**
 
