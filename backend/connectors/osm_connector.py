@@ -34,6 +34,29 @@ OVERPASS_TEMPLATES: dict[str, str] = {
         );
         out geom tags;
     """,
+    # Stricter than "bike_network": only DEDICATED cycling infrastructure
+    # (cyclist-only space), so it does not return ordinary roads that merely
+    # carry a `cycleway=no`/`shared_lane` tag or where cycling is just
+    # permitted. Includes separated cycleways/tracks, bicycle roads, and
+    # on-street painted bike lanes — but excludes sharrows ("shared_lane"),
+    # "cycleway=no", and "bicycle=yes/permissive". Each feature is tagged with a
+    # `bike_infra_class` ("protected" vs "lane") at fetch time so the map can
+    # distinguish physically separated infrastructure from mere paint. This is
+    # the layer city planners need to find real gaps in safe cycling provision.
+    "dedicated_bike_network": """
+        [out:json][timeout:90];
+        (
+          way["highway"="cycleway"]({bbox});
+          way["bicycle_road"="yes"]({bbox});
+          way["cyclestreet"="yes"]({bbox});
+          way["highway"~"^(path|footway)$"]["bicycle"="designated"]({bbox});
+          way["cycleway"~"^(lane|track|opposite_lane|opposite_track)$"]({bbox});
+          way["cycleway:both"~"^(lane|track)$"]({bbox});
+          way["cycleway:left"~"^(lane|track)$"]({bbox});
+          way["cycleway:right"~"^(lane|track)$"]({bbox});
+        );
+        out geom tags;
+    """,
     "transit_stops": """
         [out:json][timeout:60];
         (
@@ -261,16 +284,55 @@ class OSMOverpassConnector(BaseConnector):
         data = self._call_overpass(query)
         elements = data.get("elements", [])
 
+        # The dedicated-bike layer normalises every feature into a
+        # quality class so the map can separate protected infrastructure
+        # from mere painted lanes (see _classify_bike_infra).
+        classify = config.get("template") == "dedicated_bike_network"
+
         features = []
         for el in elements:
             feat = _osm_element_to_feature(el)
-            if feat:
-                features.append(feat)
+            if not feat:
+                continue
+            if classify:
+                feat["properties"]["bike_infra_class"] = _classify_bike_infra(
+                    feat["properties"]
+                )
+            features.append(feat)
 
         return FetchResult(
             feature_collection={"type": "FeatureCollection", "features": features},
             record_count=len(features),
         )
+
+
+def _classify_bike_infra(props: dict) -> str:
+    """Classify a dedicated-bike feature as "protected" or "lane".
+
+    "protected" = physically separated from motor traffic or a cyclist-priority
+    street: standalone cycleways/paths, tracks (`cycleway[:side]=track`),
+    bicycle roads / cyclestreets, and designated bike paths. "lane" = on-street
+    painted bike lanes (`cycleway[:side]=lane`), which are real dedicated space
+    but not physically protected. Defaults to "lane" when ambiguous so the more
+    cautious (less safe) reading wins.
+    """
+    highway = props.get("highway")
+    if highway == "cycleway":
+        return "protected"
+    if highway in ("path", "footway") and props.get("bicycle") == "designated":
+        return "protected"
+    if props.get("bicycle_road") == "yes" or props.get("cyclestreet") == "yes":
+        return "protected"
+
+    side_values = {
+        props.get("cycleway"),
+        props.get("cycleway:both"),
+        props.get("cycleway:left"),
+        props.get("cycleway:right"),
+    }
+    if any(v in ("track", "opposite_track") for v in side_values):
+        return "protected"
+    return "lane"
 
 
 def _osm_element_to_feature(el: dict):

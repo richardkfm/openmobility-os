@@ -105,6 +105,20 @@ data_sources:
     config:
       template: bike_network
 
+  # Stricter than "Radnetz": only dedicated cycling infrastructure (separated
+  # cycleways/tracks, bicycle roads, and on-street painted bike lanes). Excludes
+  # ordinary roads tagged cycleway=no/shared_lane or where cycling is merely
+  # permitted. Each feature carries a `bike_infra_class` (protected vs lane) so
+  # the map shows infrastructure quality — this is the layer for finding gaps.
+  - name: OSM — Dedizierte Radinfrastruktur
+    source_type: osm_overpass
+    layer_kind: dedicated_bike_network
+    license: ODbL
+    attribution: "© OpenStreetMap contributors"
+    source_url: https://www.openstreetmap.org/
+    config:
+      template: dedicated_bike_network
+
   - name: OSM — Hauptstraßen mit Tempolimit
     source_type: osm_overpass
     layer_kind: streets_with_speed

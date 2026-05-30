@@ -324,3 +324,19 @@ class CyclingInfrastructureGapRuleTests(TestCase):
         self.assertEqual(
             rule_cycling_infrastructure_gap(_GeoWorkspace(), [accidents_fs]), []
         )
+
+    def test_prefers_dedicated_bike_network_layer(self):
+        # A dedicated bike way sits right on the risky street → no gap, even
+        # though the loose bike_network layer is empty. Confirms the rule reads
+        # the stricter layer when present.
+        accidents_fs = _FakeFS("accidents", {"features": self._cyclist_accidents()})
+        streets_fs = _FakeFS("streets_with_speed", {"features": [_GAP_STREET]})
+        dedicated_fs = _FakeFS(
+            "dedicated_bike_network",
+            {"features": [_line("dedicated track", [[0.0, 0.00002], [0.02, 0.00002]])]},
+        )
+        loose_fs = _FakeFS("bike_network", {"features": []})
+        candidates = rule_cycling_infrastructure_gap(
+            _GeoWorkspace(), [accidents_fs, streets_fs, dedicated_fs, loose_fs]
+        )
+        self.assertEqual(candidates, [])

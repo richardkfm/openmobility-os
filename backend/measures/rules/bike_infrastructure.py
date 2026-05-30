@@ -7,7 +7,13 @@ def rule_missing_protected_bike_lane(workspace, feature_sets):
     streets_fs = select_by_layer(feature_sets, "streets_with_speed") or select_by_layer(
         feature_sets, "streets"
     )
-    bike_fs = select_by_layer(feature_sets, "bike_network")
+    # Prefer the strict dedicated-infrastructure layer (separated/protected
+    # cycleways, tracks, bicycle roads, painted lanes) over the loose
+    # bike_network layer, so "is there real bike infrastructure here?" is not
+    # satisfied by roads merely tagged cycleway=no / shared_lane.
+    bike_fs = select_by_layer(feature_sets, "dedicated_bike_network") or select_by_layer(
+        feature_sets, "bike_network"
+    )
 
     if not streets_fs:
         return []

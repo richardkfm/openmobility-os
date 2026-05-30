@@ -138,6 +138,7 @@ class Command(BaseCommand):
                     DataSource.LayerKind.STREETS,
                     DataSource.LayerKind.STREETS_WITH_SPEED,
                     DataSource.LayerKind.BIKE_NETWORK,
+                    DataSource.LayerKind.DEDICATED_BIKE_NETWORK,
                 )
             ):
                 success, msg = _run_sync(source)

@@ -2132,3 +2132,75 @@ class UnfallatlasDiagnosticsAndFallbackTests(TestCase):
         self.assertTrue(result.success, result.message)
         self.assertEqual(result.diagnostics["archive_member"], "body.csv")
         self.assertEqual(result.diagnostics["row_count"], 2)
+
+
+class DedicatedBikeInfraClassifyTests(TestCase):
+    """Classifier that splits dedicated bike infra into protected vs painted lane."""
+
+    def _c(self, **tags):
+        from connectors.osm_connector import _classify_bike_infra
+
+        return _classify_bike_infra(tags)
+
+    def test_standalone_cycleway_is_protected(self):
+        self.assertEqual(self._c(highway="cycleway"), "protected")
+
+    def test_track_is_protected(self):
+        self.assertEqual(self._c(highway="residential", **{"cycleway:right": "track"}), "protected")
+        self.assertEqual(self._c(highway="secondary", cycleway="track"), "protected")
+
+    def test_bicycle_road_is_protected(self):
+        self.assertEqual(self._c(highway="residential", bicycle_road="yes"), "protected")
+        self.assertEqual(self._c(highway="living_street", cyclestreet="yes"), "protected")
+
+    def test_designated_path_is_protected(self):
+        self.assertEqual(self._c(highway="path", bicycle="designated"), "protected")
+
+    def test_painted_lane_is_lane(self):
+        self.assertEqual(self._c(highway="secondary", cycleway="lane"), "lane")
+        self.assertEqual(self._c(highway="primary", **{"cycleway:left": "lane"}), "lane")
+
+    def test_ambiguous_defaults_to_lane(self):
+        # No recognizable protected signal → cautious "lane" reading.
+        self.assertEqual(self._c(highway="tertiary"), "lane")
+
+
+class DedicatedBikeFetchTests(TestCase):
+    """fetch() tags dedicated-bike features with bike_infra_class; others untouched."""
+
+    def _fake_overpass(self, elements):
+        return {"elements": elements}
+
+    def _way(self, osm_id, tags):
+        return {
+            "type": "way",
+            "id": osm_id,
+            "geometry": [{"lon": 0.0, "lat": 0.0}, {"lon": 0.01, "lat": 0.0}],
+            "tags": tags,
+        }
+
+    def test_dedicated_template_classifies_features(self):
+        from connectors.osm_connector import OSMOverpassConnector
+
+        elements = [
+            self._way(1, {"highway": "cycleway"}),
+            self._way(2, {"highway": "secondary", "cycleway": "lane"}),
+        ]
+        conn = OSMOverpassConnector()
+        with mock.patch.object(conn, "_call_overpass", return_value=self._fake_overpass(elements)):
+            result = conn.fetch(
+                {"template": "dedicated_bike_network", "bbox": "0,0,1,1"}, workspace=None
+            )
+        classes = [f["properties"]["bike_infra_class"] for f in result.feature_collection["features"]]
+        self.assertEqual(classes, ["protected", "lane"])
+
+    def test_other_templates_are_not_classified(self):
+        from connectors.osm_connector import OSMOverpassConnector
+
+        elements = [self._way(1, {"highway": "cycleway"})]
+        conn = OSMOverpassConnector()
+        with mock.patch.object(conn, "_call_overpass", return_value=self._fake_overpass(elements)):
+            result = conn.fetch(
+                {"template": "bike_network", "bbox": "0,0,1,1"}, workspace=None
+            )
+        self.assertNotIn("bike_infra_class", result.feature_collection["features"][0]["properties"])
