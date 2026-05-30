@@ -59,6 +59,12 @@ def workspace_map(request, workspace_slug: str):
     # it is only offered when the workspace has actually synced one.
     has_streets = any(k in kind_values for k in ("streets_with_speed", "streets"))
 
+    # Cycling gap analysis preset needs accidents + at least one cycling layer.
+    has_cycling_gap_data = "accidents" in kind_values and any(
+        k in kind_values for k in ("dedicated_bike_network", "cycling_counts")
+    )
+    has_districts = ws.districts.exists()
+
     response = render(
         request,
         "workspaces/map.html",
@@ -67,6 +73,9 @@ def workspace_map(request, workspace_slug: str):
             "layers": layers,
             "layer_kinds": kind_values,
             "has_streets": has_streets,
+            "has_cycling_gap_data": has_cycling_gap_data,
+            "has_districts": has_districts,
+            "measure_categories": Measure.Category.choices,
             "page_title": _("Map — %(name)s") % {"name": ws.name},
         },
     )

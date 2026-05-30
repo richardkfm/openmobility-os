@@ -11,13 +11,52 @@
 
   <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
     <h1 class="text-xl font-bold">{% trans "Map" %} — {{ workspace.name }}</h1>
-    <a href="{% url 'workspace_dashboard' workspace.slug %}" class="text-sm text-slate-600 hover:underline">← {% trans "Back to dashboard" %}</a>
+    <div class="flex items-center gap-3">
+      <button id="export-png" class="text-sm text-slate-600 hover:text-slate-900 border rounded px-2.5 py-1 hover:bg-slate-50 transition-colors flex items-center gap-1.5">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+        </svg>
+        {% trans "Save PNG" %}
+      </button>
+      <a href="{% url 'workspace_dashboard' workspace.slug %}" class="text-sm text-slate-600 hover:underline">← {% trans "Back to dashboard" %}</a>
+    </div>
   </div>
 
   <div class="flex flex-col lg:flex-row gap-4">
 
     {# Layer panel #}
     <div class="lg:w-64 shrink-0 flex flex-col gap-3">
+
+      {# Story views — compound presets for journalists and planners #}
+      {% if has_cycling_gap_data %}
+      <div class="rounded-lg border bg-white p-4 text-sm"
+           x-data="{ gapActive: false }"
+           @gap-analysis-activated.document="gapActive = true"
+           @gap-analysis-cleared.document="gapActive = false">
+        <p class="font-semibold text-xs uppercase tracking-wide text-slate-500 mb-2.5">{% trans "Story views" %}</p>
+        <div x-show="!gapActive">
+          <button @click="activateCyclingGap()"
+                  class="w-full text-left px-3 py-2 rounded-lg bg-slate-50 hover:bg-slate-100 border transition-colors flex items-center gap-2">
+            <span class="flex -space-x-0.5 shrink-0">
+              <span class="inline-block w-3 h-3 rounded-full bg-red-500 border border-white"></span>
+              <span class="inline-block w-3 h-3 rounded-full bg-teal-600 border border-white"></span>
+            </span>
+            {% trans "Cycling gap analysis" %}
+          </button>
+          <p class="text-xs text-slate-400 mt-1.5">{% trans "Overlays cycling accident clusters, protected lanes, and count stations." %}</p>
+        </div>
+        <div x-show="gapActive">
+          <div class="rounded-md bg-amber-50 border border-amber-200 p-2.5 text-xs text-amber-800 mb-2.5 leading-relaxed">
+            <strong>{% trans "Reading the map:" %}</strong>
+            {% trans "Red/orange streets = cycling accident clusters. Teal = protected bike lanes. Amber = painted lanes. Red streets without any teal or amber overlay are priority intervention zones." %}
+          </div>
+          <button @click="clearGapPreset()"
+                  class="w-full text-center text-xs text-slate-500 hover:text-slate-800 underline py-0.5">
+            {% trans "Clear preset — restore layers" %}
+          </button>
+        </div>
+      </div>
+      {% endif %}
 
       {# Layer toggles #}
       <div class="rounded-lg border bg-white p-4" x-data="{ open: true }">
@@ -51,6 +90,30 @@
             <input type="checkbox" id="toggle-measures">
             <span>{% trans "Measures" %}</span>
           </label>
+
+          {# District score choropleth — only when district boundaries are loaded #}
+          {% if has_districts %}
+          <div class="pt-2 border-t mt-2" x-data="districtScores()" x-init="init()">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="toggle-district-scores" @change="toggle($event.target.checked)">
+              <span>{% trans "District scores" %}</span>
+            </label>
+            <div x-show="enabled" class="mt-2 ml-5 flex flex-col gap-1.5">
+              <select @change="setDimension($event.target.value)"
+                      class="text-xs w-full border rounded px-1.5 py-1 text-slate-700">
+                <option value="">{% trans "Overall priority" %}</option>
+                <option value="climate">{% trans "Climate impact" %}</option>
+                <option value="safety">{% trans "Traffic safety" %}</option>
+                <option value="social">{% trans "Social equity" %}</option>
+                <option value="quality_of_life">{% trans "Quality of life" %}</option>
+              </select>
+              <div class="h-1.5 rounded" style="background:linear-gradient(90deg,#dbeafe,#93c5fd,#f97316,#7f1d1d)"></div>
+              <div class="flex justify-between text-xs text-slate-500">
+                <span>{% trans "Low" %}</span><span>{% trans "High" %}</span>
+              </div>
+            </div>
+          </div>
+          {% endif %}
         </div>
       </div>
 
@@ -171,6 +234,114 @@
       </div>
       {% endif %}
 
+      {# Measure filters — visible when the Measures layer is toggled on #}
+      <div id="measure-filter-panel" class="hidden rounded-lg border bg-white p-4 text-sm"
+           x-data="measureFilter()" x-init="init()">
+        <div class="font-semibold mb-3 flex items-center gap-2">
+          <span class="inline-block w-3 h-3 rounded-full" style="background:#6366f1"></span>
+          {% trans "Measure filters" %}
+        </div>
+
+        <p class="text-xs text-slate-500 mb-2 font-medium uppercase tracking-wide">{% trans "Status" %}</p>
+        <div class="flex flex-col gap-1 mb-3">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" @change="toggleStatus('proposed')" :checked="isStatusSelected('proposed')" class="accent-yellow-500">
+            <span class="flex items-center gap-1.5">
+              <span class="inline-block w-2.5 h-2.5 rounded-full bg-yellow-400"></span>
+              {% trans "Proposed" %}
+            </span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" @change="toggleStatus('planned')" :checked="isStatusSelected('planned')" class="accent-blue-500">
+            <span class="flex items-center gap-1.5">
+              <span class="inline-block w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+              {% trans "Planned" %}
+            </span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" @change="toggleStatus('in_progress')" :checked="isStatusSelected('in_progress')" class="accent-orange-500">
+            <span class="flex items-center gap-1.5">
+              <span class="inline-block w-2.5 h-2.5 rounded-full bg-orange-500"></span>
+              {% trans "In progress" %}
+            </span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" @change="toggleStatus('done')" :checked="isStatusSelected('done')" class="accent-green-600">
+            <span class="flex items-center gap-1.5">
+              <span class="inline-block w-2.5 h-2.5 rounded-full bg-green-500"></span>
+              {% trans "Done" %}
+            </span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" @change="toggleStatus('rejected')" :checked="isStatusSelected('rejected')" class="accent-slate-400">
+            <span class="flex items-center gap-1.5">
+              <span class="inline-block w-2.5 h-2.5 rounded-full bg-slate-400"></span>
+              {% trans "Rejected" %}
+            </span>
+          </label>
+        </div>
+
+        <p class="text-xs text-slate-500 mb-1.5 font-medium uppercase tracking-wide">{% trans "Category" %}</p>
+        <select @change="selectedCategory = $event.target.value; applyFilter()"
+                class="text-xs w-full border rounded px-1.5 py-1 text-slate-700 mb-3">
+          <option value="">{% trans "All categories" %}</option>
+          {% for value, label in measure_categories %}
+          <option value="{{ value }}">{{ label }}</option>
+          {% endfor %}
+        </select>
+
+        <p class="text-xs text-slate-500 mb-1.5 font-medium uppercase tracking-wide">{% trans "Effort" %}</p>
+        <div class="flex gap-1 mb-1">
+          <button @click="selectedEffort = selectedEffort === 'quick_win' ? '' : 'quick_win'; applyFilter()"
+                  :class="selectedEffort === 'quick_win' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'"
+                  class="flex-1 text-xs px-1 py-1 rounded border transition-colors">
+            {% trans "Quick win" %}
+          </button>
+          <button @click="selectedEffort = selectedEffort === 'medium' ? '' : 'medium'; applyFilter()"
+                  :class="selectedEffort === 'medium' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'"
+                  class="flex-1 text-xs px-1 py-1 rounded border transition-colors">
+            {% trans "Medium" %}
+          </button>
+          <button @click="selectedEffort = selectedEffort === 'major' ? '' : 'major'; applyFilter()"
+                  :class="selectedEffort === 'major' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'"
+                  class="flex-1 text-xs px-1 py-1 rounded border transition-colors">
+            {% trans "Major" %}
+          </button>
+        </div>
+        <button @click="resetFilter()" class="mt-2 w-full text-xs text-slate-500 hover:text-slate-800 underline text-left">
+          {% trans "Reset filters" %}
+        </button>
+      </div>
+
+      {# Saved views — persisted to localStorage, no login required #}
+      <div class="rounded-lg border bg-white p-4 text-sm" x-data="savedViews()" x-init="init()">
+        <button @click="open = !open" class="flex items-center justify-between w-full font-semibold text-sm">
+          {% trans "Saved views" %}
+          <span x-text="open ? '▲' : '▼'" class="text-slate-400 text-xs"></span>
+        </button>
+        <div x-show="open" class="mt-3">
+          <div class="flex flex-col gap-1 mb-3">
+            <template x-for="v in views" :key="v.timestamp">
+              <div class="flex items-center gap-1.5 group">
+                <button @click="loadView(v)" class="flex-1 text-left text-xs hover:text-slate-900 truncate" x-text="v.name"></button>
+                <button @click="deleteView(v.timestamp)" class="text-xs text-slate-300 group-hover:text-red-400 hover:text-red-500 px-1">×</button>
+              </div>
+            </template>
+            <p x-show="views.length === 0" class="text-xs text-slate-400">{% trans "No saved views yet." %}</p>
+          </div>
+          <div class="flex gap-1.5">
+            <input type="text" x-model="newName"
+                   placeholder="{% trans "View name…" %}"
+                   @keydown.enter="saveCurrentView()"
+                   class="flex-1 text-xs border rounded px-1.5 py-1 min-w-0">
+            <button @click="saveCurrentView()" :disabled="!newName.trim()"
+                    class="text-xs bg-slate-800 text-white px-2 py-1 rounded disabled:opacity-40 hover:bg-slate-700 shrink-0">
+              {% trans "Save" %}
+            </button>
+          </div>
+        </div>
+      </div>
+
     </div>
 
     <div id="map" class="flex-1 rounded-lg border"></div>
@@ -208,6 +379,24 @@ const LAYER_COLORS = {
   sealed_surfaces: "#94a3b8",
 };
 
+// Status → color mapping for the Measure Pipeline display mode.
+const MEASURE_STATUS_COLORS = {
+  proposed:    "#f59e0b",
+  planned:     "#3b82f6",
+  in_progress: "#f97316",
+  done:        "#16a34a",
+  rejected:    "#94a3b8",
+};
+const MEASURE_STATUS_PAINT = [
+  "match", ["get", "status"],
+  "proposed",    "#f59e0b",
+  "planned",     "#3b82f6",
+  "in_progress", "#f97316",
+  "done",        "#16a34a",
+  "rejected",    "#94a3b8",
+  "#6366f1"
+];
+
 // Set the map container height via JavaScript (inline style) so that
 // MapLibre always reads a non-zero clientHeight regardless of how the
 // surrounding flex/grid chain computes percentage heights.
@@ -239,6 +428,7 @@ const map = new maplibregl.Map({
   },
   center: [CENTER_LON, CENTER_LAT],
   zoom: DEFAULT_ZOOM,
+  preserveDrawingBuffer: true,
 });
 
 map.addControl(new maplibregl.NavigationControl(), "top-right");
@@ -414,6 +604,59 @@ function addGeoJsonLayer(id, url, color) {
         map.on("mouseenter", "accidents-density-line", () => { map.getCanvas().style.cursor = "pointer"; });
         map.on("mouseleave", "accidents-density-line", () => { map.getCanvas().style.cursor = ""; });
 
+      } else if (id === "measures") {
+        // Measure Pipeline: color every geometry by status.
+        if (types.has("LineString") || types.has("MultiLineString")) {
+          map.addLayer({ id: "measures-line", type: "line", source: "measures",
+            layout: { visibility: startVis },
+            paint: { "line-color": MEASURE_STATUS_PAINT, "line-width": 3.5, "line-opacity": 0.9 } });
+        }
+        if (types.has("Polygon") || types.has("MultiPolygon")) {
+          map.addLayer({ id: "measures-fill", type: "fill", source: "measures",
+            layout: { visibility: startVis },
+            paint: { "fill-color": MEASURE_STATUS_PAINT, "fill-opacity": 0.35 } });
+          map.addLayer({ id: "measures-outline", type: "line", source: "measures",
+            layout: { visibility: startVis },
+            paint: { "line-color": MEASURE_STATUS_PAINT, "line-width": 1.5, "line-opacity": 0.8 } });
+        }
+        if (types.has("Point") || types.has("MultiPoint")) {
+          map.addLayer({ id: "measures-circle", type: "circle", source: "measures",
+            layout: { visibility: startVis },
+            paint: {
+              "circle-radius": 7,
+              "circle-color": MEASURE_STATUS_PAINT,
+              "circle-opacity": 0.9,
+              "circle-stroke-width": 1.5,
+              "circle-stroke-color": "#fff",
+            } });
+        }
+        // Rich popup: title, status badge, effort, summary, link to detail.
+        ["measures-circle", "measures-line", "measures-fill"].forEach(lid => {
+          if (!map.getLayer(lid)) return;
+          map.on("click", lid, (e) => {
+            const p = e.features[0].properties;
+            const detailUrl = `/${WORKSPACE_SLUG}/measures/${escHtml(p.slug)}/`;
+            const statusColor = MEASURE_STATUS_COLORS[p.status] || "#6366f1";
+            new maplibregl.Popup()
+              .setLngLat(e.lngLat)
+              .setHTML(
+                `<div class="text-xs grid gap-1.5" style="max-width:220px">` +
+                `<div class="font-semibold leading-snug">${escHtml(p.title)}</div>` +
+                `<div class="flex flex-wrap gap-1">` +
+                `<span class="px-1.5 py-0.5 rounded text-white text-xs leading-none" style="background:${statusColor}">${escHtml(p.status)}</span>` +
+                `<span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 text-xs leading-none">${escHtml(p.effort_level)}</span>` +
+                `</div>` +
+                (p.summary ? `<div class="text-slate-600 leading-snug">${escHtml(p.summary)}</div>` : "") +
+                (p.priority_score ? `<div class="text-slate-500">{% trans "Priority" %}: ${escHtml(p.priority_score)}</div>` : "") +
+                `<a href="${detailUrl}" class="text-blue-600 hover:underline">{% trans "View details" %} →</a>` +
+                `</div>`
+              )
+              .addTo(map);
+          });
+          map.on("mouseenter", lid, () => { map.getCanvas().style.cursor = "pointer"; });
+          map.on("mouseleave", lid, () => { map.getCanvas().style.cursor = ""; });
+        });
+
       } else {
         if (types.has("LineString") || types.has("MultiLineString")) {
           // streets_with_speed is colored by the maxspeed value so it reads
@@ -526,6 +769,60 @@ map.on("load", () => {
     ["measures-circle", "measures-fill", "measures-line", "measures-outline"].forEach(id => {
       if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", vis);
     });
+    const filterPanel = document.getElementById("measure-filter-panel");
+    if (filterPanel) filterPanel.classList.toggle("hidden", !e.target.checked);
+  });
+
+  // District score choropleth — empty source; populated when the toggle is switched on.
+  map.addSource("district-scores", {
+    type: "geojson",
+    data: { type: "FeatureCollection", features: [] },
+  });
+  map.addLayer({
+    id: "district-scores-fill",
+    type: "fill",
+    source: "district-scores",
+    layout: { visibility: "none" },
+    paint: {
+      "fill-color": [
+        "interpolate", ["linear"], ["coalesce", ["get", "score"], 0],
+        0,   "#dbeafe",
+        25,  "#93c5fd",
+        50,  "#f97316",
+        75,  "#dc2626",
+        100, "#7f1d1d"
+      ],
+      "fill-opacity": 0.55,
+    },
+  });
+  map.addLayer({
+    id: "district-scores-outline",
+    type: "line",
+    source: "district-scores",
+    layout: { visibility: "none" },
+    paint: { "line-color": "#475569", "line-width": 1, "line-opacity": 0.5 },
+  });
+
+  // Hover popup for district scores.
+  const districtPopup = new maplibregl.Popup({ closeButton: false, closeOnClick: false });
+  map.on("mousemove", "district-scores-fill", (e) => {
+    if (!e.features.length) return;
+    const p = e.features[0].properties;
+    map.getCanvas().style.cursor = "pointer";
+    districtPopup
+      .setLngLat(e.lngLat)
+      .setHTML(
+        `<div class="text-xs grid gap-0.5">` +
+        `<div class="font-semibold">${escHtml(p.district_name)}</div>` +
+        `<div>{% trans "Score" %}: ${escHtml(p.score)}/100</div>` +
+        `<div class="text-slate-500">${escHtml(p.measure_count)} {% trans "measures" %}</div>` +
+        `</div>`
+      )
+      .addTo(map);
+  });
+  map.on("mouseleave", "district-scores-fill", () => {
+    map.getCanvas().style.cursor = "";
+    districtPopup.remove();
   });
 
   document.querySelectorAll(".layer-toggle").forEach(checkbox => {
@@ -564,6 +861,17 @@ function accidentFilter() {
       map.on("idle", () => {
         this.discoverYears();
         this.applyFilter();
+      });
+      // Sync to the cycling gap preset when it activates/clears.
+      document.addEventListener("gap-analysis-activated", () => {
+        this.viewMode = "density";
+        this.modes.cyclist = true;
+        accidentsState.mode = "density";
+        syncAccidentLayers();
+        this.fetchDensity();
+      });
+      document.addEventListener("gap-analysis-cleared", () => {
+        this.resetFilter();
       });
     },
 
@@ -688,5 +996,266 @@ function accidentFilter() {
     },
   };
 }
+
+// ─── Cycling gap analysis preset ────────────────────────────────────────────
+
+let _savedLayerState = {};
+
+function activateCyclingGap() {
+  // Snapshot visibility of every current layer.
+  _savedLayerState = {};
+  map.getStyle().layers.forEach(l => {
+    if (l.id !== "osm-tiles") {
+      _savedLayerState[l.id] = map.getLayoutProperty(l.id, "visibility") || "visible";
+    }
+  });
+
+  // Hide all data layers and uncheck all layer toggles.
+  map.getStyle().layers.forEach(l => {
+    if (l.id !== "osm-tiles") map.setLayoutProperty(l.id, "visibility", "none");
+  });
+  document.querySelectorAll(".layer-toggle").forEach(cb => { cb.checked = false; });
+  accidentsState.enabled = false;
+
+  // Enable dedicated bike network.
+  ["dedicated_bike_network-line"].forEach(id => {
+    if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", "visible");
+  });
+  const bikeCb = document.querySelector('.layer-toggle[data-layer="dedicated_bike_network"]');
+  if (bikeCb) bikeCb.checked = true;
+
+  // Enable cycling counts if present.
+  if (map.getLayer("cycling_counts-circle")) {
+    map.setLayoutProperty("cycling_counts-circle", "visibility", "visible");
+    const countsCb = document.querySelector('.layer-toggle[data-layer="cycling_counts"]');
+    if (countsCb) countsCb.checked = true;
+  }
+
+  // Enable accidents density layer and fire the filter component via event.
+  accidentsState.enabled = true;
+  accidentsState.mode = "density";
+  syncAccidentLayers();
+  const accidentsCb = document.querySelector('.layer-toggle[data-layer="accidents"]');
+  if (accidentsCb) accidentsCb.checked = true;
+
+  document.dispatchEvent(new CustomEvent("gap-analysis-activated"));
+}
+
+function clearGapPreset() {
+  // Restore snapshotted layer visibility.
+  Object.entries(_savedLayerState).forEach(([id, vis]) => {
+    if (map.getLayer(id)) map.setLayoutProperty(id, vis === "visible" ? "visible" : "none");
+  });
+  _savedLayerState = {};
+
+  // Re-sync checkboxes from the restored layer state.
+  document.querySelectorAll(".layer-toggle").forEach(cb => {
+    const kind = cb.dataset.layer;
+    if (kind === "accidents") {
+      const wasOn = ["accidents-circle", "accidents-heat", "accidents-density-line"]
+        .some(id => map.getLayer(id) && map.getLayoutProperty(id, "visibility") === "visible");
+      cb.checked = wasOn;
+      accidentsState.enabled = wasOn;
+      return;
+    }
+    const wasOn = ["-line", "-fill", "-circle"].some(
+      s => map.getLayer(kind + s) && map.getLayoutProperty(kind + s, "visibility") === "visible"
+    );
+    cb.checked = wasOn;
+  });
+
+  document.dispatchEvent(new CustomEvent("gap-analysis-cleared"));
+}
+
+// ─── Measure Pipeline filter ─────────────────────────────────────────────────
+
+function measureFilter() {
+  return {
+    selectedStatuses: ["proposed", "planned", "in_progress", "done", "rejected"],
+    selectedCategory: "",
+    selectedEffort: "",
+
+    init() {
+      map.on("idle", () => this.applyFilter());
+    },
+
+    isStatusSelected(status) {
+      return this.selectedStatuses.includes(status);
+    },
+
+    toggleStatus(status) {
+      const idx = this.selectedStatuses.indexOf(status);
+      if (idx >= 0) this.selectedStatuses.splice(idx, 1);
+      else this.selectedStatuses.push(status);
+      this.applyFilter();
+    },
+
+    applyFilter() {
+      const clauses = [];
+      if (this.selectedStatuses.length === 0) {
+        const none = ["==", ["get", "status"], "__none__"];
+        ["measures-circle", "measures-line", "measures-fill", "measures-outline"].forEach(id => {
+          if (map.getLayer(id)) map.setFilter(id, none);
+        });
+        return;
+      }
+      if (this.selectedStatuses.length < 5) {
+        clauses.push(["in", ["get", "status"], ["literal", this.selectedStatuses]]);
+      }
+      if (this.selectedCategory) {
+        clauses.push(["==", ["get", "category"], this.selectedCategory]);
+      }
+      if (this.selectedEffort) {
+        clauses.push(["==", ["get", "effort_level"], this.selectedEffort]);
+      }
+      const filter = clauses.length === 0 ? null
+        : clauses.length === 1 ? clauses[0]
+        : ["all", ...clauses];
+      ["measures-circle", "measures-line", "measures-fill", "measures-outline"].forEach(id => {
+        if (map.getLayer(id)) map.setFilter(id, filter);
+      });
+    },
+
+    resetFilter() {
+      this.selectedStatuses = ["proposed", "planned", "in_progress", "done", "rejected"];
+      this.selectedCategory = "";
+      this.selectedEffort = "";
+      this.applyFilter();
+    },
+  };
+}
+
+// ─── District score choropleth ────────────────────────────────────────────────
+
+function districtScores() {
+  return {
+    enabled: false,
+    dimension: "",
+    _fetchTimer: null,
+
+    init() {},
+
+    toggle(checked) {
+      this.enabled = checked;
+      const vis = checked ? "visible" : "none";
+      if (map.getLayer("district-scores-fill")) map.setLayoutProperty("district-scores-fill", "visibility", vis);
+      if (map.getLayer("district-scores-outline")) map.setLayoutProperty("district-scores-outline", "visibility", vis);
+      if (checked) this._fetch();
+    },
+
+    setDimension(dim) {
+      this.dimension = dim;
+      if (this.enabled) this._fetch();
+    },
+
+    _fetch() {
+      if (this._fetchTimer) clearTimeout(this._fetchTimer);
+      this._fetchTimer = setTimeout(() => {
+        const src = map.getSource("district-scores");
+        if (!src) return;
+        const params = new URLSearchParams();
+        if (this.dimension) params.set("dimension", this.dimension);
+        fetch(`/api/v1/workspaces/${WORKSPACE_SLUG}/district-scores/?${params.toString()}`)
+          .then(r => r.json())
+          .then(fc => src.setData(fc))
+          .catch(() => {});
+      }, 200);
+    },
+  };
+}
+
+// ─── Saved views (localStorage) ──────────────────────────────────────────────
+
+function savedViews() {
+  const STORAGE_KEY = `omos-views-${WORKSPACE_SLUG}`;
+  return {
+    open: false,
+    views: [],
+    newName: "",
+
+    init() {
+      try { this.views = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); }
+      catch (_) { this.views = []; }
+    },
+
+    _persist() {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(this.views)); }
+      catch (_) {}
+    },
+
+    saveCurrentView() {
+      const name = this.newName.trim();
+      if (!name) return;
+      const layerVisibility = {};
+      map.getStyle().layers.forEach(l => {
+        if (l.id !== "osm-tiles") {
+          layerVisibility[l.id] = map.getLayoutProperty(l.id, "visibility") || "visible";
+        }
+      });
+      this.views.unshift({
+        name,
+        timestamp: Date.now(),
+        zoom: map.getZoom(),
+        center: [map.getCenter().lng, map.getCenter().lat],
+        layerVisibility,
+      });
+      this.newName = "";
+      this._persist();
+    },
+
+    loadView(v) {
+      map.flyTo({ center: v.center, zoom: v.zoom });
+      Object.entries(v.layerVisibility || {}).forEach(([id, vis]) => {
+        if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", vis);
+      });
+      // Re-sync layer checkboxes.
+      document.querySelectorAll(".layer-toggle").forEach(cb => {
+        const kind = cb.dataset.layer;
+        if (kind === "accidents") {
+          const on = ["accidents-circle", "accidents-heat", "accidents-density-line"]
+            .some(id => (v.layerVisibility[id] || "none") === "visible");
+          cb.checked = on;
+          accidentsState.enabled = on;
+          return;
+        }
+        const on = ["-line", "-fill", "-circle"].some(
+          s => (v.layerVisibility[kind + s] || "none") === "visible"
+        );
+        cb.checked = on;
+      });
+      // Re-sync measures toggle + filter panel.
+      const measuresCb = document.getElementById("toggle-measures");
+      if (measuresCb) {
+        const on = ["measures-circle", "measures-line", "measures-fill"]
+          .some(id => (v.layerVisibility[id] || "none") === "visible");
+        measuresCb.checked = on;
+        const panel = document.getElementById("measure-filter-panel");
+        if (panel) panel.classList.toggle("hidden", !on);
+      }
+      // Re-sync district scores checkbox.
+      const districtCb = document.getElementById("toggle-district-scores");
+      if (districtCb) {
+        const on = (v.layerVisibility["district-scores-fill"] || "none") === "visible";
+        districtCb.checked = on;
+      }
+    },
+
+    deleteView(timestamp) {
+      this.views = this.views.filter(v => v.timestamp !== timestamp);
+      this._persist();
+    },
+  };
+}
+
+// ─── Export PNG ───────────────────────────────────────────────────────────────
+
+document.getElementById("export-png")?.addEventListener("click", () => {
+  const canvas = map.getCanvas();
+  const today = new Date().toISOString().slice(0, 10);
+  const a = document.createElement("a");
+  a.download = `${WORKSPACE_SLUG}-map-${today}.png`;
+  a.href = canvas.toDataURL("image/png");
+  a.click();
+});
 </script>
 {% endblock %}

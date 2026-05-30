@@ -9,6 +9,8 @@ from django.views.decorators.http import require_GET
 from core.utils import get_active_workspace
 from datasets.models import NormalizedFeatureSet
 from measures.accident_density import compute_density_lines
+from measures.models import MeasureScore
+from measures.scoring import compute_priority_score
 
 
 def _features_for_kind(ws, layer_kind):
@@ -81,8 +83,9 @@ def accident_density_view(request, workspace_slug: str):
 def workspace_measures_geojson(request, workspace_slug: str):
     ws = get_active_workspace(workspace_slug)
     lang = getattr(request, "LANGUAGE_CODE", "de")
+    weights = ws.scoring_weights or {}
     features = []
-    for m in ws.measures.exclude(geometry__isnull=True):
+    for m in ws.measures.exclude(geometry__isnull=True).prefetch_related("scores"):
         features.append(
             {
                 "type": "Feature",
@@ -90,10 +93,68 @@ def workspace_measures_geojson(request, workspace_slug: str):
                 "properties": {
                     "slug": m.slug,
                     "title": m.title_localized(lang),
+                    "summary": m.summary_localized(lang),
                     "category": m.category,
                     "effort_level": m.effort_level,
                     "status": m.status,
+                    "priority_score": compute_priority_score(m, weights),
                 },
             }
         )
+    return JsonResponse({"type": "FeatureCollection", "features": features})
+
+
+@require_GET
+@cache_page(60)
+def district_scores_view(request, workspace_slug: str):
+    """Districts coloured by aggregate measure priority.
+
+    The ``dimension`` query parameter selects a single scoring dimension
+    (e.g. ``safety``, ``climate``). Omit it or pass an unknown value to use
+    the workspace-weighted overall priority score.
+    """
+    ws = get_active_workspace(workspace_slug)
+    dimension = (request.GET.get("dimension") or "").strip()
+    valid_dims = {d for d, _ in MeasureScore.Dimension.choices}
+    if dimension not in valid_dims:
+        dimension = ""
+
+    weights = ws.scoring_weights or {}
+    features = []
+
+    for district in ws.districts.all():
+        if district.geometry is None:
+            continue
+
+        measures = list(district.measures.prefetch_related("scores").all())
+
+        if not measures:
+            score = 0.0
+            measure_count = 0
+        elif dimension:
+            vals = []
+            for m in measures:
+                for s in m.scores.all():
+                    if s.dimension == dimension:
+                        vals.append(s.display_value)
+                        break
+            score = round(sum(vals) / len(vals), 1) if vals else 0.0
+            measure_count = len(measures)
+        else:
+            scores_list = [compute_priority_score(m, weights) for m in measures]
+            score = round(sum(scores_list) / len(scores_list), 1) if scores_list else 0.0
+            measure_count = len(measures)
+
+        features.append(
+            {
+                "type": "Feature",
+                "geometry": json.loads(district.geometry.geojson),
+                "properties": {
+                    "district_name": district.name,
+                    "score": score,
+                    "measure_count": measure_count,
+                },
+            }
+        )
+
     return JsonResponse({"type": "FeatureCollection", "features": features})
