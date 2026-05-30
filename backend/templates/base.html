@@ -7,6 +7,26 @@
   <meta name="description" content="{% trans 'Open operating system between mobility data and political decisions. Any municipality. Any country.' %}">
   {# OMOS brand mark as an inline-SVG favicon — no binary asset, brand shows in the tab. #}
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23059669'/%3E%3Ctext x='32' y='42' font-family='Inter,system-ui,sans-serif' font-size='20' font-weight='700' letter-spacing='-1' text-anchor='middle' fill='white'%3EOMOS%3C/text%3E%3C/svg%3E">
+  <script>
+    // Apply the saved (or system-preferred) theme synchronously, before first
+    // paint, to avoid a flash of the wrong theme. Falls back to the OS setting
+    // on first visit. Kept tiny and dependency-free on purpose.
+    (function () {
+      try {
+        var t = localStorage.getItem('omos-theme');
+        if (t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark');
+        }
+      } catch (e) {}
+    })();
+    // Global toggle used by the header pill. Persists the choice and notifies
+    // listeners (e.g. the MapLibre map) so they can re-theme without a reload.
+    function omosToggleTheme() {
+      var isDark = document.documentElement.classList.toggle('dark');
+      try { localStorage.setItem('omos-theme', isDark ? 'dark' : 'light'); } catch (e) {}
+      window.dispatchEvent(new CustomEvent('omos:themechange', { detail: { dark: isDark } }));
+    }
+  </script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     // CDN Tailwind reads this global config before render — gives us a brand
@@ -14,6 +34,7 @@
     // `brand` is a deeper emerald than the semantic emerald-100/800 success pills,
     // so primary actions stay distinct from "success" states.
     tailwind.config = {
+      darkMode: 'class',
       theme: {
         extend: {
           colors: {
@@ -52,6 +73,14 @@
         {% if deployment_mode != 'single-city' and is_admin %}
           <a href="{% url 'workspace_new' %}" class="rounded-lg bg-brand-600 text-white px-3 py-1.5 font-medium shadow-sm hover:bg-brand-700 transition-colors">{% trans "+ New workspace" %}</a>
         {% endif %}
+        <button type="button" onclick="omosToggleTheme()"
+                class="theme-toggle inline-flex items-center gap-1.5 rounded-full border border-slate-300 px-2.5 py-1 text-xs font-medium text-slate-600 hover:border-brand-400 hover:text-brand-700 transition-colors"
+                aria-label="{% trans 'Toggle dark mode' %}" title="{% trans 'Toggle dark mode' %}">
+          <svg class="theme-icon-moon h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M17.293 13.293A8 8 0 0 1 6.707 2.707a8.001 8.001 0 1 0 10.586 10.586Z"/></svg>
+          <svg class="theme-icon-sun h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M10 2a1 1 0 0 1 1 1v1a1 1 0 1 1-2 0V3a1 1 0 0 1 1-1Zm0 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm0 2a1 1 0 0 1 1 1v1a1 1 0 1 1-2 0v-1a1 1 0 0 1 1-1ZM3 9a1 1 0 0 0 0 2h1a1 1 0 1 0 0-2H3Zm12 1a1 1 0 0 1 1-1h1a1 1 0 1 1 0 2h-1a1 1 0 0 1-1-1ZM4.222 4.222a1 1 0 0 1 1.414 0l.707.707A1 1 0 0 1 4.93 6.343l-.707-.707a1 1 0 0 1 0-1.414Zm9.193 9.193a1 1 0 0 1 1.414 0l.707.707a1 1 0 0 1-1.414 1.414l-.707-.707a1 1 0 0 1 0-1.414ZM15.778 4.222a1 1 0 0 1 0 1.414l-.707.707a1 1 0 1 1-1.414-1.414l.707-.707a1 1 0 0 1 1.414 0ZM6.343 13.657a1 1 0 0 1 0 1.414l-.707.707a1 1 0 0 1-1.414-1.414l.707-.707a1 1 0 0 1 1.414 0Z"/></svg>
+          <span class="theme-label-dark">{% trans "Dark" %}</span>
+          <span class="theme-label-light">{% trans "Light" %}</span>
+        </button>
         <form method="post" action="{% url 'set_language' %}" class="flex items-center gap-1">
           {% csrf_token %}
           <input type="hidden" name="next" value="{{ request.path }}">

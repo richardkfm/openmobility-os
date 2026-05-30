@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Dark mode** — a theme toggle pill in the page header switches the whole
+  interface between light and dark. The choice is remembered across visits and
+  defaults to your operating-system preference on first load. Dark mode also
+  re-themes the interactive map: the basemap switches to a dark tileset live,
+  without a reload, keeping all active layers and filters in place. The dark
+  basemap defaults to CARTO's free, keyless OSM dark tiles and is overridable
+  via the new `MAP_TILE_URL_DARK` / `MAP_TILE_ATTRIBUTION_DARK` settings.
 - **OMOS brand mark** — the platform now carries a consistent "OMOS" logo tag
   in the header and footer, and a matching browser-tab favicon.
 - **Measure Pipeline display mode** — toggling the Measures layer now colours

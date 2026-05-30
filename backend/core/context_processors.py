@@ -10,6 +10,8 @@ def platform_context(request):
         "default_workspace_slug": settings.DEFAULT_WORKSPACE_SLUG,
         "map_tile_url": settings.MAP_TILE_URL,
         "map_tile_attribution": settings.MAP_TILE_ATTRIBUTION,
+        "map_tile_url_dark": settings.MAP_TILE_URL_DARK,
+        "map_tile_attribution_dark": settings.MAP_TILE_ATTRIBUTION_DARK,
         "project_repo_url": settings.PROJECT_REPO_URL,
         "project_release_url": settings.PROJECT_RELEASE_URL,
         "is_admin": getattr(request, "is_admin", False),

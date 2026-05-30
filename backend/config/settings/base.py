@@ -21,6 +21,11 @@ env = environ.Env(
     DEFAULT_LOCALE=(str, "de"),
     MAP_TILE_URL=(str, "https://tile.openstreetmap.org/{z}/{x}/{y}.png"),
     MAP_TILE_ATTRIBUTION=(str, "© OpenStreetMap contributors"),
+    # Dark-mode basemap. Defaults to CARTO's free, keyless OSM-based dark
+    # raster tiles — overridable like any other tile source, so self-hosters
+    # can point it at their own dark tiles with no proprietary lock-in.
+    MAP_TILE_URL_DARK=(str, "https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"),
+    MAP_TILE_ATTRIBUTION_DARK=(str, "© OpenStreetMap contributors, © CARTO"),
     OSM_OVERPASS_API=(str, "https://overpass-api.de/api/interpreter"),
     AUTO_SEED_DEMO=(bool, True),
     PROJECT_REPO_URL=(str, "https://github.com/richardkfm/openmobility-os"),
@@ -53,6 +58,8 @@ ADMIN_TOKEN = env("ADMIN_TOKEN", default="")
 # --- Map config ---
 MAP_TILE_URL = env("MAP_TILE_URL")
 MAP_TILE_ATTRIBUTION = env("MAP_TILE_ATTRIBUTION")
+MAP_TILE_URL_DARK = env("MAP_TILE_URL_DARK")
+MAP_TILE_ATTRIBUTION_DARK = env("MAP_TILE_ATTRIBUTION_DARK")
 OSM_OVERPASS_API = env("OSM_OVERPASS_API")
 MOBILITHEK_CATALOG_URL = env(
     "MOBILITHEK_CATALOG_URL",
