@@ -3,7 +3,7 @@
 
 # OpenMobility OS
 
-**Version:** 0.26.0 (pre-release) — see [CHANGELOG.md](CHANGELOG.md)
+**Version:** 0.27.0 (pre-release) — see [CHANGELOG.md](CHANGELOG.md)
 **License:** See [LICENSE](LICENSE)
 
 > The open, free, self-hostable operating system between open mobility data
@@ -216,6 +216,10 @@ four demo workspaces: **Leipzig**, **Utrecht**, **Musterstadt**, and **Muster-La
 - **Internationalization** — German and English out of the box, extensible
   to any language
 - **Admin-token protection** for write actions
+- **Modern, sober UI** — an emerald-accented design with the Inter typeface and
+  the **OMOS** brand mark, kept professional for a public-sector audience. The
+  web font is loaded from a privacy-friendly CDN with a system-font fallback, so
+  offline self-hosted installs render correctly with no proprietary dependency.
 
 ## Using the Platform
 

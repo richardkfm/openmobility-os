@@ -5,30 +5,57 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}{{ page_title }}{% endblock %} · OpenMobility OS</title>
   <meta name="description" content="{% trans 'Open operating system between mobility data and political decisions. Any municipality. Any country.' %}">
+  {# OMOS brand mark as an inline-SVG favicon — no binary asset, brand shows in the tab. #}
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23059669'/%3E%3Ctext x='32' y='42' font-family='Inter,system-ui,sans-serif' font-size='20' font-weight='700' letter-spacing='-1' text-anchor='middle' fill='white'%3EOMOS%3C/text%3E%3C/svg%3E">
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    // CDN Tailwind reads this global config before render — gives us a brand
+    // palette + Inter font with zero build step (keeps `docker compose up` Node-free).
+    // `brand` is a deeper emerald than the semantic emerald-100/800 success pills,
+    // so primary actions stay distinct from "success" states.
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#ecfdf5', 100: '#d1fae5', 200: '#a7f3d0', 300: '#6ee7b7',
+              400: '#34d399', 500: '#10b981', 600: '#059669', 700: '#047857',
+              800: '#065f46', 900: '#064e3b',
+            },
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+          },
+        },
+      },
+    };
+  </script>
+  {# Inter from fonts.bunny.net — a privacy-friendly, GDPR-clean drop-in for the EU/municipal audience. system-ui fallback keeps offline self-hosts correct. #}
+  <link rel="preconnect" href="https://fonts.bunny.net" crossorigin>
+  <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700,800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{% static 'css/components.css' %}">
   <script defer src="https://unpkg.com/alpinejs@3.13.10/dist/cdn.min.js"></script>
   <script src="https://unpkg.com/htmx.org@1.9.12"></script>
   {% block extra_head %}{% endblock %}
 </head>
-<body class="min-h-screen bg-slate-50 text-slate-900 antialiased">
-  <header class="border-b bg-white">
-    <div class="mx-auto max-w-7xl px-4 py-4 flex items-center justify-between gap-6">
-      <a href="{% url 'platform_landing' %}" class="flex items-center gap-2">
-        <span class="h-8 w-8 rounded bg-slate-900 text-white flex items-center justify-center font-bold">O</span>
-        <span class="font-semibold text-lg tracking-tight">OpenMobility <span class="text-slate-500">OS</span></span>
+<body class="min-h-screen bg-slate-50 text-slate-900 font-sans antialiased">
+  <header class="sticky top-0 z-40 border-b border-slate-200/80 bg-white/85 backdrop-blur supports-[backdrop-filter]:bg-white/70 shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
+    <div class="mx-auto max-w-7xl px-4 py-3 flex items-center justify-between gap-6">
+      <a href="{% url 'platform_landing' %}" class="flex items-center gap-2.5 group">
+        <span class="h-8 px-2 rounded-lg bg-brand-600 text-white flex items-center justify-center text-xs font-extrabold tracking-tight shadow-sm group-hover:bg-brand-700 transition-colors">OMOS</span>
+        <span class="font-semibold text-lg tracking-tight text-slate-900">OpenMobility <span class="text-brand-600">OS</span></span>
       </a>
       <nav class="flex items-center gap-5 text-sm">
-        <a href="{% url 'platform_landing' %}" class="hover:text-slate-950 text-slate-600">{% trans "Workspaces" %}</a>
-        <a href="{% url 'methodology' %}" class="hover:text-slate-950 text-slate-600">{% trans "Methodology" %}</a>
-        <a href="{% url 'about' %}" class="hover:text-slate-950 text-slate-600">{% trans "About" %}</a>
+        <a href="{% url 'platform_landing' %}" class="nav-link text-slate-600 hover:text-slate-950">{% trans "Workspaces" %}</a>
+        <a href="{% url 'methodology' %}" class="nav-link text-slate-600 hover:text-slate-950">{% trans "Methodology" %}</a>
+        <a href="{% url 'about' %}" class="nav-link text-slate-600 hover:text-slate-950">{% trans "About" %}</a>
         {% if deployment_mode != 'single-city' and is_admin %}
-          <a href="{% url 'workspace_new' %}" class="rounded bg-slate-900 text-white px-3 py-1.5 hover:bg-slate-700">{% trans "+ New workspace" %}</a>
+          <a href="{% url 'workspace_new' %}" class="rounded-lg bg-brand-600 text-white px-3 py-1.5 font-medium shadow-sm hover:bg-brand-700 transition-colors">{% trans "+ New workspace" %}</a>
         {% endif %}
         <form method="post" action="{% url 'set_language' %}" class="flex items-center gap-1">
           {% csrf_token %}
           <input type="hidden" name="next" value="{{ request.path }}">
-          <select name="language" onchange="this.form.submit()" class="text-xs border rounded px-1 py-0.5 bg-white">
+          <select name="language" onchange="this.form.submit()" class="text-xs border border-slate-300 rounded-lg px-1.5 py-1 bg-white hover:border-slate-400 transition-colors cursor-pointer">
             {% get_current_language as LANGUAGE_CODE %}
             {% get_available_languages as LANGUAGES %}
             {% for lang_code, lang_name in LANGUAGES %}
@@ -37,9 +64,9 @@
           </select>
         </form>
         {% if is_admin %}
-          <a href="{% url 'admin_logout' %}" class="text-xs text-slate-500 hover:underline">{% trans "Sign out" %}</a>
+          <a href="{% url 'admin_logout' %}" class="text-xs text-slate-500 hover:text-brand-700 hover:underline">{% trans "Sign out" %}</a>
         {% else %}
-          <a href="{% url 'admin_login' %}?next={{ request.path }}" class="text-xs text-slate-500 hover:underline">{% trans "Admin" %}</a>
+          <a href="{% url 'admin_login' %}?next={{ request.path }}" class="text-xs text-slate-500 hover:text-brand-700 hover:underline">{% trans "Admin" %}</a>
         {% endif %}
       </nav>
     </div>
@@ -60,21 +87,24 @@
     {% block content %}{% endblock %}
   </main>
 
-  <footer class="mt-16 border-t bg-white">
-    <div class="mx-auto max-w-7xl px-4 py-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-slate-500">
-      <div>
-        <strong>OpenMobility OS</strong>
-        <a href="{{ project_release_url }}"
-           target="_blank" rel="noopener noreferrer"
-           class="hover:underline"
-           title="{% blocktrans %}View v{{ platform_version }} release on GitHub{% endblocktrans %}">v{{ platform_version }}</a>
-        · {% trans "Open platform for municipal mobility transition" %}
+  <footer class="mt-16 border-t border-slate-200 bg-white">
+    <div class="mx-auto max-w-7xl px-4 py-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs text-slate-500">
+      <div class="flex items-center gap-2">
+        <span class="h-5 px-1.5 rounded bg-brand-600 text-white inline-flex items-center justify-center text-[10px] font-extrabold tracking-tight">OMOS</span>
+        <span>
+          <strong class="text-slate-700">OpenMobility OS</strong>
+          <a href="{{ project_release_url }}"
+             target="_blank" rel="noopener noreferrer"
+             class="hover:text-brand-700 hover:underline"
+             title="{% blocktrans %}View v{{ platform_version }} release on GitHub{% endblocktrans %}">v{{ platform_version }}</a>
+          · {% trans "Open platform for municipal mobility transition" %}
+        </span>
       </div>
       <div class="flex items-center gap-4">
-        <a href="{% url 'methodology' %}" class="hover:underline">{% trans "Methodology" %}</a>
-        <a href="{% url 'about' %}" class="hover:underline">{% trans "Self-hosting" %}</a>
-        <a href="/api/v1/meta/" class="hover:underline">API</a>
-        <a href="{{ project_repo_url }}" target="_blank" rel="noopener noreferrer" class="hover:underline">GitHub</a>
+        <a href="{% url 'methodology' %}" class="hover:text-brand-700 hover:underline">{% trans "Methodology" %}</a>
+        <a href="{% url 'about' %}" class="hover:text-brand-700 hover:underline">{% trans "Self-hosting" %}</a>
+        <a href="/api/v1/meta/" class="hover:text-brand-700 hover:underline">API</a>
+        <a href="{{ project_repo_url }}" target="_blank" rel="noopener noreferrer" class="hover:text-brand-700 hover:underline">GitHub</a>
       </div>
     </div>
   </footer>

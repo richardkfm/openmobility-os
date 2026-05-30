@@ -2,21 +2,26 @@
 {% load i18n %}
 
 {% block content %}
-<section class="mb-10">
-  <div class="max-w-3xl">
-    <div class="inline-block text-xs uppercase tracking-widest text-slate-500 mb-2">{% trans "Open, free, self-hostable" %}</div>
-    <h1 class="text-3xl sm:text-4xl font-bold leading-tight text-slate-950">
-      {% trans "The operating system between open mobility data and political decisions." %}
-    </h1>
-    <p class="mt-3 text-slate-600 text-lg">
-      {% trans "OpenMobility OS helps municipalities, planners, local politics, NGOs, and journalists prioritize mobility measures — transparently, based on open data, and usable for any city or region worldwide." %}
-    </p>
-    <div class="mt-4 flex flex-wrap gap-3 text-sm">
-      <a href="{% url 'methodology' %}" class="rounded border px-3 py-1.5 hover:bg-white">{% trans "How scoring works" %}</a>
-      <a href="{% url 'about' %}" class="rounded border px-3 py-1.5 hover:bg-white">{% trans "Self-hosting guide" %}</a>
-      {% if is_admin %}
-        <a href="{% url 'workspace_new' %}" class="rounded bg-slate-900 text-white px-3 py-1.5 hover:bg-slate-700">{% trans "+ Add workspace" %}</a>
-      {% endif %}
+<section class="hero-gradient -mx-4 -mt-8 px-4 pt-12 pb-12 mb-10 border-b border-slate-200/70">
+  <div class="mx-auto max-w-7xl">
+    <div class="max-w-3xl">
+      <div class="inline-flex items-center gap-2 rounded-full border border-brand-200 bg-brand-50 px-3 py-1 text-xs font-medium uppercase tracking-widest text-brand-700 mb-4">
+        <span class="h-1.5 w-1.5 rounded-full bg-brand-500"></span>
+        {% trans "Open, free, self-hostable" %}
+      </div>
+      <h1 class="text-3xl sm:text-5xl font-bold leading-[1.1] tracking-tight text-slate-950">
+        {% trans "The operating system between open mobility data and political decisions." %}
+      </h1>
+      <p class="mt-4 text-slate-600 text-lg max-w-2xl">
+        {% trans "OpenMobility OS helps municipalities, planners, local politics, NGOs, and journalists prioritize mobility measures — transparently, based on open data, and usable for any city or region worldwide." %}
+      </p>
+      <div class="mt-6 flex flex-wrap gap-3 text-sm">
+        <a href="{% url 'methodology' %}" class="rounded-lg bg-brand-600 text-white px-4 py-2 font-medium shadow-sm hover:bg-brand-700 transition-colors">{% trans "How scoring works" %}</a>
+        <a href="{% url 'about' %}" class="rounded-lg border border-slate-300 bg-white px-4 py-2 font-medium text-slate-700 hover:border-slate-400 hover:bg-slate-50 transition-colors">{% trans "Self-hosting guide" %}</a>
+        {% if is_admin %}
+          <a href="{% url 'workspace_new' %}" class="rounded-lg border border-brand-300 bg-white px-4 py-2 font-medium text-brand-700 hover:bg-brand-50 transition-colors">{% trans "+ Add workspace" %}</a>
+        {% endif %}
+      </div>
     </div>
   </div>
 </section>
@@ -25,7 +30,7 @@
   <h2 class="text-xl font-semibold mb-4">{% trans "Workspaces" %} <span class="text-sm font-normal text-slate-500">({{ workspaces|length }})</span></h2>
   <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
     {% for ws in workspaces %}
-      <a href="{% url 'workspace_dashboard' workspace_slug=ws.slug %}" class="block rounded-lg border bg-white p-5 hover:border-slate-400 hover:shadow-sm transition">
+      <a href="{% url 'workspace_dashboard' workspace_slug=ws.slug %}" class="card-lift block rounded-xl border border-slate-200 bg-white p-5 hover:border-brand-400">
         <div class="flex items-start justify-between gap-2">
           <div>
             <div class="text-lg font-semibold text-slate-950">{{ ws.name }}</div>
@@ -41,9 +46,20 @@
           {{ ws.description_de|default:ws.description_en|truncatewords:30 }}
         </p>
         <div class="mt-4 flex items-center gap-4 text-xs text-slate-500">
-          {% if ws.population %}<span>👥 {{ ws.population|stringformat:"d" }}</span>{% endif %}
-          <span>🎯 {{ ws.goals.count }} {% trans "goals" %}</span>
-          <span>🧭 {{ ws.measures.count }} {% trans "measures" %}</span>
+          {% if ws.population %}
+            <span class="inline-flex items-center gap-1.5">
+              <svg class="h-3.5 w-3.5 text-brand-600" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M13 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM7 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM2 16a5 5 0 0 1 10 0v1H2v-1ZM12.93 11.04A6.97 6.97 0 0 1 18 17v0h0-4.07A6.47 6.47 0 0 0 14 16a6.97 6.97 0 0 0-1.07-3.71 4.99 4.99 0 0 1 0-1.25Z"/></svg>
+              {{ ws.population|stringformat:"d" }}
+            </span>
+          {% endif %}
+          <span class="inline-flex items-center gap-1.5">
+            <svg class="h-3.5 w-3.5 text-brand-600" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="10" cy="10" r="7"/><circle cx="10" cy="10" r="3.5"/><circle cx="10" cy="10" r="0.75" fill="currentColor"/></svg>
+            {{ ws.goals.count }} {% trans "goals" %}
+          </span>
+          <span class="inline-flex items-center gap-1.5">
+            <svg class="h-3.5 w-3.5 text-brand-600" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="10" r="7.5"/><path d="M13 7l-2 4-4 2 2-4 4-2Z" fill="currentColor" stroke="none"/></svg>
+            {{ ws.measures.count }} {% trans "measures" %}
+          </span>
         </div>
       </a>
     {% empty %}
@@ -55,19 +71,19 @@
 </section>
 
 <section class="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-  <div class="rounded-lg bg-white p-5 border">
-    <div class="text-xs uppercase tracking-widest text-slate-500">1.</div>
-    <div class="font-semibold mt-1">{% trans "City-agnostic" %}</div>
+  <div class="rounded-xl bg-white p-5 border border-slate-200 border-t-2 border-t-brand-500">
+    <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50 text-sm font-bold text-brand-700">1</div>
+    <div class="font-semibold mt-3 text-slate-900">{% trans "City-agnostic" %}</div>
     <p class="text-sm text-slate-600 mt-1">{% trans "Leipzig is just one demo — any city in any country can be added as a workspace via APIs, open data, or configuration." %}</p>
   </div>
-  <div class="rounded-lg bg-white p-5 border">
-    <div class="text-xs uppercase tracking-widest text-slate-500">2.</div>
-    <div class="font-semibold mt-1">{% trans "Transparent scoring" %}</div>
+  <div class="rounded-xl bg-white p-5 border border-slate-200 border-t-2 border-t-brand-500">
+    <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50 text-sm font-bold text-brand-700">2</div>
+    <div class="font-semibold mt-3 text-slate-900">{% trans "Transparent scoring" %}</div>
     <p class="text-sm text-slate-600 mt-1">{% trans "Every recommendation exposes its sources, formula, and uncertainty. No black boxes." %}</p>
   </div>
-  <div class="rounded-lg bg-white p-5 border">
-    <div class="text-xs uppercase tracking-widest text-slate-500">3.</div>
-    <div class="font-semibold mt-1">{% trans "Self-hostable" %}</div>
+  <div class="rounded-xl bg-white p-5 border border-slate-200 border-t-2 border-t-brand-500">
+    <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50 text-sm font-bold text-brand-700">3</div>
+    <div class="font-semibold mt-3 text-slate-900">{% trans "Self-hostable" %}</div>
     <p class="text-sm text-slate-600 mt-1">{% trans "Runs via Docker Compose. Single city, region, or public demo — same codebase, different configuration." %}</p>
   </div>
 </section>

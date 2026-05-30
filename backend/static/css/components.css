@@ -2,6 +2,63 @@
    Only add things here that Tailwind utility classes cannot express.
    Keep this file small. */
 
+/* Typographic polish for Inter (with the system-ui fallback). */
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "cv11", "ss01";
+  letter-spacing: -0.011em;
+}
+
+/* Brand-colored focus ring for keyboard users — cohesion + accessibility.
+   Skips elements that manage their own focus styling. */
+:focus-visible {
+  outline: 2px solid #059669;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Subtle emerald gradient mesh for the landing hero. Awkward to express as
+   inline Tailwind utilities, and city-agnostic (pure decoration). */
+.hero-gradient {
+  background:
+    radial-gradient(60rem 30rem at 0% -10%, rgba(16, 185, 129, 0.10), transparent 60%),
+    radial-gradient(50rem 25rem at 100% 0%, rgba(5, 150, 105, 0.08), transparent 55%),
+    linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+}
+
+/* Animated underline-grow for top-nav links. */
+.nav-link {
+  position: relative;
+  padding-bottom: 2px;
+  transition: color 0.15s ease;
+}
+.nav-link::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
+  width: 100%;
+  background: #059669;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.18s ease;
+}
+.nav-link:hover::after,
+.nav-link[aria-current="page"]::after {
+  transform: scaleX(1);
+}
+
+/* Reusable hover-lift for interactive cards (shadow + slight rise). */
+.card-lift {
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+.card-lift:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px -12px rgba(15, 23, 42, 0.18);
+}
+
 /* MapLibre popup override */
 .maplibregl-popup-content {
   border-radius: 8px;

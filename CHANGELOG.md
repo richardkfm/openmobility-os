@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **OMOS brand mark** — the platform now carries a consistent "OMOS" logo tag
+  in the header and footer, and a matching browser-tab favicon.
 - **Measure Pipeline display mode** — toggling the Measures layer now colours
   every spatial intervention by its status (proposed = amber, planned = blue,
   in progress = orange, done = green, rejected = slate). A new filter panel
@@ -48,6 +50,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   only sharrows (or nothing) correctly count as gaps.
 
 ### Changed
+- **Refreshed visual design** — a modernized look with an emerald brand accent,
+  the Inter typeface (with a system-font fallback for offline self-hosting),
+  and a redesigned sticky header, landing page, and footer. The change is
+  purely cosmetic and city-agnostic; semantic status colours are unchanged.
 - **Unfallatlas moved out of the catalog browser** — it's a single
   nationwide dataset clipped to your workspace, not a searchable library,
   so the catalogue page was confusing (a "search" box that searched
