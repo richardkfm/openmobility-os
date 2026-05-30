@@ -8,6 +8,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Measure Pipeline display mode** — toggling the Measures layer now colours
+  every spatial intervention by its status (proposed = amber, planned = blue,
+  in progress = orange, done = green, rejected = slate). A new filter panel
+  below the layers card lets planners and journalists narrow by status,
+  category (15 types), and effort level. Clicking any measure opens a rich
+  popup with title, status badge, effort, summary, and a link to the detail
+  page, including the computed priority score.
+- **District Score Board** — when district boundaries are loaded a new
+  "District scores" toggle fills each district with a priority-score
+  choropleth (light blue → deep red). A dimension selector isolates a single
+  scoring lens (Climate, Safety, Social equity, Quality of life). Hovering a
+  district shows its aggregate score and measure count. Backed by a new
+  API endpoint `/api/v1/workspaces/<slug>/district-scores/?dimension=<dim>`.
+- **Cycling gap analysis preset** — a one-click "Story views" panel that
+  activates the dedicated bike network, cyclist-accident density lines, and
+  cycling count stations together. Red streets without any teal or amber bike
+  infrastructure overlay are visually identified as priority intervention zones.
+  The accident filter auto-syncs to cyclist-density mode when the preset is
+  activated; "Clear preset" restores the previous layer state.
+- **Save PNG button** — downloads the current map canvas as
+  `<workspace>-map-<date>.png` using `MapLibre.getCanvas().toDataURL()`.
+  Works for all display modes and layer combinations; useful for city council
+  slides and social-media posts.
+- **Saved views** — a localStorage-backed sidebar panel that saves and restores
+  named map states (zoom, centre, full layer-visibility snapshot). No login
+  required. Multiple views per workspace.
+
+### Added
 - **Dedicated bike-infrastructure layer** — a new, stricter cycling data source
   (`OSM — Dedizierte Radinfrastruktur`) that returns *only* dedicated cycling
   infrastructure: separated cycleways/tracks, bicycle roads, and on-street

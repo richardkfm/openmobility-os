@@ -3,7 +3,7 @@
 
 # OpenMobility OS
 
-**Version:** 0.23.0 (pre-release) — see [CHANGELOG.md](CHANGELOG.md)
+**Version:** 0.26.0 (pre-release) — see [CHANGELOG.md](CHANGELOG.md)
 **License:** See [LICENSE](LICENSE)
 
 > The open, free, self-hostable operating system between open mobility data
@@ -310,10 +310,54 @@ server-side per filter combination via
 `/api/v1/workspaces/<slug>/accident-density/` (cached for 5 minutes); click any
 line to see its accident count, score breakdown, and per-mode totals.
 
+**Story views (compound presets):**
+
+The **Cycling gap analysis** preset activates three layers together: dedicated
+bike infrastructure (teal = protected, amber = painted lane), cyclist accident
+density (streets coloured red where cycling accidents cluster), and cycling count
+stations. Streets that glow red without any teal or amber overlay are priority
+intervention zones — one click produces a publication-ready view for a planning
+meeting or a social-media post.
+
+**Measure Pipeline (status-coded measures):**
+
+Toggle "Measures" in the layer panel to see all interventions colour-coded by
+status — amber (proposed), blue (planned), orange (in progress), green (done),
+slate (rejected). The filter panel below lets you narrow by status, category (15
+types), and effort level. Clicking any marker shows title, status, effort, and a
+link to the full measure detail page. This view tells the political story of a
+city at a glance.
+
+**District Score Board:**
+
+When district boundaries are loaded, a "District scores" toggle appears in the
+layer panel. It fills each district with a priority-score choropleth (light blue
+= low → deep red = high). A dimension selector lets you isolate a single scoring
+dimension (Climate, Safety, Social equity, or Quality of life) so planners can
+see which neighborhoods need the most attention for each policy goal. Hover over
+a district to see its aggregate score and measure count; the endpoint is
+`/api/v1/workspaces/<slug>/district-scores/?dimension=<dim>`.
+
 **Measures overlay:**
 
-Toggle "Show measures" to display auto-generated interventions as point or
-polygon markers on the map. Clicking a marker opens the measure detail.
+Toggle "Measures" to display auto-generated interventions as colour-coded point
+or polygon markers on the map. Clicking a marker opens a summary popup with a
+link to the full measure detail page, including its priority score.
+
+**Save PNG:**
+
+The "Save PNG" button (header, next to "Back to dashboard") downloads the
+current map canvas as a PNG file named `<workspace>-map-<date>.png`. The
+download captures whatever layers and zoom level are currently visible, making
+it easy to produce screenshots for city council slides or social-media posts.
+
+**Saved views:**
+
+The "Saved views" panel at the bottom of the sidebar saves and restores named
+map states — zoom level, centre, and the full layer-visibility snapshot — to
+`localStorage`. No login required. Useful for bookmarking the cycling-gap view,
+a specific district, or any custom layer combination before sharing the URL or
+exporting a screenshot.
 
 ---
 
