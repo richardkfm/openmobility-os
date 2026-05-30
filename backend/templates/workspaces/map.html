@@ -62,7 +62,7 @@
 
         {# View mode toggle #}
         <p class="text-xs text-slate-500 mb-1.5 font-medium uppercase tracking-wide">{% trans "View" %}</p>
-        <div class="flex rounded overflow-hidden border text-xs mb-4">
+        <div class="flex rounded overflow-hidden border text-xs mb-2">
           <button
             @click="setViewMode('circles')"
             :class="viewMode === 'circles' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'"
@@ -75,7 +75,34 @@
             class="flex-1 px-2 py-1.5 border-l transition-colors">
             {% trans "Heatmap" %}
           </button>
+          {% if has_streets %}
+          <button
+            @click="setViewMode('density')"
+            :class="viewMode === 'density' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'"
+            class="flex-1 px-2 py-1.5 border-l transition-colors">
+            {% trans "Density lines" %}
+          </button>
+          {% endif %}
         </div>
+
+        {% if not has_streets %}
+        <p class="text-xs text-slate-400 mb-4">
+          {% trans "Tip: sync a streets layer in the Data hub to unlock the “Density lines” view, which colours streets by accident density." %}
+        </p>
+        {% else %}
+        {# Density legend + status — only meaningful in density mode #}
+        <div x-show="viewMode === 'density'" class="mb-4 text-xs">
+          <div class="h-2 rounded mb-1" style="background:linear-gradient(90deg,#2563eb,#16a34a,#eab308,#f97316,#dc2626)"></div>
+          <div class="flex justify-between text-slate-500">
+            <span>{% trans "Low" %}</span>
+            <span>{% trans "High" %}</span>
+          </div>
+          <p class="text-slate-400 mt-1">{% trans "Score = fatal×3 + serious×2 + minor×1 per street." %}</p>
+          <p x-show="densityEmpty" class="text-amber-600 mt-1">
+            {% trans "No accident segments for the current filters — widen the years/modes or import more accident data." %}
+          </p>
+        </div>
+        {% endif %}
 
         {# Severity filters #}
         <p class="text-xs text-slate-500 mb-2 font-medium uppercase tracking-wide">{% trans "Severity" %}</p>
@@ -123,7 +150,7 @@
             {% trans "Trucks" %}
           </label>
         </div>
-        <p x-show="viewMode === 'heatmap'" class="text-xs text-slate-400 mt-1">{% trans "Mode filter applies in circles view." %}</p>
+        <p x-show="viewMode === 'heatmap'" class="text-xs text-slate-400 mt-1">{% trans "Mode filter applies in circles and density views." %}</p>
 
         <button @click="resetFilter()" class="mt-3 w-full text-xs text-slate-500 hover:text-slate-800 underline text-left">
           {% trans "Reset filters" %}
@@ -319,6 +346,60 @@ function addGeoJsonLayer(id, url, color) {
             .addTo(map);
         });
 
+        // Density-lines layer — streets coloured by severity-weighted accident
+        // score. Data is fetched on demand from the accident-density endpoint
+        // (the aggregation depends on the active filters), so it starts empty.
+        if (!map.getSource("accidents-density")) {
+          map.addSource("accidents-density", {
+            type: "geojson",
+            data: { type: "FeatureCollection", features: [] },
+          });
+        }
+        map.addLayer({
+          id: "accidents-density-line",
+          type: "line",
+          source: "accidents-density",
+          layout: { visibility: "none", "line-cap": "round", "line-join": "round" },
+          paint: {
+            "line-width": ["interpolate", ["linear"], ["zoom"], 10, 3, 16, 9],
+            "line-opacity": 0.9,
+            "line-color": [
+              "interpolate", ["linear"], ["get", "severity_score"],
+              1,  "#2563eb",
+              3,  "#16a34a",
+              6,  "#eab308",
+              10, "#f97316",
+              18, "#dc2626"
+            ],
+          },
+        });
+
+        // Popup on density line click — exposes the inputs and the formula so
+        // the colour is never a black box (transparency principle).
+        map.on("click", "accidents-density-line", (e) => {
+          const p = e.features[0].properties;
+          const byMode = (() => {
+            try { return JSON.parse(p.by_mode || "{}"); } catch (_) { return {}; }
+          })();
+          const modeRows = Object.entries(byMode)
+            .map(([k, v]) => `${escHtml(k)}: ${escHtml(v)}`).join(", ");
+          new maplibregl.Popup()
+            .setLngLat(e.lngLat)
+            .setHTML(
+              `<div class="text-xs grid gap-0.5">` +
+              `<div class="font-semibold">${escHtml(p.street_name || "{% trans "Unnamed street" %}")}</div>` +
+              `<div>{% trans "Accidents" %}: ${escHtml(p.accident_count)}</div>` +
+              `<div>{% trans "Score" %}: ${escHtml(p.severity_score)} ` +
+              `(${escHtml(p.fatal)}×3 / ${escHtml(p.serious)}×2 / ${escHtml(p.minor)}×1)</div>` +
+              (modeRows ? `<div class="text-slate-600">${modeRows}</div>` : "") +
+              `<div class="text-slate-400">{% trans "Snapped within" %} ${escHtml(p.snap_radius_m)} m</div>` +
+              `</div>`
+            )
+            .addTo(map);
+        });
+        map.on("mouseenter", "accidents-density-line", () => { map.getCanvas().style.cursor = "pointer"; });
+        map.on("mouseleave", "accidents-density-line", () => { map.getCanvas().style.cursor = ""; });
+
       } else {
         if (types.has("LineString") || types.has("MultiLineString")) {
           // streets_with_speed is colored by the maxspeed value so it reads
@@ -382,10 +463,13 @@ const accidentsState = { enabled: false, mode: "circles" };
 
 function syncAccidentLayers() {
   if (!map.getLayer("accidents-circle") || !map.getLayer("accidents-heat")) return;
-  const circleVis = accidentsState.enabled && accidentsState.mode === "circles" ? "visible" : "none";
-  const heatVis = accidentsState.enabled && accidentsState.mode === "heatmap" ? "visible" : "none";
-  map.setLayoutProperty("accidents-circle", "visibility", circleVis);
-  map.setLayoutProperty("accidents-heat", "visibility", heatVis);
+  const on = accidentsState.enabled;
+  const mode = accidentsState.mode;
+  map.setLayoutProperty("accidents-circle", "visibility", on && mode === "circles" ? "visible" : "none");
+  map.setLayoutProperty("accidents-heat", "visibility", on && mode === "heatmap" ? "visible" : "none");
+  if (map.getLayer("accidents-density-line")) {
+    map.setLayoutProperty("accidents-density-line", "visibility", on && mode === "density" ? "visible" : "none");
+  }
 }
 
 map.on("load", () => {
@@ -437,6 +521,8 @@ function accidentFilter() {
     modes: { cyclist: false, pedestrian: false, car: false, truck: false },
     availableYears: [],   // discovered from loaded accident features (desc)
     years: [],            // currently selected years; defaults to most recent only
+    densityEmpty: false,  // true when the density fetch returns no segments
+    _densityTimer: null,  // debounce handle for density re-fetches
 
     init() {
       // Apply once the source data is in (deferred via 'idle').
@@ -466,10 +552,51 @@ function accidentFilter() {
       this.viewMode = mode;
       accidentsState.mode = mode;
       syncAccidentLayers();
-      this.applyFilter();
+      if (mode === "density") {
+        this.fetchDensity();
+      } else {
+        this.applyFilter();
+      }
+    },
+
+    // Density mode aggregates accidents onto streets server-side, so it must
+    // re-fetch whenever the filters change (unlike circles/heatmap, which just
+    // setFilter the already-loaded points). Debounced to avoid spamming the
+    // endpoint while the user toggles several checkboxes.
+    fetchDensity() {
+      if (this._densityTimer) clearTimeout(this._densityTimer);
+      this._densityTimer = setTimeout(() => this._doFetchDensity(), 250);
+    },
+
+    _doFetchDensity() {
+      const src = map.getSource("accidents-density");
+      if (!src) return;
+      const params = new URLSearchParams();
+      const sev = Object.entries(this.severity).filter(([, on]) => on).map(([k]) => k);
+      if (sev.length) params.set("severity", sev.join(","));
+      if (this.availableYears.length > 0 && this.years.length) {
+        params.set("years", this.years.join(","));
+      }
+      const activeModes = Object.entries(this.modes).filter(([, on]) => on).map(([k]) => k);
+      if (activeModes.length) params.set("modes", activeModes.join(","));
+
+      const url = `/api/v1/workspaces/${WORKSPACE_SLUG}/accident-density/?${params.toString()}`;
+      fetch(url)
+        .then(r => r.json())
+        .then(fc => {
+          src.setData(fc);
+          this.densityEmpty = !(fc.features && fc.features.length);
+        })
+        .catch(() => { this.densityEmpty = true; });
     },
 
     applyFilter() {
+      // Density mode re-aggregates server-side rather than client-side setFilter.
+      if (this.viewMode === "density") {
+        this.fetchDensity();
+        return;
+      }
+
       const activeSeverities = Object.entries(this.severity)
         .filter(([, on]) => on)
         .map(([k]) => k);

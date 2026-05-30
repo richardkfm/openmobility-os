@@ -1,4 +1,5 @@
 from .bike_infrastructure import rule_missing_protected_bike_lane
+from .cycling_gap import rule_cycling_infrastructure_gap
 from .electrification import rule_ev_charging_gap
 from .equity import rule_population_equity_gap
 from .safety import rule_accident_cluster
@@ -15,6 +16,7 @@ RULES = [
     rule_transit_frequency,
     rule_transit_accessibility,
     rule_accident_cluster,
+    rule_cycling_infrastructure_gap,
     rule_unsafe_school_route,
     rule_ev_charging_gap,
     rule_population_equity_gap,

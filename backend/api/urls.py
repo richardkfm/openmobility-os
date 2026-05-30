@@ -2,7 +2,11 @@
 
 from django.urls import path
 
-from maps.views import workspace_layer, workspace_measures_geojson
+from maps.views import (
+    accident_density_view,
+    workspace_layer,
+    workspace_measures_geojson,
+)
 
 from . import views
 
@@ -19,6 +23,11 @@ urlpatterns = [
         "workspaces/<slug:workspace_slug>/features/<str:layer_kind>/",
         workspace_layer,
         name="api_workspace_layer",
+    ),
+    path(
+        "workspaces/<slug:workspace_slug>/accident-density/",
+        accident_density_view,
+        name="api_accident_density",
     ),
     path(
         "workspaces/<slug:workspace_slug>/measures.geojson",

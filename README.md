@@ -284,6 +284,27 @@ Toggle individual data layers on and off. Available layer kinds include:
 Each layer is fetched as GeoJSON from `/api/v1/workspaces/<slug>/features/<layer_kind>/`
 and cached for 30 seconds on the server.
 
+**Accident view modes:**
+
+When the Accidents layer is enabled, the filter panel offers three ways to read
+the same data:
+
+- **Circles** — one dot per accident, colour-coded by severity.
+- **Heatmap** — a severity-weighted density surface for a quick overview.
+- **Density lines** — streets coloured blue→red by a severity-weighted accident
+  score (fatal×3 + serious×2 + minor×1), in the style of the German Unfallatlas.
+  Instead of thousands of overlapping dots, whole streets light up by how
+  dangerous they are. This view requires a synced streets layer; if none is
+  present, the toggle is hidden and the panel explains how to add one.
+
+The year, severity, and **involved-mode** filters drive the density aggregation,
+so you can filter to *cyclist* accidents, see which streets glow red, then toggle
+the **Bike network** layer on top to spot corridors with high cyclist-accident
+counts and no protected infrastructure. The density lines are recomputed
+server-side per filter combination via
+`/api/v1/workspaces/<slug>/accident-density/` (cached for 5 minutes); click any
+line to see its accident count, score breakdown, and per-mode totals.
+
 **Measures overlay:**
 
 Toggle "Show measures" to display auto-generated interventions as point or
@@ -449,6 +470,15 @@ docker compose exec web python manage.py sync_datasources your-city-slug
 docker compose exec web python manage.py sync_datasources
 ```
 
+> **Getting to a usable map.** `seed_demo` auto-syncs the manual demo data plus
+> the OSM Overpass **streets**, **streets with speed limits**, and **bike
+> network** sources, because the accident **Density lines** view and the cycling
+> infrastructure gap analysis need a street network to snap onto. Run
+> `seed_demo --no-network` to skip the Overpass calls for a fully offline boot
+> (the Density lines toggle then stays hidden until you sync a streets layer).
+> For a full demo of the cyclist-gap workflow, also import accident data
+> (`seed_unfallatlas`) and generate measures (`generate_measures`).
+
 ---
 
 ### Browsing catalogs from the UI
@@ -584,6 +614,9 @@ the workspace dashboard (admin only). The rule engine:
    - *Transit coverage gap* — areas more than a set distance from any transit
      stop
    - *Accident cluster* — spatial hotspots with elevated accident frequency
+   - *Cycling infrastructure gaps* — streets that carry many cyclist accidents
+     yet have no bike infrastructure nearby (the gap geometry is drawn on the
+     map's Measures layer)
    - *Unsafe school route* — schools lacking a safe pedestrian/cycle approach
 3. Creates or updates `Measure` records, each with a full set of nine
    `MeasureScore` entries and the raw evidence used to calculate them.
