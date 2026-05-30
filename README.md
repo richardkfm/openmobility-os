@@ -147,6 +147,9 @@ four demo workspaces: **Leipzig**, **Utrecht**, **Musterstadt**, and **Muster-La
 
 - **Multi-workspace** — arbitrary number of cities per installation
 - **Interactive maps** — MapLibre GL JS with configurable tile sources
+- **Light & dark mode** — a header toggle switches the whole UI (and the map
+  basemap) between light and dark; the choice is remembered and defaults to the
+  visitor's OS preference
 - **Data hub** — browser-based connector management:
   - Add, edit, sync, enable/disable, and delete data sources from the UI
   - Upload local CSV or GeoJSON files directly (no remote URL required)
@@ -740,6 +743,16 @@ with a downloaded OpenMapTiles extract and set:
 ```
 MAP_TILE_URL=http://tileserver:8080/styles/osm-bright/{z}/{x}/{y}.png
 MAP_TILE_ATTRIBUTION=© OpenMapTiles © OpenStreetMap contributors
+```
+
+The **dark-mode basemap** is configured the same way via `MAP_TILE_URL_DARK`
+and `MAP_TILE_ATTRIBUTION_DARK`. It defaults to CARTO's free, keyless OSM dark
+tiles; point it at your own dark style (e.g. a tileserver-gl dark style) for a
+fully self-hosted setup:
+
+```
+MAP_TILE_URL_DARK=http://tileserver:8080/styles/dark-matter/{z}/{x}/{y}.png
+MAP_TILE_ATTRIBUTION_DARK=© OpenMapTiles © OpenStreetMap contributors
 ```
 
 ### 5. Use a custom Overpass endpoint (optional)

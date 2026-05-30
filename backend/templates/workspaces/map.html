@@ -356,6 +356,15 @@
 const WORKSPACE_SLUG = "{{ workspace.slug }}";
 const MAP_TILE_URL = "{{ map_tile_url }}";
 const MAP_TILE_ATTR = "{{ map_tile_attribution }}";
+const MAP_TILE_URL_DARK = "{{ map_tile_url_dark }}";
+const MAP_TILE_ATTR_DARK = "{{ map_tile_attribution_dark }}";
+// True when the page loads in dark mode (class set synchronously in <head>).
+const MAP_DARK = document.documentElement.classList.contains("dark");
+// Always credit both providers so attribution stays correct after a live
+// theme switch (the basemap can show either source within one session).
+const MAP_ATTR_COMBINED = MAP_TILE_ATTR === MAP_TILE_ATTR_DARK
+  ? MAP_TILE_ATTR
+  : MAP_TILE_ATTR + " · " + MAP_TILE_ATTR_DARK;
 const LAYER_KINDS = {{ layer_kinds|pprint|safe }};
 const CENTER_LON = {% if workspace.center %}{{ workspace.center.x|unlocalize }}{% else %}0{% endif %};
 const CENTER_LAT = {% if workspace.center %}{{ workspace.center.y|unlocalize }}{% else %}0{% endif %};
@@ -419,9 +428,9 @@ const map = new maplibregl.Map({
     sources: {
       osm: {
         type: "raster",
-        tiles: [MAP_TILE_URL],
+        tiles: [MAP_DARK ? MAP_TILE_URL_DARK : MAP_TILE_URL],
         tileSize: 256,
-        attribution: MAP_TILE_ATTR,
+        attribution: MAP_ATTR_COMBINED,
       },
     },
     layers: [{ id: "osm-tiles", type: "raster", source: "osm" }],
@@ -433,6 +442,16 @@ const map = new maplibregl.Map({
 
 map.addControl(new maplibregl.NavigationControl(), "top-right");
 map.addControl(new maplibregl.ScaleControl({ unit: "metric" }), "bottom-left");
+
+// Re-theme the basemap when the header toggle flips dark mode. We only swap
+// the raster tile URL on the existing source, so all overlay data layers and
+// view state are preserved (no style rebuild, no reload).
+window.addEventListener("omos:themechange", function (e) {
+  const src = map.getSource("osm");
+  if (src && src.setTiles) {
+    src.setTiles([e.detail.dark ? MAP_TILE_URL_DARK : MAP_TILE_URL]);
+  }
+});
 
 // Keep the map sized to the viewport on window resize.
 window.addEventListener("resize", function () {
