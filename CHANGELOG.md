@@ -28,6 +28,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   of empty placeholders.
 
 ### Added
+- **"Density lines" accident map view** — a third way to read accident data,
+  next to Circles and Heatmap. Streets are coloured blue→red by a
+  severity-weighted accident score (fatal×3 + serious×2 + minor×1), in the
+  style of the German Unfallatlas, so dangerous corridors stand out instead of
+  drowning in overlapping dots. The year, severity, and involved-mode filters
+  drive the aggregation: filter to cyclist accidents, see which streets glow
+  red, then toggle the Bike network layer to find infrastructure gaps. Requires
+  a synced streets layer; the panel explains how to add one when it's missing.
+  Served by the new `/api/v1/workspaces/<slug>/accident-density/` endpoint.
+- **Cycling infrastructure gap analysis** — a new measure rule flags streets
+  that carry many cyclist accidents yet have no bike infrastructure nearby, and
+  draws the affected streets on the map's Measures layer with a transparent
+  score breakdown.
+- **`seed_demo` now loads enough data to use these features out of the box** —
+  it auto-syncs the demo street and bike-network layers (use `--no-network` to
+  skip for an offline boot).
 - **Unfallatlas catalog ships a one-click default release** — the
   catalog browser now offers the MobilityData Foundation combined mirror
   (all years, a stable URL that doesn't rotate like the Destatis

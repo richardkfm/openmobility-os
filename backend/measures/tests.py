@@ -239,3 +239,88 @@ class PopulationEquityGapRuleTests(TestCase):
         cells = [_grid_cell(100, 50, 50) for _ in range(5)]
         fs = _FakeFS("population_grid", {"features": cells})
         self.assertEqual(rule_population_equity_gap(_FakeWorkspace(), [fs]), [])
+
+
+# --------------------------------------------------------------------------- #
+# Cycling-gap rule
+# --------------------------------------------------------------------------- #
+from dataclasses import dataclass as _dataclass  # noqa: E402
+
+from measures.rules.cycling_gap import rule_cycling_infrastructure_gap  # noqa: E402
+
+
+@_dataclass
+class _FakeCenter:
+    x: float = 0.0
+    y: float = 0.0
+
+
+@_dataclass
+class _GeoWorkspace:
+    name: str = "Demo"
+    center: _FakeCenter = None
+
+    def __post_init__(self):
+        if self.center is None:
+            self.center = _FakeCenter()
+
+
+def _acc(lon, lat, *, severity="serious", modes=("cyclist",)):
+    return {
+        "type": "Feature",
+        "geometry": {"type": "Point", "coordinates": [lon, lat]},
+        "properties": {"severity": severity, "year": 2023, "involved_modes": list(modes)},
+    }
+
+
+def _line(name, coords):
+    return {
+        "type": "Feature",
+        "geometry": {"type": "LineString", "coordinates": coords},
+        "properties": {"name": name},
+    }
+
+
+_GAP_STREET = _line("Risk Road", [[0.0, 0.0], [0.02, 0.0]])
+
+
+class CyclingInfrastructureGapRuleTests(TestCase):
+    def _cyclist_accidents(self):
+        return [
+            _acc(0.004, 0.00001, severity="serious"),
+            _acc(0.008, 0.00001, severity="serious"),
+        ]
+
+    def test_flags_gap_and_carries_multilinestring(self):
+        accidents_fs = _FakeFS("accidents", {"features": self._cyclist_accidents()})
+        streets_fs = _FakeFS("streets_with_speed", {"features": [_GAP_STREET]})
+        bike_fs = _FakeFS("bike_network", {"features": []})
+        ws = _GeoWorkspace()
+        candidates = rule_cycling_infrastructure_gap(
+            ws, [accidents_fs, streets_fs, bike_fs]
+        )
+        self.assertEqual(len(candidates), 1)
+        c = candidates[0]
+        self.assertEqual(c.slug, "cycling-accident-infrastructure-gaps")
+        self.assertEqual(c.category, "bike_infra")
+        self.assertEqual(c.evidence["gap_street_count"], 1)
+        self.assertIsNotNone(c.geometry)
+        self.assertEqual(c.geometry.geom_type, "MultiLineString")
+
+    def test_skips_when_bike_infra_nearby(self):
+        accidents_fs = _FakeFS("accidents", {"features": self._cyclist_accidents()})
+        streets_fs = _FakeFS("streets_with_speed", {"features": [_GAP_STREET]})
+        bike_fs = _FakeFS(
+            "bike_network",
+            {"features": [_line("cycleway", [[0.0, 0.00002], [0.02, 0.00002]])]},
+        )
+        candidates = rule_cycling_infrastructure_gap(
+            _GeoWorkspace(), [accidents_fs, streets_fs, bike_fs]
+        )
+        self.assertEqual(candidates, [])
+
+    def test_skips_without_streets(self):
+        accidents_fs = _FakeFS("accidents", {"features": self._cyclist_accidents()})
+        self.assertEqual(
+            rule_cycling_infrastructure_gap(_GeoWorkspace(), [accidents_fs]), []
+        )

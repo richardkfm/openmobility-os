@@ -55,6 +55,10 @@ def workspace_map(request, workspace_slug: str):
         for v in sorted(kind_values)
     ]
 
+    # The "Density lines" accident view snaps points onto a street network, so
+    # it is only offered when the workspace has actually synced one.
+    has_streets = any(k in kind_values for k in ("streets_with_speed", "streets"))
+
     response = render(
         request,
         "workspaces/map.html",
@@ -62,6 +66,7 @@ def workspace_map(request, workspace_slug: str):
             "workspace": ws,
             "layers": layers,
             "layer_kinds": kind_values,
+            "has_streets": has_streets,
             "page_title": _("Map — %(name)s") % {"name": ws.name},
         },
     )

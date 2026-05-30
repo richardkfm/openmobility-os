@@ -28,6 +28,14 @@ class Command(BaseCommand):
             default="",
             help="Comma-separated list of workspace slugs to seed (default: all)",
         )
+        parser.add_argument(
+            "--no-network",
+            action="store_true",
+            help=(
+                "Skip syncing network-backed (OSM Overpass) sources. Use for "
+                "fully offline seeding; manual demo data is still loaded."
+            ),
+        )
 
     def handle(self, *args, **options):
         config_dir: Path = settings.REPO_ROOT / "config" / "workspaces"
@@ -42,9 +50,9 @@ class Command(BaseCommand):
             slug = data["slug"]
             if only and slug not in only:
                 continue
-            self._seed_workspace(data)
+            self._seed_workspace(data, options)
 
-    def _seed_workspace(self, data: dict):
+    def _seed_workspace(self, data: dict, options: dict):
         slug = data["slug"]
         self.stdout.write(f"→ Seeding workspace: {slug}")
 
@@ -115,6 +123,23 @@ class Command(BaseCommand):
             # Auto-sync offline (manual) sources so their data is immediately
             # available on the map without a manual sync step.
             if source.source_type == DataSource.SourceType.MANUAL:
+                success, msg = _run_sync(source)
+                style = self.style.SUCCESS if success else self.style.WARNING
+                self.stdout.write(style(f"     sync {source.name}: {msg}"))
+            # Also sync the live street/bike network sources the "Density lines"
+            # accident view and cycling-gap analysis depend on, so the feature is
+            # usable straight after seeding. These hit the network (Overpass), so
+            # a failure only warns — the rest of the demo still seeds fine.
+            elif (
+                not options.get("no_network")
+                and source.source_type == DataSource.SourceType.OSM_OVERPASS
+                and source.layer_kind
+                in (
+                    DataSource.LayerKind.STREETS,
+                    DataSource.LayerKind.STREETS_WITH_SPEED,
+                    DataSource.LayerKind.BIKE_NETWORK,
+                )
+            ):
                 success, msg = _run_sync(source)
                 style = self.style.SUCCESS if success else self.style.WARNING
                 self.stdout.write(style(f"     sync {source.name}: {msg}"))
