@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Dedicated bike-infrastructure layer** — a new, stricter cycling data source
+  (`OSM — Dedizierte Radinfrastruktur`) that returns *only* dedicated cycling
+  infrastructure: separated cycleways/tracks, bicycle roads, and on-street
+  painted bike lanes. Unlike the existing "Radnetz" layer it excludes ordinary
+  roads tagged `cycleway=no`/`shared_lane` or where cycling is merely permitted,
+  so it shows where safe bike infrastructure actually exists. On the map each
+  feature is coloured by quality — **protected** (separated paths/tracks, teal)
+  vs **painted lane** (on-street, amber) — with a legend explaining the
+  difference. The cycling-gap analysis now prefers this layer, so streets with
+  only sharrows (or nothing) correctly count as gaps.
+
 ### Changed
 - **Unfallatlas moved out of the catalog browser** — it's a single
   nationwide dataset clipped to your workspace, not a searchable library,

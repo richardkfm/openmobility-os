@@ -275,7 +275,7 @@ Toggle individual data layers on and off. Available layer kinds include:
 
 | Category | Layers |
 |---|---|
-| Infrastructure | Streets, streets with speed limits, bike network, parking |
+| Infrastructure | Streets, streets with speed limits, bike network, dedicated bike lanes / paths, parking |
 | Public transit | Transit stops (with headway / night / barrier-free enrichment), transit routes, transit coverage (300–500 m buffers) |
 | Safety | Accidents |
 | Community | Schools, districts |
@@ -299,8 +299,13 @@ the same data:
 
 The year, severity, and **involved-mode** filters drive the density aggregation,
 so you can filter to *cyclist* accidents, see which streets glow red, then toggle
-the **Bike network** layer on top to spot corridors with high cyclist-accident
-counts and no protected infrastructure. The density lines are recomputed
+the **Dedicated bike lanes / paths** layer on top to spot corridors with high
+cyclist-accident counts and no real cycling infrastructure. That layer renders
+each segment by quality — *protected* (separated paths/tracks) vs *painted lane*
+(on-street) — so you see not just whether infrastructure exists but whether it's
+safe. (The looser **Bike network** layer also exists, but it includes roads
+where cycling is merely permitted, so it hides gaps rather than revealing them.)
+The density lines are recomputed
 server-side per filter combination via
 `/api/v1/workspaces/<slug>/accident-density/` (cached for 5 minutes); click any
 line to see its accident count, score breakdown, and per-mode totals.
@@ -417,7 +422,7 @@ badge derived from the source's status, record count, and last-sync time.
    |---|---|
    | **CSV** | URL or upload a local file; delimiter, encoding, lat/lon column names |
    | **GeoJSON URL** | URL to any GeoJSON FeatureCollection; optional property remapping |
-   | **OSM Overpass** | Pick a built-in template (streets, bike network, transit stops, schools, parking, trees, districts, …) or write a custom QL query; workspace bbox injected automatically |
+   | **OSM Overpass** | Pick a built-in template (streets, bike network, dedicated bike network, transit stops, schools, parking, trees, districts, …) or write a custom QL query; workspace bbox injected automatically |
    | **GTFS static** | URL to a GTFS zip; pick output layer (`transit_stops`, `transit_routes`, `transit_coverage`) |
    | **Unfallatlas (Destatis)** | URL to the Destatis CSV *or* upload the file directly — see [Adding Unfallatlas accident data](#adding-unfallatlas-accident-data) |
    | **Mobilithek (German NAP)** | `distribution_url`, `format_hint` (`gtfs`/`geojson`/`csv`/`json`), `mode` (`open`/`subscriber`) — see [Mobilithek catalog browser](#mobilithek-catalog-browser) |

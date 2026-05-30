@@ -28,7 +28,12 @@ def rule_cycling_infrastructure_gap(workspace, feature_sets):
     streets_fs = select_by_layer(feature_sets, "streets_with_speed") or select_by_layer(
         feature_sets, "streets"
     )
-    bike_fs = select_by_layer(feature_sets, "bike_network")
+    # Prefer the strict "dedicated bike infrastructure" layer when present, so
+    # streets with only sharrows or no real lane correctly count as gaps; fall
+    # back to the looser bike_network layer otherwise.
+    bike_fs = select_by_layer(feature_sets, "dedicated_bike_network") or select_by_layer(
+        feature_sets, "bike_network"
+    )
 
     if not accidents_fs or not streets_fs:
         return []

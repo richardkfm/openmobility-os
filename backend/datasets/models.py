@@ -32,6 +32,9 @@ class DataSource(models.Model):
         STREETS = "streets", _("Streets")
         STREETS_WITH_SPEED = "streets_with_speed", _("Streets with speed limits")
         BIKE_NETWORK = "bike_network", _("Bike network")
+        DEDICATED_BIKE_NETWORK = "dedicated_bike_network", _(
+            "Dedicated bike lanes / paths"
+        )
         TRANSIT_STOPS = "transit_stops", _("Transit stops")
         TRANSIT_ROUTES = "transit_routes", _("Transit routes")
         TRANSIT_COVERAGE = "transit_coverage", _("Transit coverage (buffer)")

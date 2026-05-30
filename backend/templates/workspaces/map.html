@@ -34,6 +34,19 @@
           {% empty %}
           <p class="text-xs text-slate-400">{% trans "No layers available. Sync data sources first." %}</p>
           {% endfor %}
+          {% if "dedicated_bike_network" in layer_kinds %}
+          {# Legend for the dedicated bike layer — explains the two quality classes #}
+          <div id="dedicated-bike-legend" class="hidden ml-6 -mt-1 mb-1 flex flex-col gap-0.5 text-xs text-slate-500">
+            <span class="flex items-center gap-1.5">
+              <span class="inline-block w-4 h-0.5" style="background:#0d9488"></span>
+              {% trans "Protected (separated path / track)" %}
+            </span>
+            <span class="flex items-center gap-1.5">
+              <span class="inline-block w-4 h-0.5" style="background:#f59e0b"></span>
+              {% trans "Painted lane (on-street)" %}
+            </span>
+          </div>
+          {% endif %}
           <label class="flex items-center gap-2 cursor-pointer mt-2 pt-2 border-t">
             <input type="checkbox" id="toggle-measures">
             <span>{% trans "Measures" %}</span>
@@ -179,6 +192,7 @@ const DEFAULT_ZOOM = {{ workspace.default_zoom|unlocalize }};
 
 const LAYER_COLORS = {
   bike_network: "#22c55e",
+  dedicated_bike_network: "#0d9488",
   transit_stops: "#3b82f6",
   transit_routes: "#1d4ed8",
   transit_coverage: "#60a5fa",
@@ -404,21 +418,38 @@ function addGeoJsonLayer(id, url, color) {
         if (types.has("LineString") || types.has("MultiLineString")) {
           // streets_with_speed is colored by the maxspeed value so it reads
           // as "speed-limit map" rather than "another generic streets layer".
-          const linePaint = id === "streets_with_speed"
-            ? {
-                "line-width": 2.5,
-                "line-opacity": 0.9,
-                "line-color": [
-                  "match",
-                  ["to-string", ["coalesce", ["get", "maxspeed"], "unknown"]],
-                  ["10", "20", "30"], "#16a34a",
-                  ["40", "50"],       "#f97316",
-                  ["60", "70"],       "#dc2626",
-                  ["80", "100", "120"], "#7f1d1d",
-                  /* default */       "#94a3b8",
-                ],
-              }
-            : { "line-color": color, "line-width": 2.5, "line-opacity": 0.85 };
+          let linePaint;
+          if (id === "streets_with_speed") {
+            linePaint = {
+              "line-width": 2.5,
+              "line-opacity": 0.9,
+              "line-color": [
+                "match",
+                ["to-string", ["coalesce", ["get", "maxspeed"], "unknown"]],
+                ["10", "20", "30"], "#16a34a",
+                ["40", "50"],       "#f97316",
+                ["60", "70"],       "#dc2626",
+                ["80", "100", "120"], "#7f1d1d",
+                /* default */       "#94a3b8",
+              ],
+            };
+          } else if (id === "dedicated_bike_network") {
+            // Distinguish physically protected infrastructure (solid teal) from
+            // mere painted lanes (amber), so planners see the quality, not just
+            // presence, of cycling provision.
+            linePaint = {
+              "line-width": 3,
+              "line-opacity": 0.9,
+              "line-color": [
+                "match", ["get", "bike_infra_class"],
+                "protected", "#0d9488",
+                "lane",      "#f59e0b",
+                /* default */ "#0d9488",
+              ],
+            };
+          } else {
+            linePaint = { "line-color": color, "line-width": 2.5, "line-opacity": 0.85 };
+          }
           map.addLayer({ id: id + "-line", type: "line", source: id,
             layout: { visibility: startVis },
             paint: linePaint });
@@ -509,6 +540,10 @@ map.on("load", () => {
       ["-line", "-fill", "-outline", "-circle"].forEach(suffix => {
         if (map.getLayer(kind + suffix)) map.setLayoutProperty(kind + suffix, "visibility", vis);
       });
+      // Show the protected-vs-lane legend only while that layer is on.
+      if (kind === "dedicated_bike_network") {
+        document.getElementById("dedicated-bike-legend")?.classList.toggle("hidden", !e.target.checked);
+      }
     });
   });
 });
