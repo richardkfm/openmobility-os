@@ -59,44 +59,84 @@
   <script src="https://unpkg.com/htmx.org@1.9.12"></script>
   {% block extra_head %}{% endblock %}
 </head>
-<body class="min-h-screen bg-slate-50 text-slate-900 font-sans antialiased">
+<body class="min-h-screen bg-slate-50 text-slate-900 font-sans antialiased overflow-x-hidden">
   <header class="sticky top-0 z-40 border-b border-slate-200/80 bg-white/85 backdrop-blur supports-[backdrop-filter]:bg-white/70 shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
-    <div class="mx-auto max-w-7xl px-4 py-3 flex items-center justify-between gap-6">
-      <a href="{% url 'platform_landing' %}" class="flex items-center gap-2.5 group">
-        <span class="h-8 px-2 rounded-lg bg-brand-600 text-white flex items-center justify-center text-xs font-extrabold tracking-tight shadow-sm group-hover:bg-brand-700 transition-colors">OMOS</span>
-        <span class="font-semibold text-lg tracking-tight text-slate-900">OpenMobility <span class="text-brand-600">OS</span></span>
-      </a>
-      <nav class="flex items-center gap-5 text-sm">
-        <a href="{% url 'platform_landing' %}" class="nav-link text-slate-600 hover:text-slate-950">{% trans "Workspaces" %}</a>
-        <a href="{% url 'methodology' %}" class="nav-link text-slate-600 hover:text-slate-950">{% trans "Methodology" %}</a>
-        <a href="{% url 'about' %}" class="nav-link text-slate-600 hover:text-slate-950">{% trans "About" %}</a>
+    <div x-data="{ open: false }" class="mx-auto max-w-7xl px-4">
+      <div class="flex items-center justify-between gap-4 py-3">
+        <a href="{% url 'platform_landing' %}" class="flex items-center gap-2.5 group shrink-0">
+          <span class="h-8 px-2 rounded-lg bg-brand-600 text-white flex items-center justify-center text-xs font-extrabold tracking-tight shadow-sm group-hover:bg-brand-700 transition-colors">OMOS</span>
+          <span class="font-semibold text-base sm:text-lg tracking-tight text-slate-900 whitespace-nowrap">OpenMobility <span class="text-brand-600">OS</span></span>
+        </a>
+        <div class="flex items-center gap-2 sm:gap-3">
+          {# Desktop nav — collapses into the mobile menu below the md breakpoint. #}
+          <nav class="hidden md:flex items-center gap-5 text-sm">
+            <a href="{% url 'platform_landing' %}" class="nav-link text-slate-600 hover:text-slate-950">{% trans "Workspaces" %}</a>
+            <a href="{% url 'methodology' %}" class="nav-link text-slate-600 hover:text-slate-950">{% trans "Methodology" %}</a>
+            <a href="{% url 'about' %}" class="nav-link text-slate-600 hover:text-slate-950">{% trans "About" %}</a>
+            {% if deployment_mode != 'single-city' and is_admin %}
+              <a href="{% url 'workspace_new' %}" class="rounded-lg bg-brand-600 text-white px-3 py-1.5 font-medium shadow-sm hover:bg-brand-700 transition-colors whitespace-nowrap">{% trans "+ New workspace" %}</a>
+            {% endif %}
+            <form method="post" action="{% url 'set_language' %}" class="flex items-center gap-1">
+              {% csrf_token %}
+              <input type="hidden" name="next" value="{{ request.path }}">
+              <select name="language" onchange="this.form.submit()" class="text-xs border border-slate-300 rounded-lg px-1.5 py-1 bg-white hover:border-slate-400 transition-colors cursor-pointer">
+                {% get_current_language as LANGUAGE_CODE %}
+                {% get_available_languages as LANGUAGES %}
+                {% for lang_code, lang_name in LANGUAGES %}
+                  <option value="{{ lang_code }}" {% if lang_code == LANGUAGE_CODE %}selected{% endif %}>{{ lang_code|upper }}</option>
+                {% endfor %}
+              </select>
+            </form>
+            {% if is_admin %}
+              <a href="{% url 'admin_logout' %}" class="text-xs text-slate-500 hover:text-brand-700 hover:underline whitespace-nowrap">{% trans "Sign out" %}</a>
+            {% else %}
+              <a href="{% url 'admin_login' %}?next={{ request.path }}" class="text-xs text-slate-500 hover:text-brand-700 hover:underline">{% trans "Admin" %}</a>
+            {% endif %}
+          </nav>
+          {# Theme toggle — always visible, on every breakpoint. #}
+          <button type="button" onclick="omosToggleTheme()"
+                  class="theme-toggle inline-flex items-center gap-1.5 rounded-full border border-slate-300 px-2.5 py-1 text-xs font-medium text-slate-600 hover:border-brand-400 hover:text-brand-700 transition-colors shrink-0"
+                  aria-label="{% trans 'Toggle dark mode' %}" title="{% trans 'Toggle dark mode' %}">
+            <svg class="theme-icon-moon h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M17.293 13.293A8 8 0 0 1 6.707 2.707a8.001 8.001 0 1 0 10.586 10.586Z"/></svg>
+            <svg class="theme-icon-sun h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M10 2a1 1 0 0 1 1 1v1a1 1 0 1 1-2 0V3a1 1 0 0 1 1-1Zm0 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm0 2a1 1 0 0 1 1 1v1a1 1 0 1 1-2 0v-1a1 1 0 0 1 1-1ZM3 9a1 1 0 0 0 0 2h1a1 1 0 1 0 0-2H3Zm12 1a1 1 0 0 1 1-1h1a1 1 0 1 1 0 2h-1a1 1 0 0 1-1-1ZM4.222 4.222a1 1 0 0 1 1.414 0l.707.707A1 1 0 0 1 4.93 6.343l-.707-.707a1 1 0 0 1 0-1.414Zm9.193 9.193a1 1 0 0 1 1.414 0l.707.707a1 1 0 0 1-1.414 1.414l-.707-.707a1 1 0 0 1 0-1.414ZM15.778 4.222a1 1 0 0 1 0 1.414l-.707.707a1 1 0 1 1-1.414-1.414l.707-.707a1 1 0 0 1 1.414 0ZM6.343 13.657a1 1 0 0 1 0 1.414l-.707.707a1 1 0 0 1-1.414-1.414l.707-.707a1 1 0 0 1 1.414 0Z"/></svg>
+            <span class="theme-label-dark hidden sm:inline">{% trans "Dark" %}</span>
+            <span class="theme-label-light hidden sm:inline">{% trans "Light" %}</span>
+          </button>
+          {# Hamburger — mobile only. #}
+          <button type="button" @click="open = !open" :aria-expanded="open.toString()"
+                  class="md:hidden inline-flex items-center justify-center rounded-lg border border-slate-300 p-1.5 text-slate-600 hover:border-brand-400 hover:text-brand-700 transition-colors shrink-0"
+                  aria-label="{% trans 'Toggle menu' %}">
+            <svg x-show="!open" class="h-5 w-5" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M3 6h14M3 10h14M3 14h14"/></svg>
+            <svg x-show="open" x-cloak class="h-5 w-5" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15"/></svg>
+          </button>
+        </div>
+      </div>
+      {# Mobile menu panel. #}
+      <nav x-show="open" x-cloak @click.outside="open = false" class="md:hidden border-t border-slate-200 py-3 flex flex-col gap-1 text-sm">
+        <a href="{% url 'platform_landing' %}" class="rounded-lg px-2 py-2 text-slate-700 hover:bg-slate-100">{% trans "Workspaces" %}</a>
+        <a href="{% url 'methodology' %}" class="rounded-lg px-2 py-2 text-slate-700 hover:bg-slate-100">{% trans "Methodology" %}</a>
+        <a href="{% url 'about' %}" class="rounded-lg px-2 py-2 text-slate-700 hover:bg-slate-100">{% trans "About" %}</a>
         {% if deployment_mode != 'single-city' and is_admin %}
-          <a href="{% url 'workspace_new' %}" class="rounded-lg bg-brand-600 text-white px-3 py-1.5 font-medium shadow-sm hover:bg-brand-700 transition-colors">{% trans "+ New workspace" %}</a>
+          <a href="{% url 'workspace_new' %}" class="rounded-lg bg-brand-600 text-white px-3 py-2 font-medium text-center shadow-sm hover:bg-brand-700 transition-colors mt-1">{% trans "+ New workspace" %}</a>
         {% endif %}
-        <button type="button" onclick="omosToggleTheme()"
-                class="theme-toggle inline-flex items-center gap-1.5 rounded-full border border-slate-300 px-2.5 py-1 text-xs font-medium text-slate-600 hover:border-brand-400 hover:text-brand-700 transition-colors"
-                aria-label="{% trans 'Toggle dark mode' %}" title="{% trans 'Toggle dark mode' %}">
-          <svg class="theme-icon-moon h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M17.293 13.293A8 8 0 0 1 6.707 2.707a8.001 8.001 0 1 0 10.586 10.586Z"/></svg>
-          <svg class="theme-icon-sun h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M10 2a1 1 0 0 1 1 1v1a1 1 0 1 1-2 0V3a1 1 0 0 1 1-1Zm0 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm0 2a1 1 0 0 1 1 1v1a1 1 0 1 1-2 0v-1a1 1 0 0 1 1-1ZM3 9a1 1 0 0 0 0 2h1a1 1 0 1 0 0-2H3Zm12 1a1 1 0 0 1 1-1h1a1 1 0 1 1 0 2h-1a1 1 0 0 1-1-1ZM4.222 4.222a1 1 0 0 1 1.414 0l.707.707A1 1 0 0 1 4.93 6.343l-.707-.707a1 1 0 0 1 0-1.414Zm9.193 9.193a1 1 0 0 1 1.414 0l.707.707a1 1 0 0 1-1.414 1.414l-.707-.707a1 1 0 0 1 0-1.414ZM15.778 4.222a1 1 0 0 1 0 1.414l-.707.707a1 1 0 1 1-1.414-1.414l.707-.707a1 1 0 0 1 1.414 0ZM6.343 13.657a1 1 0 0 1 0 1.414l-.707.707a1 1 0 0 1-1.414-1.414l.707-.707a1 1 0 0 1 1.414 0Z"/></svg>
-          <span class="theme-label-dark">{% trans "Dark" %}</span>
-          <span class="theme-label-light">{% trans "Light" %}</span>
-        </button>
-        <form method="post" action="{% url 'set_language' %}" class="flex items-center gap-1">
-          {% csrf_token %}
-          <input type="hidden" name="next" value="{{ request.path }}">
-          <select name="language" onchange="this.form.submit()" class="text-xs border border-slate-300 rounded-lg px-1.5 py-1 bg-white hover:border-slate-400 transition-colors cursor-pointer">
-            {% get_current_language as LANGUAGE_CODE %}
-            {% get_available_languages as LANGUAGES %}
-            {% for lang_code, lang_name in LANGUAGES %}
-              <option value="{{ lang_code }}" {% if lang_code == LANGUAGE_CODE %}selected{% endif %}>{{ lang_code|upper }}</option>
-            {% endfor %}
-          </select>
-        </form>
-        {% if is_admin %}
-          <a href="{% url 'admin_logout' %}" class="text-xs text-slate-500 hover:text-brand-700 hover:underline">{% trans "Sign out" %}</a>
-        {% else %}
-          <a href="{% url 'admin_login' %}?next={{ request.path }}" class="text-xs text-slate-500 hover:text-brand-700 hover:underline">{% trans "Admin" %}</a>
-        {% endif %}
+        <div class="flex items-center justify-between gap-3 mt-2 pt-2 border-t border-slate-200">
+          <form method="post" action="{% url 'set_language' %}" class="flex items-center gap-1">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.path }}">
+            <select name="language" onchange="this.form.submit()" class="text-xs border border-slate-300 rounded-lg px-1.5 py-1 bg-white hover:border-slate-400 transition-colors cursor-pointer">
+              {% get_current_language as LANGUAGE_CODE %}
+              {% get_available_languages as LANGUAGES %}
+              {% for lang_code, lang_name in LANGUAGES %}
+                <option value="{{ lang_code }}" {% if lang_code == LANGUAGE_CODE %}selected{% endif %}>{{ lang_code|upper }}</option>
+              {% endfor %}
+            </select>
+          </form>
+          {% if is_admin %}
+            <a href="{% url 'admin_logout' %}" class="text-xs text-slate-500 hover:text-brand-700 hover:underline">{% trans "Sign out" %}</a>
+          {% else %}
+            <a href="{% url 'admin_login' %}?next={{ request.path }}" class="text-xs text-slate-500 hover:text-brand-700 hover:underline">{% trans "Admin" %}</a>
+          {% endif %}
+        </div>
       </nav>
     </div>
     {% block subnav %}{% endblock %}

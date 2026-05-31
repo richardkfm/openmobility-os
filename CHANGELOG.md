@@ -76,6 +76,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (Berlin-only) copy and has been removed.
 
 ### Fixed
+- **Responsive header and map on small screens** — the top navigation no
+  longer overflows the viewport on phones and tablets; the menu now collapses
+  behind a hamburger button below the medium breakpoint. This also fixes the
+  interactive map appearing not to load on mobile, which was caused by the
+  over-wide header forcing the page wider than the screen.
 - **`seed_unfallatlas your-city --years 2023` works out of the box** —
   the shipped config now contains real, nationwide per-year URLs instead
   of empty placeholders.
