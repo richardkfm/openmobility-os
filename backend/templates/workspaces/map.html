@@ -443,6 +443,13 @@ const map = new maplibregl.Map({
 map.addControl(new maplibregl.NavigationControl(), "top-right");
 map.addControl(new maplibregl.ScaleControl({ unit: "metric" }), "bottom-left");
 
+// On mobile the surrounding flex layout can finish settling after the map is
+// constructed, leaving the canvas sized to a stale (or zero) width/height —
+// which looks like "the map didn't load". Re-measure once the style is ready
+// and again on the next frame so the canvas always matches its container.
+map.on("load", () => map.resize());
+requestAnimationFrame(() => map.resize());
+
 // Re-theme the basemap when the header toggle flips dark mode. We only swap
 // the raster tile URL on the existing source, so all overlay data layers and
 // view state are preserved (no style rebuild, no reload).
@@ -453,14 +460,16 @@ window.addEventListener("omos:themechange", function (e) {
   }
 });
 
-// Keep the map sized to the viewport on window resize.
-window.addEventListener("resize", function () {
+// Keep the map sized to the viewport on resize and device rotation.
+function resizeMap() {
   const el = document.getElementById("map");
   if (el) {
     el.style.height = Math.max(480, window.innerHeight - 220) + "px";
     map.resize();
   }
-});
+}
+window.addEventListener("resize", resizeMap);
+window.addEventListener("orientationchange", resizeMap);
 
 function layerColor(kind) {
   return LAYER_COLORS[kind] || "#64748b";

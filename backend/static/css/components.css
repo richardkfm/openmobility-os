@@ -2,6 +2,10 @@
    Only add things here that Tailwind utility classes cannot express.
    Keep this file small. */
 
+/* Hide Alpine-controlled elements (e.g. the mobile menu) until Alpine
+   initializes, so they don't flash on first paint. */
+[x-cloak] { display: none !important; }
+
 /* Typographic polish for Inter (with the system-ui fallback). */
 body {
   -webkit-font-smoothing: antialiased;
