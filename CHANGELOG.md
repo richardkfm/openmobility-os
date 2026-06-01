@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **The interface is now fully available in German** — every menu item,
+  button, form label, and descriptive text now has a German translation, so
+  German-language workspaces no longer fall back to the English source strings.
+  Navigation (Workspaces, Methodology, Dashboard, Map, Measures, Data hub, …)
+  and the longer explanatory copy on the landing, about, and methodology pages
+  are all covered.
+
 ### Fixed
 - **README now reflects the current release and connector list** — the version
   badge was stuck at `0.28.1` while the platform had moved on to the `0.31.x`
