@@ -11,8 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Map control headings no longer leak as on-screen text** — the base map and
   legend section comments were written as multi-line template comments (which
   Django does not strip) and showed up as stray text on the map page.
+- **Accident legend now follows the view mode** — in Density (and Heatmap) view
+  the legend showed a red dot even though accidents were drawn as a blue→red
+  density gradient. The legend swatch now matches the active accident view.
 
 ### Changed
+- **Bike network quality classes moved into the legend** — the "protected vs
+  painted lane" colour key for the dedicated bike network now appears in the
+  map legend (when the layer is on) instead of nested inside the Layers menu.
 - **Map legend moved below the map** — the legend is now a borderless strip
   directly under the map (rather than a boxed sidebar card) so it reads as a
   key, not another clickable menu.

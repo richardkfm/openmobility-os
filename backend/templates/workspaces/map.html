@@ -73,19 +73,6 @@
           {% empty %}
           <p class="text-xs text-slate-400">{% trans "No layers available. Sync data sources first." %}</p>
           {% endfor %}
-          {% if "dedicated_bike_network" in layer_kinds %}
-          {# Legend for the dedicated bike layer — explains the two quality classes #}
-          <div id="dedicated-bike-legend" class="hidden ml-6 -mt-1 mb-1 flex flex-col gap-0.5 text-xs text-slate-500">
-            <span class="flex items-center gap-1.5">
-              <span class="inline-block w-4 h-0.5" style="background:#0d9488"></span>
-              {% trans "Protected (separated path / track)" %}
-            </span>
-            <span class="flex items-center gap-1.5">
-              <span class="inline-block w-4 h-0.5" style="background:#f59e0b"></span>
-              {% trans "Painted lane (on-street)" %}
-            </span>
-          </div>
-          {% endif %}
           <label class="flex items-center gap-2 cursor-pointer mt-2 pt-2 border-t">
             <input type="checkbox" id="toggle-measures">
             <span>{% trans "Measures" %}</span>
@@ -383,7 +370,7 @@
                 <template x-if="row.shape === 'line'"><span class="inline-block w-4 h-1 rounded" :style="`background:${row.color}`"></span></template>
                 <template x-if="row.shape === 'area'"><span class="inline-block w-3.5 h-3.5 rounded-sm border" :style="`background:${row.color}55;border-color:${row.color}`"></span></template>
                 <template x-if="row.shape === 'dot'"><span class="inline-block w-2.5 h-2.5 rounded-full" :style="`background:${row.color}`"></span></template>
-                <template x-if="row.shape === 'ramp'"><span class="inline-block w-4 h-2 rounded" style="background:linear-gradient(90deg,#dbeafe,#f97316,#7f1d1d)"></span></template>
+                <template x-if="row.shape === 'ramp'"><span class="inline-block w-4 h-2 rounded" :style="`background:${row.gradient}`"></span></template>
               </span>
               <span class="text-slate-700" x-text="row.label"></span>
             </span>
@@ -1071,16 +1058,13 @@ map.on("load", () => {
       if (kind === "accidents") {
         accidentsState.enabled = e.target.checked;
         syncAccidentLayers();
+        document.dispatchEvent(new CustomEvent("omos:layerschanged"));
         return;
       }
       const vis = e.target.checked ? "visible" : "none";
       ["-line", "-fill", "-outline", "-circle", "-symbol"].forEach(suffix => {
         if (map.getLayer(kind + suffix)) map.setLayoutProperty(kind + suffix, "visibility", vis);
       });
-      // Show the protected-vs-lane legend only while that layer is on.
-      if (kind === "dedicated_bike_network") {
-        document.getElementById("dedicated-bike-legend")?.classList.toggle("hidden", !e.target.checked);
-      }
       document.dispatchEvent(new CustomEvent("omos:layerschanged"));
     });
   });
@@ -1136,6 +1120,8 @@ function accidentFilter() {
       this.viewMode = mode;
       accidentsState.mode = mode;
       syncAccidentLayers();
+      // The legend swatch for accidents depends on the view mode.
+      document.dispatchEvent(new CustomEvent("omos:layerschanged"));
       if (mode === "density") {
         this.fetchDensity();
       } else {
@@ -1264,7 +1250,6 @@ function activateCyclingGap() {
   });
   const bikeCb = document.querySelector('.layer-toggle[data-layer="dedicated_bike_network"]');
   if (bikeCb) bikeCb.checked = true;
-  document.getElementById("dedicated-bike-legend")?.classList.remove("hidden");
 
   // Enable cycling counts if present.
   if (map.getLayer("cycling_counts-circle")) {
@@ -1305,9 +1290,6 @@ function clearGapPreset() {
       s => map.getLayer(kind + s) && map.getLayoutProperty(kind + s, "visibility") === "visible"
     );
     cb.checked = wasOn;
-    if (kind === "dedicated_bike_network") {
-      document.getElementById("dedicated-bike-legend")?.classList.toggle("hidden", !wasOn);
-    }
   });
 
   document.dispatchEvent(new CustomEvent("gap-analysis-cleared"));
@@ -1470,9 +1452,6 @@ function savedViews() {
           s => (v.layerVisibility[kind + s] || "none") === "visible"
         );
         cb.checked = on;
-        if (kind === "dedicated_bike_network") {
-          document.getElementById("dedicated-bike-legend")?.classList.toggle("hidden", !on);
-        }
       });
       // Re-sync measures toggle + filter panel.
       const measuresCb = document.getElementById("toggle-measures");
@@ -1523,11 +1502,31 @@ function basemapSwitcher() {
 function mapLegend() {
   const MEASURES_LABEL = "{% trans "Measures" %}";
   const DISTRICTS_LABEL = "{% trans "District scores" %}";
+  const BIKE_PROTECTED_LABEL = "{% trans "Protected (separated path / track)" %}";
+  const BIKE_LANE_LABEL = "{% trans "Painted lane (on-street)" %}";
+  const ACCIDENT_DENSITY_LABEL = "{% trans "Accident density (by street)" %}";
+  const ACCIDENT_HEATMAP_LABEL = "{% trans "Accident heatmap" %}";
+  // Gradients mirror the actual map paint, so the swatch matches the map.
+  const DISTRICT_GRADIENT = "linear-gradient(90deg,#dbeafe,#f97316,#7f1d1d)";
+  const ACCIDENT_DENSITY_GRADIENT = "linear-gradient(90deg,#2563eb,#16a34a,#eab308,#f97316,#dc2626)";
+  const ACCIDENT_HEATMAP_GRADIENT = "linear-gradient(90deg,rgba(251,191,36,0.7),#f97316,#dc2626,#7f1d1d)";
+
   function shapeFor(s) {
     if (s.geom === "line") return "line";
     if (s.geom === "area") return "area";
     if (s.point === "icon") return "icon";
     return "dot";
+  }
+  // The accidents layer changes look with its view mode (circles / heatmap /
+  // density), so its legend entry has to follow accidentsState, not LAYER_STYLE.
+  function accidentRow() {
+    if (accidentsState.mode === "density") {
+      return { key: "accidents", label: ACCIDENT_DENSITY_LABEL, shape: "ramp", gradient: ACCIDENT_DENSITY_GRADIENT, icon: "" };
+    }
+    if (accidentsState.mode === "heatmap") {
+      return { key: "accidents", label: ACCIDENT_HEATMAP_LABEL, shape: "ramp", gradient: ACCIDENT_HEATMAP_GRADIENT, icon: "" };
+    }
+    return { key: "accidents", label: LAYER_LABELS["accidents"] || "accidents", color: LAYER_STYLE.accidents.color, shape: "dot", icon: "" };
   }
   return {
     rows: [],
@@ -1541,6 +1540,14 @@ function mapLegend() {
       document.querySelectorAll(".layer-toggle").forEach(cb => {
         if (!cb.checked) return;
         const kind = cb.dataset.layer;
+        if (kind === "accidents") { rows.push(accidentRow()); return; }
+        // The dedicated bike layer is split into its two quality classes, which
+        // are the whole point of the layer — surface both, not one teal line.
+        if (kind === "dedicated_bike_network") {
+          rows.push({ key: "bike-protected", label: BIKE_PROTECTED_LABEL, color: "#0d9488", shape: "line", icon: "" });
+          rows.push({ key: "bike-lane", label: BIKE_LANE_LABEL, color: "#f59e0b", shape: "line", icon: "" });
+          return;
+        }
         const s = LAYER_STYLE[kind] || { geom: "point" };
         const shape = shapeFor(s);
         rows.push({
@@ -1554,7 +1561,7 @@ function mapLegend() {
       const mcb = document.getElementById("toggle-measures");
       if (mcb && mcb.checked) rows.push({ key: "_measures", label: MEASURES_LABEL, color: "#6366f1", shape: "dot", icon: "" });
       const dcb = document.getElementById("toggle-district-scores");
-      if (dcb && dcb.checked) rows.push({ key: "_districts", label: DISTRICTS_LABEL, color: "#f97316", shape: "ramp", icon: "" });
+      if (dcb && dcb.checked) rows.push({ key: "_districts", label: DISTRICTS_LABEL, shape: "ramp", gradient: DISTRICT_GRADIENT, icon: "" });
       this.rows = rows;
     },
   };
