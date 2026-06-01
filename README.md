@@ -3,7 +3,7 @@
 
 # OpenMobility OS
 
-**Version:** 0.28.1 (pre-release) — see [CHANGELOG.md](CHANGELOG.md)
+**Version:** 0.31.1 (pre-release) — see [CHANGELOG.md](CHANGELOG.md)
 **License:** See [LICENSE](LICENSE)
 
 > The open, free, self-hostable operating system between open mobility data
@@ -166,12 +166,12 @@ four demo workspaces: **Leipzig**, **Utrecht**, **Musterstadt**, and **Muster-La
 - **Data connectors** (fully implemented):
   - CSV (URL or direct file upload) with column mapping and encoding detection
   - GeoJSON URL with property remapping
-  - OpenStreetMap via Overpass API — thirteen built-in templates
-    (`streets`, `streets_with_speed`, `bike_network`, `transit_stops`,
-    `schools`, `parking`, `trees`, `parks_and_green`, `districts`,
-    `kindergartens`, `hospitals`, `public_buildings`,
-    `pedestrian_crossings`, `ev_chargers_osm`) plus a custom-query
-    escape hatch
+  - OpenStreetMap via Overpass API — fifteen built-in templates
+    (`streets`, `streets_with_speed`, `bike_network`,
+    `dedicated_bike_network`, `transit_stops`, `schools`, `parking`,
+    `trees`, `parks_and_green`, `districts`, `kindergartens`, `hospitals`,
+    `public_buildings`, `pedestrian_crossings`, `ev_chargers_osm`) plus a
+    custom-query escape hatch
   - Static GTFS zip (transit stops, routes, coverage) — enriches stops with
     average headway, night service, and barrier-free status from the schedule
   - Accident CSV — Destatis Unfallatlas (Germany) and generic international,
