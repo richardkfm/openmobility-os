@@ -26,6 +26,20 @@ env = environ.Env(
     # can point it at their own dark tiles with no proprietary lock-in.
     MAP_TILE_URL_DARK=(str, "https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"),
     MAP_TILE_ATTRIBUTION_DARK=(str, "© OpenStreetMap contributors, © CARTO"),
+    # Optional satellite/aerial basemap. Defaults to Esri's keyless World
+    # Imagery service so the satellite view works out of the box, but it is
+    # overridable like any other tile source — self-hosters can point it at
+    # their own WMTS/XYZ aerial layer, and clearing it simply hides the
+    # satellite option (the open OSM light/dark basemaps remain the default).
+    MAP_TILE_URL_SATELLITE=(
+        str,
+        "https://server.arcgisonline.com/ArcGIS/rest/services/"
+        "World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    ),
+    MAP_TILE_ATTRIBUTION_SATELLITE=(
+        str,
+        "Imagery © Esri, Maxar, Earthstar Geographics",
+    ),
     OSM_OVERPASS_API=(str, "https://overpass-api.de/api/interpreter"),
     AUTO_SEED_DEMO=(bool, True),
     PROJECT_REPO_URL=(str, "https://github.com/richardkfm/openmobility-os"),
@@ -60,6 +74,8 @@ MAP_TILE_URL = env("MAP_TILE_URL")
 MAP_TILE_ATTRIBUTION = env("MAP_TILE_ATTRIBUTION")
 MAP_TILE_URL_DARK = env("MAP_TILE_URL_DARK")
 MAP_TILE_ATTRIBUTION_DARK = env("MAP_TILE_ATTRIBUTION_DARK")
+MAP_TILE_URL_SATELLITE = env("MAP_TILE_URL_SATELLITE")
+MAP_TILE_ATTRIBUTION_SATELLITE = env("MAP_TILE_ATTRIBUTION_SATELLITE")
 OSM_OVERPASS_API = env("OSM_OVERPASS_API")
 MOBILITHEK_CATALOG_URL = env(
     "MOBILITHEK_CATALOG_URL",
