@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **README now reflects the current release and connector list** — the version
+  badge was stuck at `0.28.1` while the platform had moved on to the `0.31.x`
+  line, and the OpenStreetMap connector feature list still advertised "thirteen
+  built-in templates" (and omitted the dedicated bike-network template). The
+  README now shows the current version and lists all fifteen Overpass templates,
+  including `dedicated_bike_network`.
+
 ### Added
 - **Bike lanes built after the accident data are now flagged on the map** — on
   the dedicated bike lanes layer, lanes added after the latest accident year are
