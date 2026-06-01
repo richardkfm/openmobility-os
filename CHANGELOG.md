@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **"Suggested by OMOS" labelling for measures** — the Measures page now opens
+  with a short note explaining that measures are transparent, rule-based
+  *suggestions* generated from your synced data, not finished decisions, and
+  that Generate re-runs the engine without fetching anything itself.
+  Automatically generated measures additionally carry a "✨ Suggested by OMOS"
+  badge in both the list and detail views to distinguish them from
+  hand-curated entries.
 - **Dark mode** — a theme toggle pill in the page header switches the whole
   interface between light and dark. The choice is remembered across visits and
   defaults to your operating-system preference on first load. Dark mode also
@@ -76,6 +83,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (Berlin-only) copy and has been removed.
 
 ### Fixed
+- **Generate button no longer 404s** — clicking "↻ Generate" on the Measures
+  page now correctly re-runs the rules engine instead of showing "Not Found".
+  The measure-detail slug route was previously shadowing the
+  `measures/generate/` path.
 - **Responsive header and map on small screens** — the top navigation no
   longer overflows the viewport on phones and tablets; the menu now collapses
   behind a hamburger button below the medium breakpoint. This also fixes the
