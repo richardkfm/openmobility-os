@@ -58,36 +58,6 @@
       </div>
       {% endif %}
 
-      {# Base map switcher — independent of the app dark/light theme. Lets a
-         planner pick a light, dark, or satellite base regardless of the UI
-         theme; the choice is remembered across sessions. #}
-      <div class="rounded-lg border bg-white p-4 text-sm" x-data="basemapSwitcher()" x-init="init()">
-        <p class="font-semibold text-xs uppercase tracking-wide text-slate-500 mb-2.5">{% trans "Base map" %}</p>
-        <div class="flex rounded overflow-hidden border text-xs">
-          <button @click="set('light')"
-                  :class="mode === 'light' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'"
-                  class="flex-1 px-2 py-1.5 transition-colors">
-            {% trans "Light" %}
-          </button>
-          <button @click="set('dark')"
-                  :class="mode === 'dark' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'"
-                  class="flex-1 px-2 py-1.5 border-l transition-colors">
-            {% trans "Dark" %}
-          </button>
-          {% if map_tile_url_satellite %}
-          <button @click="set('satellite')"
-                  :class="mode === 'satellite' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'"
-                  class="flex-1 px-2 py-1.5 border-l transition-colors">
-            {% trans "Satellite" %}
-          </button>
-          {% endif %}
-        </div>
-        <button x-show="mode !== 'auto'" @click="set('auto')"
-                class="mt-2 w-full text-left text-xs text-slate-500 hover:text-slate-800 underline">
-          {% trans "Follow app theme" %}
-        </button>
-      </div>
-
       {# Layer toggles #}
       <div class="rounded-lg border bg-white p-4" x-data="{ open: true }">
         <button @click="open = !open" class="flex items-center justify-between w-full font-semibold text-sm">
@@ -144,38 +114,6 @@
             </div>
           </div>
           {% endif %}
-        </div>
-      </div>
-
-      {# Legend — auto-generated from the active layers so the colour ↔ meaning
-         mapping is always present and correct. Rebuilt on every layer change. #}
-      <div class="rounded-lg border bg-white p-4 text-sm" x-data="mapLegend()" x-init="init()">
-        <p class="font-semibold text-xs uppercase tracking-wide text-slate-500 mb-2.5">{% trans "Legend" %}</p>
-        <div class="flex flex-col gap-1.5">
-          <template x-for="row in rows" :key="row.key">
-            <div class="flex items-center gap-2">
-              {# Swatch shape matches the geometry so the legend reads like the map. #}
-              <span class="shrink-0 w-5 flex items-center justify-center">
-                <template x-if="row.shape === 'icon'">
-                  <span class="w-4 h-4 inline-block" x-html="row.icon"></span>
-                </template>
-                <template x-if="row.shape === 'line'">
-                  <span class="inline-block w-4 h-1 rounded" :style="`background:${row.color}`"></span>
-                </template>
-                <template x-if="row.shape === 'area'">
-                  <span class="inline-block w-3.5 h-3.5 rounded-sm border" :style="`background:${row.color}55;border-color:${row.color}`"></span>
-                </template>
-                <template x-if="row.shape === 'dot'">
-                  <span class="inline-block w-2.5 h-2.5 rounded-full" :style="`background:${row.color}`"></span>
-                </template>
-                <template x-if="row.shape === 'ramp'">
-                  <span class="inline-block w-4 h-2 rounded" style="background:linear-gradient(90deg,#dbeafe,#f97316,#7f1d1d)"></span>
-                </template>
-              </span>
-              <span class="text-slate-700" x-text="row.label"></span>
-            </div>
-          </template>
-          <p x-show="rows.length === 0" class="text-xs text-slate-400">{% trans "Toggle a layer to see its colour here." %}</p>
         </div>
       </div>
 
@@ -406,7 +344,55 @@
 
     </div>
 
-    <div id="map" class="flex-1 rounded-lg border"></div>
+    <div class="flex-1 min-w-0 flex flex-col gap-2">
+
+      {# Map + on-map base-map switcher (a display control, kept off the data sidebar). #}
+      <div class="relative">
+        <div id="map" class="rounded-lg border"></div>
+
+        {# Base map switcher — independent of the app dark/light theme; remembered across sessions. #}
+        <div class="absolute top-3 left-3 z-10 rounded-lg border bg-white/95 backdrop-blur shadow-md p-1 text-xs"
+             x-data="basemapSwitcher()" x-init="init()">
+          <div class="flex rounded overflow-hidden border">
+            <button @click="set('light')"
+                    :class="mode === 'light' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'"
+                    class="px-2.5 py-1 transition-colors">{% trans "Light" %}</button>
+            <button @click="set('dark')"
+                    :class="mode === 'dark' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'"
+                    class="px-2.5 py-1 border-l transition-colors">{% trans "Dark" %}</button>
+            {% if map_tile_url_satellite %}
+            <button @click="set('satellite')"
+                    :class="mode === 'satellite' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'"
+                    class="px-2.5 py-1 border-l transition-colors">{% trans "Satellite" %}</button>
+            {% endif %}
+          </div>
+          <button x-show="mode !== 'auto'" @click="set('auto')"
+                  class="block w-full text-center text-[10px] leading-tight text-slate-500 hover:text-slate-800 mt-0.5">
+            {% trans "Follow app theme" %}
+          </button>
+        </div>
+      </div>
+
+      {# Legend — a borderless strip under the map so it reads as a key, not a clickable menu. #}
+      <div class="px-1 text-xs" x-data="mapLegend()" x-init="init()">
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+          <template x-for="row in rows" :key="row.key">
+            <span class="flex items-center gap-1.5">
+              <span class="shrink-0 w-5 flex items-center justify-center">
+                <template x-if="row.shape === 'icon'"><span class="w-4 h-4 inline-block" x-html="row.icon"></span></template>
+                <template x-if="row.shape === 'line'"><span class="inline-block w-4 h-1 rounded" :style="`background:${row.color}`"></span></template>
+                <template x-if="row.shape === 'area'"><span class="inline-block w-3.5 h-3.5 rounded-sm border" :style="`background:${row.color}55;border-color:${row.color}`"></span></template>
+                <template x-if="row.shape === 'dot'"><span class="inline-block w-2.5 h-2.5 rounded-full" :style="`background:${row.color}`"></span></template>
+                <template x-if="row.shape === 'ramp'"><span class="inline-block w-4 h-2 rounded" style="background:linear-gradient(90deg,#dbeafe,#f97316,#7f1d1d)"></span></template>
+              </span>
+              <span class="text-slate-700" x-text="row.label"></span>
+            </span>
+          </template>
+          <span x-show="rows.length === 0" class="text-slate-400">{% trans "Toggle a layer to see its colour here." %}</span>
+        </div>
+      </div>
+
+    </div>
 
   </div>
 

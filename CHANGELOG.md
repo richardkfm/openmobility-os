@@ -7,19 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Map control headings no longer leak as on-screen text** — the base map and
+  legend section comments were written as multi-line template comments (which
+  Django does not strip) and showed up as stray text on the map page.
+
+### Changed
+- **Map legend moved below the map** — the legend is now a borderless strip
+  directly under the map (rather than a boxed sidebar card) so it reads as a
+  key, not another clickable menu.
+- **Base map switcher moved onto the map** — the Light / Dark / Satellite
+  control now sits at the top of the map itself, keeping the left sidebar to
+  data layers and filters only.
+
 ### Added
-- **Map legend panel** — the map now has an always-on "Legend" panel in the
-  sidebar that lists every active layer with a swatch shaped like how it is
-  drawn (line, area, dot, or glyph), so it is always clear which colour and
-  marker means which layer. It rebuilds automatically as you toggle layers.
+- **Map legend** — the map now has an always-on legend below it that lists
+  every active layer with a swatch shaped like how it is drawn (line, area,
+  dot, or glyph), so it is always clear which colour and marker means which
+  layer. It rebuilds automatically as you toggle layers.
 - **Distinct markers for place-type layers** — point layers that represent
   identifiable places (schools, parking, transit stops, EV chargers, public
   buildings) now render as recognisable glyph icons instead of identical dots,
   so a single building no longer gets lost among the denser dot layers. Dense
   sensor and count layers keep small dots. The categorical layer palette was
   also retuned for clearer contrast on the busy light basemap.
-- **Base map switcher (Light / Dark / Satellite)** — a new "Base map" panel lets
-  you choose the map's base imagery independently of the app's dark/light theme;
+- **Base map switcher (Light / Dark / Satellite)** — an on-map control lets you
+  choose the map's base imagery independently of the app's dark/light theme;
   the choice is remembered. The map follows the app theme until you pick a base
   map explicitly.
 - **Satellite / aerial base map** — an optional satellite view for looking up

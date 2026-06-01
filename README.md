@@ -147,12 +147,12 @@ four demo workspaces: **Leipzig**, **Utrecht**, **Musterstadt**, and **Muster-La
 
 - **Multi-workspace** — arbitrary number of cities per installation
 - **Interactive maps** — MapLibre GL JS with configurable tile sources
-- **Map legend & distinct markers** — an always-on side legend lists every
-  active layer with a swatch shaped like how it is drawn; place-type point
+- **Map legend & distinct markers** — an always-on legend below the map lists
+  every active layer with a swatch shaped like how it is drawn; place-type point
   layers (schools, parking, transit stops, EV chargers, public buildings) use
   recognisable glyph icons instead of identical dots
-- **Base map switcher** — pick a Light, Dark, or Satellite base map from the map
-  panel, independent of the UI theme; the choice is remembered
+- **Base map switcher** — pick a Light, Dark, or Satellite base map from a
+  control on the map, independent of the UI theme; the choice is remembered
 - **Light & dark mode** — a header toggle switches the whole UI between light and
   dark; the choice is remembered and defaults to the visitor's OS preference.
   The map base map follows the theme until you pick one explicitly
@@ -280,10 +280,10 @@ Clicking a workspace takes you to its dashboard at `/<slug>/`. You will see:
 ### Interactive map
 
 The map at `/<slug>/map/` uses MapLibre GL JS with OSM vector tiles (or any
-XYZ tile server you configure via `MAP_TILE_URL`). A **Base map** switcher lets
-you flip between Light, Dark, and Satellite imagery independently of the UI
-theme, and a **Legend** panel always shows which colour and marker means which
-active layer.
+XYZ tile server you configure via `MAP_TILE_URL`). A **Base map** switcher on
+the map lets you flip between Light, Dark, and Satellite imagery independently
+of the UI theme, and a **legend** below the map always shows which colour and
+marker means which active layer.
 
 **Layer panel (left sidebar):**
 
