@@ -2165,6 +2165,30 @@ class DedicatedBikeInfraClassifyTests(TestCase):
         self.assertEqual(self._c(highway="tertiary"), "lane")
 
 
+class DedicatedBikeYearTests(TestCase):
+    """Year extraction from OSM date tags on dedicated bike infrastructure."""
+
+    def _y(self, **tags):
+        from connectors.osm_connector import _extract_bike_year
+
+        return _extract_bike_year(tags)
+
+    def test_year_only_start_date(self):
+        self.assertEqual(self._y(start_date="2024"), 2024)
+
+    def test_full_iso_start_date(self):
+        self.assertEqual(self._y(start_date="2024-05-01"), 2024)
+
+    def test_opening_date_fallback(self):
+        self.assertEqual(self._y(opening_date="2021-09"), 2021)
+
+    def test_no_date_tag_returns_none(self):
+        self.assertIsNone(self._y(highway="cycleway"))
+
+    def test_implausible_year_ignored(self):
+        self.assertIsNone(self._y(start_date="not-a-date"))
+
+
 class DedicatedBikeFetchTests(TestCase):
     """fetch() tags dedicated-bike features with bike_infra_class; others untouched."""
 
@@ -2204,3 +2228,19 @@ class DedicatedBikeFetchTests(TestCase):
                 {"template": "bike_network", "bbox": "0,0,1,1"}, workspace=None
             )
         self.assertNotIn("bike_infra_class", result.feature_collection["features"][0]["properties"])
+
+    def test_dedicated_template_sets_year_when_dated(self):
+        from connectors.osm_connector import OSMOverpassConnector
+
+        elements = [
+            self._way(1, {"highway": "cycleway", "start_date": "2024-06-01"}),
+            self._way(2, {"highway": "secondary", "cycleway": "lane"}),  # undated
+        ]
+        conn = OSMOverpassConnector()
+        with mock.patch.object(conn, "_call_overpass", return_value=self._fake_overpass(elements)):
+            result = conn.fetch(
+                {"template": "dedicated_bike_network", "bbox": "0,0,1,1"}, workspace=None
+            )
+        feats = result.feature_collection["features"]
+        self.assertEqual(feats[0]["properties"]["year"], 2024)
+        self.assertNotIn("year", feats[1]["properties"])

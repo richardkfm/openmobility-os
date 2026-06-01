@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Bike lanes built after the accident data are now flagged on the map** — on
+  the dedicated bike lanes layer, lanes added after the latest accident year are
+  drawn with a white dashed overlay and a "Bike lane added after <year>" legend
+  entry, so you can see at a glance which flagged accident clusters already got
+  new infrastructure. The OSM connector reads `start_date` / `opening_date`
+  tags, and CSV/GeoJSON imports with a `year`, `start_date`, or `opening_date`
+  property are recognised the same way.
+
 ### Fixed
 - **Map control headings no longer leak as on-screen text** — the base map and
   legend section comments were written as multi-line template comments (which
@@ -16,6 +25,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   density gradient. The legend swatch now matches the active accident view.
 
 ### Changed
+- **Accident heatmap no longer turns single accidents into large red blobs** —
+  per-point weight, intensity, and (especially) the low-zoom radius were reduced
+  so an isolated accident stays faint while genuine clusters build to red. This
+  makes hotspots far easier to find, particularly when zoomed out.
 - **Bike network quality classes moved into the legend** — the "protected vs
   painted lane" colour key for the dedicated bike network now appears in the
   map legend (when the layer is on) instead of nested inside the Layers menu.

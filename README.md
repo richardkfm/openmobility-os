@@ -306,7 +306,9 @@ When the Accidents layer is enabled, the filter panel offers three ways to read
 the same data:
 
 - **Circles** — one dot per accident, colour-coded by severity.
-- **Heatmap** — a severity-weighted density surface for a quick overview.
+- **Heatmap** — a severity-weighted density surface for a quick overview. Tuned
+  so isolated accidents stay faint and only genuine clusters build to red, which
+  keeps hotspots legible when zoomed out.
 - **Density lines** — streets coloured blue→red by a severity-weighted accident
   score (fatal×3 + serious×2 + minor×1), in the style of the German Unfallatlas.
   Instead of thousands of overlapping dots, whole streets light up by how
@@ -319,7 +321,11 @@ the **Dedicated bike lanes / paths** layer on top to spot corridors with high
 cyclist-accident counts and no real cycling infrastructure. That layer renders
 each segment by quality — *protected* (separated paths/tracks) vs *painted lane*
 (on-street) — so you see not just whether infrastructure exists but whether it's
-safe. (The looser **Bike network** layer also exists, but it includes roads
+safe. Lanes built *after* the latest accident year (from OSM `start_date` /
+`opening_date` tags, or a `year` / `start_date` / `opening_date` property on
+imported data) are drawn with a white dashed overlay, so a flagged cluster sitting
+under a dashed lane has likely already been addressed. (The looser **Bike network**
+layer also exists, but it includes roads
 where cycling is merely permitted, so it hides gaps rather than revealing them.)
 The density lines are recomputed
 server-side per filter combination via
