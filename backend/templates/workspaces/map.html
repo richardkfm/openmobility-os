@@ -58,6 +58,36 @@
       </div>
       {% endif %}
 
+      {# Base map switcher — independent of the app dark/light theme. Lets a
+         planner pick a light, dark, or satellite base regardless of the UI
+         theme; the choice is remembered across sessions. #}
+      <div class="rounded-lg border bg-white p-4 text-sm" x-data="basemapSwitcher()" x-init="init()">
+        <p class="font-semibold text-xs uppercase tracking-wide text-slate-500 mb-2.5">{% trans "Base map" %}</p>
+        <div class="flex rounded overflow-hidden border text-xs">
+          <button @click="set('light')"
+                  :class="mode === 'light' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'"
+                  class="flex-1 px-2 py-1.5 transition-colors">
+            {% trans "Light" %}
+          </button>
+          <button @click="set('dark')"
+                  :class="mode === 'dark' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'"
+                  class="flex-1 px-2 py-1.5 border-l transition-colors">
+            {% trans "Dark" %}
+          </button>
+          {% if map_tile_url_satellite %}
+          <button @click="set('satellite')"
+                  :class="mode === 'satellite' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'"
+                  class="flex-1 px-2 py-1.5 border-l transition-colors">
+            {% trans "Satellite" %}
+          </button>
+          {% endif %}
+        </div>
+        <button x-show="mode !== 'auto'" @click="set('auto')"
+                class="mt-2 w-full text-left text-xs text-slate-500 hover:text-slate-800 underline">
+          {% trans "Follow app theme" %}
+        </button>
+      </div>
+
       {# Layer toggles #}
       <div class="rounded-lg border bg-white p-4" x-data="{ open: true }">
         <button @click="open = !open" class="flex items-center justify-between w-full font-semibold text-sm">
@@ -114,6 +144,38 @@
             </div>
           </div>
           {% endif %}
+        </div>
+      </div>
+
+      {# Legend — auto-generated from the active layers so the colour ↔ meaning
+         mapping is always present and correct. Rebuilt on every layer change. #}
+      <div class="rounded-lg border bg-white p-4 text-sm" x-data="mapLegend()" x-init="init()">
+        <p class="font-semibold text-xs uppercase tracking-wide text-slate-500 mb-2.5">{% trans "Legend" %}</p>
+        <div class="flex flex-col gap-1.5">
+          <template x-for="row in rows" :key="row.key">
+            <div class="flex items-center gap-2">
+              {# Swatch shape matches the geometry so the legend reads like the map. #}
+              <span class="shrink-0 w-5 flex items-center justify-center">
+                <template x-if="row.shape === 'icon'">
+                  <span class="w-4 h-4 inline-block" x-html="row.icon"></span>
+                </template>
+                <template x-if="row.shape === 'line'">
+                  <span class="inline-block w-4 h-1 rounded" :style="`background:${row.color}`"></span>
+                </template>
+                <template x-if="row.shape === 'area'">
+                  <span class="inline-block w-3.5 h-3.5 rounded-sm border" :style="`background:${row.color}55;border-color:${row.color}`"></span>
+                </template>
+                <template x-if="row.shape === 'dot'">
+                  <span class="inline-block w-2.5 h-2.5 rounded-full" :style="`background:${row.color}`"></span>
+                </template>
+                <template x-if="row.shape === 'ramp'">
+                  <span class="inline-block w-4 h-2 rounded" style="background:linear-gradient(90deg,#dbeafe,#f97316,#7f1d1d)"></span>
+                </template>
+              </span>
+              <span class="text-slate-700" x-text="row.label"></span>
+            </div>
+          </template>
+          <p x-show="rows.length === 0" class="text-xs text-slate-400">{% trans "Toggle a layer to see its colour here." %}</p>
         </div>
       </div>
 
@@ -358,35 +420,62 @@ const MAP_TILE_URL = "{{ map_tile_url }}";
 const MAP_TILE_ATTR = "{{ map_tile_attribution }}";
 const MAP_TILE_URL_DARK = "{{ map_tile_url_dark }}";
 const MAP_TILE_ATTR_DARK = "{{ map_tile_attribution_dark }}";
-// True when the page loads in dark mode (class set synchronously in <head>).
-const MAP_DARK = document.documentElement.classList.contains("dark");
-// Always credit both providers so attribution stays correct after a live
-// theme switch (the basemap can show either source within one session).
-const MAP_ATTR_COMBINED = MAP_TILE_ATTR === MAP_TILE_ATTR_DARK
-  ? MAP_TILE_ATTR
-  : MAP_TILE_ATTR + " · " + MAP_TILE_ATTR_DARK;
+// Optional satellite/aerial basemap — empty string when the self-hoster has
+// cleared MAP_TILE_URL_SATELLITE, in which case the Satellite option is hidden.
+const MAP_TILE_URL_SATELLITE = "{{ map_tile_url_satellite }}";
+const MAP_TILE_ATTR_SATELLITE = "{{ map_tile_attribution_satellite }}";
 const LAYER_KINDS = {{ layer_kinds|pprint|safe }};
+// value → translated label, built from the server-side `layers` context so the
+// legend stays gettext-correct and city-agnostic (no hardcoded copy in JS).
+const LAYER_LABELS = {
+  {% for layer in layers %}"{{ layer.value }}": "{{ layer.label|escapejs }}",
+  {% endfor %}
+};
 const CENTER_LON = {% if workspace.center %}{{ workspace.center.x|unlocalize }}{% else %}0{% endif %};
 const CENTER_LAT = {% if workspace.center %}{{ workspace.center.y|unlocalize }}{% else %}0{% endif %};
 const DEFAULT_ZOOM = {{ workspace.default_zoom|unlocalize }};
 
-const LAYER_COLORS = {
-  bike_network: "#22c55e",
-  dedicated_bike_network: "#0d9488",
-  transit_stops: "#3b82f6",
-  transit_routes: "#1d4ed8",
-  transit_coverage: "#60a5fa",
-  schools: "#f59e0b",
-  parking: "#8b5cf6",
-  streets: "#94a3b8",
-  streets_with_speed: "#f97316",
-  districts: "#64748b",
-  accidents: "#ef4444",
-  trees: "#16a34a",
-  green_areas: "#4ade80",
-  heat_corridors: "#f97316",
-  sealed_surfaces: "#94a3b8",
+// ─── Layer style registry ───────────────────────────────────────────────────
+// Single source of truth for how every layer kind is drawn and described.
+//   color : categorical colour, picked for contrast even on the busy light OSM
+//           basemap and tuned to stay distinguishable for colour-vision
+//           deficiencies (the blues, greens and slates that used to collide are
+//           now separated).
+//   geom  : semantic hint — "line" | "area" | "point".
+//   point : for point layers, "icon" (a recognisable glyph) or "dot" (kept small
+//           for dense sensor/count layers where density, not identity, matters).
+//   icon  : glyph name (see registerMapIcons) for point:"icon" layers.
+// Covers every DataSource.LayerKind; layerColor() / the legend / the renderer
+// all read from here.
+const LAYER_STYLE = {
+  streets:                { color: "#9ca3af", geom: "line" },
+  streets_with_speed:     { color: "#f97316", geom: "line" },
+  bike_network:           { color: "#65a30d", geom: "line" },
+  dedicated_bike_network: { color: "#0d9488", geom: "line" },
+  transit_routes:         { color: "#1d4ed8", geom: "line" },
+  transit_stops:          { color: "#2563eb", geom: "point", point: "icon", icon: "bus" },
+  transit_coverage:       { color: "#60a5fa", geom: "area" },
+  schools:                { color: "#d97706", geom: "point", point: "icon", icon: "school" },
+  parking:                { color: "#7c3aed", geom: "point", point: "icon", icon: "parking" },
+  ev_charging:            { color: "#0891b2", geom: "point", point: "icon", icon: "charger" },
+  public_buildings:       { color: "#b45309", geom: "point", point: "icon", icon: "building" },
+  districts:              { color: "#64748b", geom: "area" },
+  accidents:              { color: "#ef4444", geom: "point", point: "dot" },
+  trees:                  { color: "#15803d", geom: "point", point: "dot" },
+  green_areas:            { color: "#4ade80", geom: "area" },
+  sealed_surfaces:        { color: "#78716c", geom: "area" },
+  heat_corridors:         { color: "#fb7185", geom: "area" },
+  water_bodies:           { color: "#38bdf8", geom: "area" },
+  land_use:               { color: "#a3a3a3", geom: "area" },
+  air_quality:            { color: "#14b8a6", geom: "point", point: "dot" },
+  noise:                  { color: "#db2777", geom: "area" },
+  traffic_counts:         { color: "#dc2626", geom: "point", point: "dot" },
+  cycling_counts:         { color: "#16a34a", geom: "point", point: "dot" },
+  population_grid:        { color: "#8b5cf6", geom: "area" },
+  demographics:           { color: "#a855f7", geom: "area" },
+  custom:                 { color: "#6366f1", geom: "point", point: "dot" },
 };
+const DEFAULT_COLOR = "#64748b";
 
 // Status → color mapping for the Measure Pipeline display mode.
 const MEASURE_STATUS_COLORS = {
@@ -421,16 +510,50 @@ const MEASURE_STATUS_PAINT = [
   }
 })();
 
+// ─── Basemap modes (independent of the app dark/light theme) ─────────────────
+// The header toggle themes the UI chrome; the basemap is chosen separately and
+// persisted, so a planner can read data on a light, dark, or satellite base in
+// either UI theme. Mode "auto" follows the app theme until the user picks one.
+const BASEMAP_KEY = "omos-basemap";
+const SATELLITE_AVAILABLE = !!MAP_TILE_URL_SATELLITE;
+
+function readBasemapMode() {
+  let m = null;
+  try { m = localStorage.getItem(BASEMAP_KEY); } catch (_) {}
+  if (m === "light" || m === "dark" || m === "auto") return m;
+  if (m === "satellite") return SATELLITE_AVAILABLE ? "satellite" : "auto";
+  return "auto";
+}
+
+// Resolve a (possibly "auto") mode to a concrete basemap given the live theme.
+function resolveBasemap(mode) {
+  if (mode === "auto") {
+    return document.documentElement.classList.contains("dark") ? "dark" : "light";
+  }
+  if (mode === "satellite" && !SATELLITE_AVAILABLE) return "light";
+  return mode;
+}
+
+function basemapTiles(resolved) {
+  if (resolved === "satellite") return { tiles: [MAP_TILE_URL_SATELLITE], attr: MAP_TILE_ATTR_SATELLITE };
+  if (resolved === "dark")      return { tiles: [MAP_TILE_URL_DARK], attr: MAP_TILE_ATTR_DARK };
+  return { tiles: [MAP_TILE_URL], attr: MAP_TILE_ATTR };
+}
+
+const _initialBasemap = basemapTiles(resolveBasemap(readBasemapMode()));
+
 const map = new maplibregl.Map({
   container: "map",
+  // We manage the attribution control ourselves so it can be refreshed when the
+  // basemap (and therefore its credit line) changes.
+  attributionControl: false,
   style: {
     version: 8,
     sources: {
       osm: {
         type: "raster",
-        tiles: [MAP_DARK ? MAP_TILE_URL_DARK : MAP_TILE_URL],
+        tiles: _initialBasemap.tiles,
         tileSize: 256,
-        attribution: MAP_ATTR_COMBINED,
       },
     },
     layers: [{ id: "osm-tiles", type: "raster", source: "osm" }],
@@ -440,8 +563,25 @@ const map = new maplibregl.Map({
   preserveDrawingBuffer: true,
 });
 
+let _attribCtrl = new maplibregl.AttributionControl({ customAttribution: _initialBasemap.attr });
+map.addControl(_attribCtrl);
 map.addControl(new maplibregl.NavigationControl(), "top-right");
 map.addControl(new maplibregl.ScaleControl({ unit: "metric" }), "bottom-left");
+
+// Swap the raster tiles + refresh the attribution credit without rebuilding the
+// style, so every overlay data layer and the current view state are preserved.
+// `setTiles` does not re-read the source attribution, so we re-create the
+// attribution control on each change.
+function applyBasemap(mode, persist) {
+  if (persist) { try { localStorage.setItem(BASEMAP_KEY, mode); } catch (_) {} }
+  const { tiles, attr } = basemapTiles(resolveBasemap(mode));
+  const src = map.getSource("osm");
+  if (src && src.setTiles) src.setTiles(tiles);
+  if (_attribCtrl) map.removeControl(_attribCtrl);
+  _attribCtrl = new maplibregl.AttributionControl({ customAttribution: attr });
+  map.addControl(_attribCtrl);
+  window.dispatchEvent(new CustomEvent("omos:basemapchange", { detail: { mode } }));
+}
 
 // On mobile the surrounding flex layout can finish settling after the map is
 // constructed, leaving the canvas sized to a stale (or zero) width/height —
@@ -450,14 +590,10 @@ map.addControl(new maplibregl.ScaleControl({ unit: "metric" }), "bottom-left");
 map.on("load", () => map.resize());
 requestAnimationFrame(() => map.resize());
 
-// Re-theme the basemap when the header toggle flips dark mode. We only swap
-// the raster tile URL on the existing source, so all overlay data layers and
-// view state are preserved (no style rebuild, no reload).
-window.addEventListener("omos:themechange", function (e) {
-  const src = map.getSource("osm");
-  if (src && src.setTiles) {
-    src.setTiles([e.detail.dark ? MAP_TILE_URL_DARK : MAP_TILE_URL]);
-  }
+// When the header toggle flips the app theme, only follow it for the basemap if
+// the user hasn't explicitly chosen one (mode "auto"). Explicit picks win.
+window.addEventListener("omos:themechange", function () {
+  if (readBasemapMode() === "auto") applyBasemap("auto", false);
 });
 
 // Keep the map sized to the viewport on resize and device rotation.
@@ -472,7 +608,69 @@ window.addEventListener("resize", resizeMap);
 window.addEventListener("orientationchange", resizeMap);
 
 function layerColor(kind) {
-  return LAYER_COLORS[kind] || "#64748b";
+  return (LAYER_STYLE[kind] && LAYER_STYLE[kind].color) || DEFAULT_COLOR;
+}
+
+// ─── POI glyph icons ─────────────────────────────────────────────────────────
+// Point layers that represent identifiable places (a building, a school, a
+// charger…) get a recognisable glyph instead of yet another dot, so a single
+// building is easy to find among the denser dot layers. Glyphs are drawn from
+// inline SVG at runtime and registered with map.addImage — no sprite sheet and
+// no build step, so it still works fully offline / self-hosted.
+//
+// Each glyph is a coloured rounded badge with a white symbol; the badge colour
+// comes from LAYER_STYLE so the icon matches its legend swatch.
+const ICON_GLYPHS = {
+  // A building with a door and windows.
+  building: '<rect x="15" y="13" width="14" height="21" rx="1" fill="#fff"/>'
+    + '<rect x="18" y="16" width="3" height="3" fill="currentColor"/><rect x="23" y="16" width="3" height="3" fill="currentColor"/>'
+    + '<rect x="18" y="21" width="3" height="3" fill="currentColor"/><rect x="23" y="21" width="3" height="3" fill="currentColor"/>'
+    + '<rect x="20" y="27" width="4" height="7" fill="currentColor"/>',
+  // A graduation/mortarboard cap.
+  school: '<path d="M22 13 L34 19 L22 25 L10 19 Z" fill="#fff"/>'
+    + '<path d="M16 22 L16 28 Q22 32 28 28 L28 22" fill="none" stroke="#fff" stroke-width="2.5"/>',
+  // The international parking "P".
+  parking: '<text x="22" y="30" font-family="Inter,system-ui,sans-serif" font-size="20" font-weight="800" text-anchor="middle" fill="#fff">P</text>',
+  // A simple bus silhouette.
+  bus: '<rect x="13" y="14" width="18" height="14" rx="2.5" fill="#fff"/>'
+    + '<rect x="15" y="17" width="14" height="5" fill="currentColor"/>'
+    + '<circle cx="17" cy="29" r="2" fill="#fff"/><circle cx="27" cy="29" r="2" fill="#fff"/>',
+  // A charging lightning bolt.
+  charger: '<path d="M24 11 L15 24 L21 24 L19 33 L29 19 L23 19 Z" fill="#fff"/>',
+};
+
+function iconSvg(name, color, size) {
+  const px = size || 44;
+  const glyph = (ICON_GLYPHS[name] || "").replaceAll("currentColor", color);
+  return '<svg xmlns="http://www.w3.org/2000/svg" width="' + px + '" height="' + px + '" viewBox="0 0 44 44">'
+    + '<circle cx="22" cy="22" r="18" fill="' + color + '" stroke="#fff" stroke-width="2.5"/>'
+    + glyph + '</svg>';
+}
+
+// Per-layer icon image id (kept distinct from the glyph name so two layers can
+// share a glyph shape in different colours if ever needed).
+function iconName(kind) {
+  return "icon-" + kind;
+}
+
+// Draw + register one layer's glyph badge as a map image. Idempotent.
+function loadIconImage(imageId) {
+  if (map.hasImage(imageId)) return;
+  const kind = imageId.startsWith("icon-") ? imageId.slice(5) : null;
+  const s = kind && LAYER_STYLE[kind];
+  if (!s || s.point !== "icon" || !s.icon) return;
+  const svg = iconSvg(s.icon, s.color);
+  const img = new Image(44, 44);
+  img.onload = () => { if (!map.hasImage(imageId)) map.addImage(imageId, img, { pixelRatio: 2 }); };
+  img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+}
+
+// Register every glyph referenced by an active icon layer. Called on map.load.
+function registerMapIcons() {
+  LAYER_KINDS.forEach(kind => {
+    const s = LAYER_STYLE[kind];
+    if (s && s.point === "icon" && s.icon) loadIconImage(iconName(kind));
+  });
 }
 
 function escHtml(s) {
@@ -734,14 +932,32 @@ function addGeoJsonLayer(id, url, color) {
             paint: { "line-color": color, "line-width": 1, "line-opacity": 0.6 } });
         }
         if (types.has("Point") || types.has("MultiPoint")) {
-          map.addLayer({ id: id + "-circle", type: "circle", source: id,
-            layout: { visibility: startVis },
-            paint: { "circle-radius": 5, "circle-color": color, "circle-opacity": 0.8 } });
+          const style = LAYER_STYLE[id] || {};
+          if (style.point === "icon" && style.icon) {
+            // A recognisable glyph badge instead of a generic dot, so distinct
+            // places (a school, a single building…) stand out from dot layers.
+            map.addLayer({ id: id + "-symbol", type: "symbol", source: id,
+              layout: {
+                visibility: startVis,
+                "icon-image": iconName(id),
+                "icon-size": 0.78,
+                "icon-allow-overlap": true,
+              } });
+          } else {
+            // Dense sensor/count points stay small dots so density reads clearly;
+            // a thin white halo keeps them legible on the satellite basemap too.
+            map.addLayer({ id: id + "-circle", type: "circle", source: id,
+              layout: { visibility: startVis },
+              paint: { "circle-radius": 5, "circle-color": color, "circle-opacity": 0.85,
+                       "circle-stroke-width": 1, "circle-stroke-color": "#fff" } });
+          }
         }
 
-        const circleLayer = id + "-circle";
-        if (map.getLayer(circleLayer)) {
-          map.on("click", circleLayer, (e) => {
+        // Bind the generic property popup to whichever point sublayer exists.
+        const pointLayer = map.getLayer(id + "-symbol") ? id + "-symbol"
+          : map.getLayer(id + "-circle") ? id + "-circle" : null;
+        if (pointLayer) {
+          map.on("click", pointLayer, (e) => {
             const props = e.features[0].properties;
             const content = Object.entries(props).slice(0, 8)
               .map(([k, v]) => `<dt class="font-medium">${escHtml(k)}</dt><dd class="ml-2 text-slate-600">${escHtml(v)}</dd>`)
@@ -751,6 +967,8 @@ function addGeoJsonLayer(id, url, color) {
               .setHTML(`<dl class="text-xs grid gap-0.5">${content}</dl>`)
               .addTo(map);
           });
+          map.on("mouseenter", pointLayer, () => { map.getCanvas().style.cursor = "pointer"; });
+          map.on("mouseleave", pointLayer, () => { map.getCanvas().style.cursor = ""; });
         }
       }
     })
@@ -774,7 +992,14 @@ function syncAccidentLayers() {
   }
 }
 
+// Lazily draw any glyph the renderer asks for but that isn't registered yet —
+// a safety net so symbol layers never render with a missing image.
+map.on("styleimagemissing", (e) => loadIconImage(e.id));
+
 map.on("load", () => {
+  // Pre-register POI glyphs so the first paint already shows the icons.
+  registerMapIcons();
+
   // Seed accident state from the checkbox so first paint matches the UI.
   const accidentsCb = document.querySelector('.layer-toggle[data-layer="accidents"]');
   if (accidentsCb) accidentsState.enabled = accidentsCb.checked;
@@ -799,6 +1024,7 @@ map.on("load", () => {
     });
     const filterPanel = document.getElementById("measure-filter-panel");
     if (filterPanel) filterPanel.classList.toggle("hidden", !e.target.checked);
+    document.dispatchEvent(new CustomEvent("omos:layerschanged"));
   });
 
   // District score choropleth — empty source; populated when the toggle is switched on.
@@ -862,13 +1088,14 @@ map.on("load", () => {
         return;
       }
       const vis = e.target.checked ? "visible" : "none";
-      ["-line", "-fill", "-outline", "-circle"].forEach(suffix => {
+      ["-line", "-fill", "-outline", "-circle", "-symbol"].forEach(suffix => {
         if (map.getLayer(kind + suffix)) map.setLayoutProperty(kind + suffix, "visibility", vis);
       });
       // Show the protected-vs-lane legend only while that layer is on.
       if (kind === "dedicated_bike_network") {
         document.getElementById("dedicated-bike-legend")?.classList.toggle("hidden", !e.target.checked);
       }
+      document.dispatchEvent(new CustomEvent("omos:layerschanged"));
     });
   });
 });
@@ -1051,6 +1278,7 @@ function activateCyclingGap() {
   });
   const bikeCb = document.querySelector('.layer-toggle[data-layer="dedicated_bike_network"]');
   if (bikeCb) bikeCb.checked = true;
+  document.getElementById("dedicated-bike-legend")?.classList.remove("hidden");
 
   // Enable cycling counts if present.
   if (map.getLayer("cycling_counts-circle")) {
@@ -1067,6 +1295,7 @@ function activateCyclingGap() {
   if (accidentsCb) accidentsCb.checked = true;
 
   document.dispatchEvent(new CustomEvent("gap-analysis-activated"));
+  document.dispatchEvent(new CustomEvent("omos:layerschanged"));
 }
 
 function clearGapPreset() {
@@ -1086,13 +1315,17 @@ function clearGapPreset() {
       accidentsState.enabled = wasOn;
       return;
     }
-    const wasOn = ["-line", "-fill", "-circle"].some(
+    const wasOn = ["-line", "-fill", "-circle", "-symbol"].some(
       s => map.getLayer(kind + s) && map.getLayoutProperty(kind + s, "visibility") === "visible"
     );
     cb.checked = wasOn;
+    if (kind === "dedicated_bike_network") {
+      document.getElementById("dedicated-bike-legend")?.classList.toggle("hidden", !wasOn);
+    }
   });
 
   document.dispatchEvent(new CustomEvent("gap-analysis-cleared"));
+  document.dispatchEvent(new CustomEvent("omos:layerschanged"));
 }
 
 // ─── Measure Pipeline filter ─────────────────────────────────────────────────
@@ -1169,6 +1402,7 @@ function districtScores() {
       if (map.getLayer("district-scores-fill")) map.setLayoutProperty("district-scores-fill", "visibility", vis);
       if (map.getLayer("district-scores-outline")) map.setLayoutProperty("district-scores-outline", "visibility", vis);
       if (checked) this._fetch();
+      document.dispatchEvent(new CustomEvent("omos:layerschanged"));
     },
 
     setDimension(dim) {
@@ -1246,10 +1480,13 @@ function savedViews() {
           accidentsState.enabled = on;
           return;
         }
-        const on = ["-line", "-fill", "-circle"].some(
+        const on = ["-line", "-fill", "-circle", "-symbol"].some(
           s => (v.layerVisibility[kind + s] || "none") === "visible"
         );
         cb.checked = on;
+        if (kind === "dedicated_bike_network") {
+          document.getElementById("dedicated-bike-legend")?.classList.toggle("hidden", !on);
+        }
       });
       // Re-sync measures toggle + filter panel.
       const measuresCb = document.getElementById("toggle-measures");
@@ -1266,11 +1503,73 @@ function savedViews() {
         const on = (v.layerVisibility["district-scores-fill"] || "none") === "visible";
         districtCb.checked = on;
       }
+      document.dispatchEvent(new CustomEvent("omos:layerschanged"));
     },
 
     deleteView(timestamp) {
       this.views = this.views.filter(v => v.timestamp !== timestamp);
       this._persist();
+    },
+  };
+}
+
+// ─── Base map switcher ───────────────────────────────────────────────────────
+// The initial basemap source is already created from the persisted mode, so
+// this component just reflects the active choice in the UI and applies changes.
+function basemapSwitcher() {
+  return {
+    mode: "auto",
+    init() {
+      this.mode = readBasemapMode();
+      window.addEventListener("omos:basemapchange", (e) => { this.mode = e.detail.mode; });
+    },
+    set(mode) {
+      this.mode = mode;
+      applyBasemap(mode, true);
+    },
+  };
+}
+
+// ─── Legend ──────────────────────────────────────────────────────────────────
+// Lists every currently-visible layer with a swatch shaped like how it is drawn
+// on the map (line / area / dot / glyph), so the colour ↔ meaning mapping is
+// always on screen. Labels come from the translated server context.
+function mapLegend() {
+  const MEASURES_LABEL = "{% trans "Measures" %}";
+  const DISTRICTS_LABEL = "{% trans "District scores" %}";
+  function shapeFor(s) {
+    if (s.geom === "line") return "line";
+    if (s.geom === "area") return "area";
+    if (s.point === "icon") return "icon";
+    return "dot";
+  }
+  return {
+    rows: [],
+    init() {
+      document.addEventListener("omos:layerschanged", () => this.rebuild());
+      // Rebuild once data layers have settled so toggled-on layers appear.
+      map.on("idle", () => this.rebuild());
+    },
+    rebuild() {
+      const rows = [];
+      document.querySelectorAll(".layer-toggle").forEach(cb => {
+        if (!cb.checked) return;
+        const kind = cb.dataset.layer;
+        const s = LAYER_STYLE[kind] || { geom: "point" };
+        const shape = shapeFor(s);
+        rows.push({
+          key: kind,
+          label: LAYER_LABELS[kind] || kind,
+          color: s.color || DEFAULT_COLOR,
+          shape,
+          icon: shape === "icon" ? iconSvg(s.icon, s.color, 16) : "",
+        });
+      });
+      const mcb = document.getElementById("toggle-measures");
+      if (mcb && mcb.checked) rows.push({ key: "_measures", label: MEASURES_LABEL, color: "#6366f1", shape: "dot", icon: "" });
+      const dcb = document.getElementById("toggle-district-scores");
+      if (dcb && dcb.checked) rows.push({ key: "_districts", label: DISTRICTS_LABEL, color: "#f97316", shape: "ramp", icon: "" });
+      this.rows = rows;
     },
   };
 }

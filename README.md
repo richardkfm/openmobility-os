@@ -147,9 +147,15 @@ four demo workspaces: **Leipzig**, **Utrecht**, **Musterstadt**, and **Muster-La
 
 - **Multi-workspace** — arbitrary number of cities per installation
 - **Interactive maps** — MapLibre GL JS with configurable tile sources
-- **Light & dark mode** — a header toggle switches the whole UI (and the map
-  basemap) between light and dark; the choice is remembered and defaults to the
-  visitor's OS preference
+- **Map legend & distinct markers** — an always-on side legend lists every
+  active layer with a swatch shaped like how it is drawn; place-type point
+  layers (schools, parking, transit stops, EV chargers, public buildings) use
+  recognisable glyph icons instead of identical dots
+- **Base map switcher** — pick a Light, Dark, or Satellite base map from the map
+  panel, independent of the UI theme; the choice is remembered
+- **Light & dark mode** — a header toggle switches the whole UI between light and
+  dark; the choice is remembered and defaults to the visitor's OS preference.
+  The map base map follows the theme until you pick one explicitly
 - **Data hub** — browser-based connector management:
   - Add, edit, sync, enable/disable, and delete data sources from the UI
   - Upload local CSV or GeoJSON files directly (no remote URL required)
@@ -274,7 +280,10 @@ Clicking a workspace takes you to its dashboard at `/<slug>/`. You will see:
 ### Interactive map
 
 The map at `/<slug>/map/` uses MapLibre GL JS with OSM vector tiles (or any
-XYZ tile server you configure via `MAP_TILE_URL`).
+XYZ tile server you configure via `MAP_TILE_URL`). A **Base map** switcher lets
+you flip between Light, Dark, and Satellite imagery independently of the UI
+theme, and a **Legend** panel always shows which colour and marker means which
+active layer.
 
 **Layer panel (left sidebar):**
 
@@ -762,6 +771,17 @@ fully self-hosted setup:
 ```
 MAP_TILE_URL_DARK=http://tileserver:8080/styles/dark-matter/{z}/{x}/{y}.png
 MAP_TILE_ATTRIBUTION_DARK=© OpenMapTiles © OpenStreetMap contributors
+```
+
+The **satellite basemap** offered by the map's Base map switcher is configured
+the same way via `MAP_TILE_URL_SATELLITE` and `MAP_TILE_ATTRIBUTION_SATELLITE`.
+It defaults to Esri's keyless World Imagery so it works out of the box; point it
+at your own aerial WMTS/XYZ layer, or leave it blank to hide the satellite
+option entirely (the open OSM light/dark basemaps remain the default):
+
+```
+MAP_TILE_URL_SATELLITE=https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}
+MAP_TILE_ATTRIBUTION_SATELLITE=Imagery © Esri, Maxar, Earthstar Geographics
 ```
 
 ### 5. Use a custom Overpass endpoint (optional)

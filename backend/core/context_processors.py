@@ -12,6 +12,8 @@ def platform_context(request):
         "map_tile_attribution": settings.MAP_TILE_ATTRIBUTION,
         "map_tile_url_dark": settings.MAP_TILE_URL_DARK,
         "map_tile_attribution_dark": settings.MAP_TILE_ATTRIBUTION_DARK,
+        "map_tile_url_satellite": settings.MAP_TILE_URL_SATELLITE,
+        "map_tile_attribution_satellite": settings.MAP_TILE_ATTRIBUTION_SATELLITE,
         "project_repo_url": settings.PROJECT_REPO_URL,
         "project_release_url": settings.PROJECT_RELEASE_URL,
         "is_admin": getattr(request, "is_admin", False),

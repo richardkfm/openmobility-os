@@ -8,6 +8,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Map legend panel** — the map now has an always-on "Legend" panel in the
+  sidebar that lists every active layer with a swatch shaped like how it is
+  drawn (line, area, dot, or glyph), so it is always clear which colour and
+  marker means which layer. It rebuilds automatically as you toggle layers.
+- **Distinct markers for place-type layers** — point layers that represent
+  identifiable places (schools, parking, transit stops, EV chargers, public
+  buildings) now render as recognisable glyph icons instead of identical dots,
+  so a single building no longer gets lost among the denser dot layers. Dense
+  sensor and count layers keep small dots. The categorical layer palette was
+  also retuned for clearer contrast on the busy light basemap.
+- **Base map switcher (Light / Dark / Satellite)** — a new "Base map" panel lets
+  you choose the map's base imagery independently of the app's dark/light theme;
+  the choice is remembered. The map follows the app theme until you pick a base
+  map explicitly.
+- **Satellite / aerial base map** — an optional satellite view for looking up
+  the situation on the ground, defaulting to Esri's keyless World Imagery and
+  configurable via the new `MAP_TILE_URL_SATELLITE` /
+  `MAP_TILE_ATTRIBUTION_SATELLITE` settings (leave blank to hide the option).
 - **"Suggested by OMOS" labelling for measures** — the Measures page now opens
   with a short note explaining that measures are transparent, rule-based
   *suggestions* generated from your synced data, not finished decisions, and
