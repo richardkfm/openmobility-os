@@ -72,7 +72,7 @@ codebase:
 
 | Platform landing | Workspace dashboard | Interactive map |
 |---|---|---|
-| <img width="1293" height="890" alt="grafik" src="https://github.com/user-attachments/assets/7427c722-1633-4c8e-abac-444e78b84450" /> | <img width="1271" height="1033" alt="grafik" src="https://github.com/user-attachments/assets/ef2cebb8-5547-4748-953e-88e2e169dd58" /> | <img width="1382" height="1258" alt="grafik" src="https://github.com/user-attachments/assets/dbc88d79-0b8b-4e58-b3dc-ec4002825119" /> |
+| <img width="1293" height="890" alt="grafik" src="https://github.com/user-attachments/assets/7427c722-1633-4c8e-abac-444e78b84450" /> | <img width="1271" height="1033" alt="grafik" src="https://github.com/user-attachments/assets/ef2cebb8-5547-4748-953e-88e2e169dd58" /> | <img width="1293" height="1275" alt="grafik" src="https://github.com/user-attachments/assets/e1a5cfdb-8c90-4e88-a062-6a7bfe43185a" /> |
 
 
 | Measures list | Measure detail | Data hub |
