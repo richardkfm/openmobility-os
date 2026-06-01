@@ -48,7 +48,7 @@
         <div x-show="gapActive">
           <div class="rounded-md bg-amber-50 border border-amber-200 p-2.5 text-xs text-amber-800 mb-2.5 leading-relaxed">
             <strong>{% trans "Reading the map:" %}</strong>
-            {% trans "Red/orange streets = cycling accident clusters. Teal = protected bike lanes. Amber = painted lanes. Red streets without any teal or amber overlay are priority intervention zones." %}
+            {% trans "Red/orange streets = cycling accident clusters. Teal = protected bike lanes. Amber = painted lanes. A white dashed overlay marks lanes built after the latest accident year — a flagged cluster under a dashed lane has likely already been addressed. Red streets without any overlay are priority intervention zones." %}
           </div>
           <button @click="clearGapPreset()"
                   class="w-full text-center text-xs text-slate-500 hover:text-slate-800 underline py-0.5">
@@ -371,6 +371,7 @@
                 <template x-if="row.shape === 'area'"><span class="inline-block w-3.5 h-3.5 rounded-sm border" :style="`background:${row.color}55;border-color:${row.color}`"></span></template>
                 <template x-if="row.shape === 'dot'"><span class="inline-block w-2.5 h-2.5 rounded-full" :style="`background:${row.color}`"></span></template>
                 <template x-if="row.shape === 'ramp'"><span class="inline-block w-4 h-2 rounded" :style="`background:${row.gradient}`"></span></template>
+                <template x-if="row.shape === 'dash'"><span class="inline-block w-4 h-1.5 rounded" style="background:repeating-linear-gradient(90deg,#fff 0 3px,transparent 3px 6px),#64748b"></span></template>
               </span>
               <span class="text-slate-700" x-text="row.label"></span>
             </span>
@@ -664,6 +665,18 @@ function addGeoJsonLayer(id, url, color) {
   fetch(url)
     .then(r => r.json())
     .then(fc => {
+      // Normalise a numeric `_year` on bike-infra features (from the connector's
+      // `year`, or a passed-through `start_date` / `opening_date` on CSV/GeoJSON
+      // imports) so the renderer can flag lanes added after the accident period.
+      if (id === "dedicated_bike_network") {
+        (fc.features || []).forEach(f => {
+          const p = f.properties || (f.properties = {});
+          const y = parseYear(p.year != null ? p.year
+            : (p.start_date != null ? p.start_date : p.opening_date));
+          if (y != null) p._year = y;
+        });
+      }
+
       if (!map.getSource(id)) {
         map.addSource(id, { type: "geojson", data: fc });
       }
@@ -679,34 +692,44 @@ function addGeoJsonLayer(id, url, color) {
           source: "accidents",
           layout: { visibility: "none" },
           paint: {
-            // Weight: fatal counts 3×, serious 2×, minor 1×
+            // Per-point weight is deliberately low so a single isolated
+            // accident stays faint (yellow at most) and only overlapping
+            // points accumulate toward red — the map should reveal clusters,
+            // not paint every lone incident as a hotspot. Severity is still
+            // ranked: fatal counts ~3× a minor.
             "heatmap-weight": [
               "match", ["get", "severity"],
-              "fatal",   1.0,
-              "serious", 0.67,
-              0.33
+              "fatal",   0.45,
+              "serious", 0.3,
+              0.15
             ],
-            // Boost density signal as zoom increases
+            // Keep intensity modest, especially when zoomed out, so sparse
+            // points don't saturate. It ramps up gently with zoom.
             "heatmap-intensity": [
               "interpolate", ["linear"], ["zoom"],
-              0, 1,
-              14, 4
+              0, 0.5,
+              10, 1,
+              14, 2
             ],
-            // Colour ramp: transparent → yellow → orange → dark red
+            // Colour ramp stays fully transparent through the low-density
+            // range so a lone point fades out; colour only builds where points
+            // overlap. transparent → yellow → orange → dark red
             "heatmap-color": [
               "interpolate", ["linear"], ["heatmap-density"],
-              0,   "rgba(0,0,0,0)",
-              0.15, "rgba(251,191,36,0.5)",
-              0.4,  "rgba(249,115,22,0.75)",
-              0.7,  "rgba(220,38,38,0.9)",
+              0,    "rgba(0,0,0,0)",
+              0.25, "rgba(251,191,36,0.4)",
+              0.5,  "rgba(249,115,22,0.65)",
+              0.75, "rgba(220,38,38,0.85)",
               1.0,  "rgba(127,29,29,1)"
             ],
-            // Radius grows with zoom for smooth blending
+            // Radius is small when zoomed out so isolated points stay compact
+            // dots rather than blooming into large balls; it grows with zoom
+            // for smooth blending of genuine clusters.
             "heatmap-radius": [
               "interpolate", ["linear"], ["zoom"],
-              0, 18,
-              10, 32,
-              14, 50
+              0, 6,
+              10, 16,
+              14, 38
             ],
             "heatmap-opacity": 0.85,
           },
@@ -895,6 +918,18 @@ function addGeoJsonLayer(id, url, color) {
           map.addLayer({ id: id + "-line", type: "line", source: id,
             layout: { visibility: startVis },
             paint: linePaint });
+          if (id === "dedicated_bike_network") {
+            // White dashed overlay on lanes added after the accident period, so
+            // planners can see which flagged clusters already got infrastructure.
+            // Starts matching nothing; the filter is set once the cutoff year is
+            // known (see setBikeEraCutoff).
+            map.addLayer({ id: id + "-new", type: "line", source: id,
+              layout: { visibility: startVis, "line-cap": "round" },
+              filter: ["==", ["get", "_year"], -1],
+              paint: { "line-color": "#ffffff", "line-width": 1.6, "line-opacity": 0.95,
+                       "line-dasharray": [1.5, 1.8] } });
+            applyBikeEraFilter();
+          }
         }
         if (types.has("Polygon") || types.has("MultiPolygon")) {
           map.addLayer({ id: id + "-fill", type: "fill", source: id,
@@ -953,6 +988,47 @@ function addGeoJsonLayer(id, url, color) {
 // heatmap) without overwriting the other's choice.
 // Default enabled=false because all layer checkboxes start unchecked.
 const accidentsState = { enabled: false, mode: "circles" };
+
+// Cutoff year for the "newer than the data" bike-lane highlight. Set to the
+// latest accident year once accidents have loaded; lanes with a known year
+// after this are dashed (see the dedicated_bike_network-new layer + legend).
+const bikeEraState = { cutoffYear: null };
+
+// Extract a plausible 4-digit year (1900–2100) from a number or date string,
+// else null. Mirrors the connector's _extract_bike_year for CSV/GeoJSON inputs.
+function parseYear(v) {
+  if (v == null) return null;
+  if (typeof v === "number" && isFinite(v)) {
+    const n = Math.trunc(v);
+    return n >= 1900 && n <= 2100 ? n : null;
+  }
+  const s = String(v);
+  for (const tok of [s.slice(0, 4), s.slice(-4)]) {
+    if (/^\d{4}$/.test(tok)) {
+      const n = +tok;
+      if (n >= 1900 && n <= 2100) return n;
+    }
+  }
+  return null;
+}
+
+// Apply the current cutoff to the dashed highlight layer. With no cutoff the
+// filter matches nothing; otherwise it matches lanes whose year is after it.
+function applyBikeEraFilter() {
+  const lid = "dedicated_bike_network-new";
+  if (!map.getLayer(lid)) return;
+  map.setFilter(lid, bikeEraState.cutoffYear == null
+    ? ["==", ["get", "_year"], -1]
+    : [">", ["coalesce", ["get", "_year"], -1], bikeEraState.cutoffYear]);
+}
+
+function setBikeEraCutoff(year) {
+  const y = parseYear(year);
+  if (y === bikeEraState.cutoffYear) return;
+  bikeEraState.cutoffYear = y;
+  applyBikeEraFilter();
+  document.dispatchEvent(new CustomEvent("omos:layerschanged"));
+}
 
 function syncAccidentLayers() {
   if (!map.getLayer("accidents-circle") || !map.getLayer("accidents-heat")) return;
@@ -1062,7 +1138,7 @@ map.on("load", () => {
         return;
       }
       const vis = e.target.checked ? "visible" : "none";
-      ["-line", "-fill", "-outline", "-circle", "-symbol"].forEach(suffix => {
+      ["-line", "-fill", "-outline", "-circle", "-symbol", "-new"].forEach(suffix => {
         if (map.getLayer(kind + suffix)) map.setLayoutProperty(kind + suffix, "visibility", vis);
       });
       document.dispatchEvent(new CustomEvent("omos:layerschanged"));
@@ -1114,6 +1190,10 @@ function accidentFilter() {
       this.availableYears = [...seen].sort((a, b) => b - a);
       // Default: most recent year only. User opts in to older years.
       this.years = [this.availableYears[0]];
+      // The latest accident year is the reference point for the bike-lane
+      // "added later" highlight — lanes built after it weren't in play when
+      // these accidents happened.
+      setBikeEraCutoff(this.availableYears[0]);
     },
 
     setViewMode(mode) {
@@ -1245,7 +1325,7 @@ function activateCyclingGap() {
   accidentsState.enabled = false;
 
   // Enable dedicated bike network.
-  ["dedicated_bike_network-line"].forEach(id => {
+  ["dedicated_bike_network-line", "dedicated_bike_network-new"].forEach(id => {
     if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", "visible");
   });
   const bikeCb = document.querySelector('.layer-toggle[data-layer="dedicated_bike_network"]');
@@ -1286,7 +1366,7 @@ function clearGapPreset() {
       accidentsState.enabled = wasOn;
       return;
     }
-    const wasOn = ["-line", "-fill", "-circle", "-symbol"].some(
+    const wasOn = ["-line", "-fill", "-circle", "-symbol", "-new"].some(
       s => map.getLayer(kind + s) && map.getLayoutProperty(kind + s, "visibility") === "visible"
     );
     cb.checked = wasOn;
@@ -1448,7 +1528,7 @@ function savedViews() {
           accidentsState.enabled = on;
           return;
         }
-        const on = ["-line", "-fill", "-circle", "-symbol"].some(
+        const on = ["-line", "-fill", "-circle", "-symbol", "-new"].some(
           s => (v.layerVisibility[kind + s] || "none") === "visible"
         );
         cb.checked = on;
@@ -1504,6 +1584,7 @@ function mapLegend() {
   const DISTRICTS_LABEL = "{% trans "District scores" %}";
   const BIKE_PROTECTED_LABEL = "{% trans "Protected (separated path / track)" %}";
   const BIKE_LANE_LABEL = "{% trans "Painted lane (on-street)" %}";
+  const BIKE_NEW_PREFIX = "{% trans "Bike lane added after" %}";
   const ACCIDENT_DENSITY_LABEL = "{% trans "Accident density (by street)" %}";
   const ACCIDENT_HEATMAP_LABEL = "{% trans "Accident heatmap" %}";
   // Gradients mirror the actual map paint, so the swatch matches the map.
@@ -1546,6 +1627,10 @@ function mapLegend() {
         if (kind === "dedicated_bike_network") {
           rows.push({ key: "bike-protected", label: BIKE_PROTECTED_LABEL, color: "#0d9488", shape: "line", icon: "" });
           rows.push({ key: "bike-lane", label: BIKE_LANE_LABEL, color: "#f59e0b", shape: "line", icon: "" });
+          // Only meaningful once we have an accident reference year to compare against.
+          if (bikeEraState.cutoffYear != null) {
+            rows.push({ key: "bike-new", label: BIKE_NEW_PREFIX + " " + bikeEraState.cutoffYear, shape: "dash", icon: "" });
+          }
           return;
         }
         const s = LAYER_STYLE[kind] || { geom: "point" };

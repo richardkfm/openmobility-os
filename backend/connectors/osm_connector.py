@@ -298,12 +298,37 @@ class OSMOverpassConnector(BaseConnector):
                 feat["properties"]["bike_infra_class"] = _classify_bike_infra(
                     feat["properties"]
                 )
+                # Capture the year the infrastructure was built/opened when OSM
+                # records it, so the map can flag lanes added after a dataset's
+                # period (e.g. bike lanes built after the latest accident year).
+                year = _extract_bike_year(feat["properties"])
+                if year is not None:
+                    feat["properties"]["year"] = year
             features.append(feat)
 
         return FetchResult(
             feature_collection={"type": "FeatureCollection", "features": features},
             record_count=len(features),
         )
+
+
+def _extract_bike_year(props: dict):
+    """Return the build/opening year of a bike feature, or None.
+
+    Reads the standard OSM date tags (`start_date`, `opening_date`), which are
+    typically `YYYY` or `YYYY-MM-DD`. City-agnostic and tolerant: any value with
+    a plausible 4-digit year (1900–2100) at the start or end is accepted; missing
+    or unparseable tags simply yield None.
+    """
+    for tag in ("start_date", "opening_date"):
+        raw = props.get(tag)
+        if not raw:
+            continue
+        text = str(raw)
+        for token in (text[:4], text[-4:]):
+            if token.isdigit() and 1900 <= int(token) <= 2100:
+                return int(token)
+    return None
 
 
 def _classify_bike_infra(props: dict) -> str:
