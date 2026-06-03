@@ -175,15 +175,20 @@
         </div>
       </div>
 
-      {# Accident filter panel — only shown when accidents layer is present #}
+      {% comment %}
+      Accident filters — in the DOM when the workspace has accidents, but only
+      shown once the accidents layer is actually toggled on (keeps the sidebar
+      uncluttered and leaves room for the layer's deeper options).
+      {% endcomment %}
       {% if "accidents" in layer_kinds %}
-      <div class="rounded-lg border bg-white p-4 text-sm" x-data="accidentFilter()" x-init="init()">
+      <div class="rounded-lg border bg-white p-4 text-sm" x-data="accidentFilter()" x-init="init()"
+           x-show="enabled" x-cloak>
         <div class="font-semibold mb-3 flex items-center gap-2">
           <span class="inline-block w-3 h-3 rounded-full bg-red-500"></span>
           {% trans "Accident filters" %}
         </div>
 
-        {# Year filters — populated from data, default to most recent year only #}
+        {# Year filters — populated from data, default to the most recent 3 years #}
         <p class="text-xs text-slate-500 mb-2 font-medium uppercase tracking-wide">{% trans "Years" %}</p>
         <div class="flex flex-col gap-1 mb-4" x-show="availableYears.length > 0">
           <template x-for="y in availableYears" :key="y">
@@ -292,9 +297,9 @@
       </div>
       {% endif %}
 
-      {# Measure filters — visible when the Measures layer is toggled on #}
-      <div id="measure-filter-panel" class="hidden rounded-lg border bg-white p-4 text-sm"
-           x-data="measureFilter()" x-init="init()">
+      {# Measure filters — shown only while the Measures layer is toggled on. #}
+      <div class="rounded-lg border bg-white p-4 text-sm"
+           x-data="measureFilter()" x-init="init()" x-show="enabled" x-cloak>
         <div class="font-semibold mb-3 flex items-center gap-2">
           <span class="inline-block w-3 h-3 rounded-full" style="background:#6366f1"></span>
           {% trans "Measure filters" %}
@@ -432,21 +437,6 @@
             </button>
           </div>
 
-          {# Map style — recolours data layers and tints the base map to match. #}
-          {% if layers %}
-          <div class="rounded-lg border bg-white/95 backdrop-blur shadow-md px-2 py-1 text-xs flex items-center gap-1.5"
-               x-data="colorSchemeSwitcher()" x-init="init()">
-            <span class="text-slate-500">{% trans "Map style" %}</span>
-            <select x-model="scheme" @change="apply()"
-                    class="text-xs border rounded px-1 py-0.5 text-slate-700 bg-white">
-              <option value="default">{% trans "Default" %}</option>
-              <option value="high_contrast">{% trans "High contrast" %}</option>
-              <option value="colorblind">{% trans "Colourblind-safe" %}</option>
-              <option value="grayscale">{% trans "Grayscale (print)" %}</option>
-            </select>
-          </div>
-          {% endif %}
-
         </div>
       </div>
 
@@ -559,110 +549,34 @@ const MEASURE_STATUS_PAINT = [
   "#6366f1"
 ];
 
-// ─── Layer differentiation: colour schemes, display modes, opacity ───────────
+// ─── Layer differentiation: display modes & opacity ──────────────────────────
 // All viewer-chosen and persisted client-side (like Saved Views) so the public
-// read layer needs no login and no backend round-trip. Nothing here is wired to
-// a specific city — schemes transform whatever base colour a layer kind has,
-// including connector-defined "custom" kinds, so it stays city-agnostic.
+// read layer needs no login and no backend round-trip.
 
-// Small hex/colour helpers (no dependency, work fully offline / self-hosted).
+// Small hex helpers — used by the point-heatmap colour ramp and the legend.
 function hexToRgb(hex) {
   let h = String(hex || "").replace("#", "");
   if (h.length === 3) h = h.split("").map(c => c + c).join("");
   const n = parseInt(h, 16);
   return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
 }
-function rgbToHex(r, g, b) {
-  const c = v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, "0");
-  return "#" + c(r) + c(g) + c(b);
-}
 function hexToRgba(hex, a) {
   const { r, g, b } = hexToRgb(hex);
   return `rgba(${r},${g},${b},${a})`;
 }
-function rgbToHsl(r, g, b) {
-  r /= 255; g /= 255; b /= 255;
-  const max = Math.max(r, g, b), min = Math.min(r, g, b);
-  let h = 0, s = 0; const l = (max + min) / 2;
-  if (max !== min) {
-    const d = max - min;
-    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-    if (max === r) h = (g - b) / d + (g < b ? 6 : 0);
-    else if (max === g) h = (b - r) / d + 2;
-    else h = (r - g) / d + 4;
-    h /= 6;
-  }
-  return { h, s, l };
-}
-function hslToRgb(h, s, l) {
-  let r, g, b;
-  if (s === 0) { r = g = b = l; }
-  else {
-    const hue = (p, q, t) => {
-      if (t < 0) t += 1; if (t > 1) t -= 1;
-      if (t < 1 / 6) return p + (q - p) * 6 * t;
-      if (t < 1 / 2) return q;
-      if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
-      return p;
-    };
-    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-    const p = 2 * l - q;
-    r = hue(p, q, h + 1 / 3); g = hue(p, q, h); b = hue(p, q, h - 1 / 3);
-  }
-  return { r: r * 255, g: g * 255, b: b * 255 };
-}
-
-// Okabe–Ito qualitative palette — distinguishable under the common forms of
-// colour-vision deficiency. We snap each base colour to its nearest member.
-const OKABE_ITO = ["#000000", "#E69F00", "#56B4E9", "#009E73",
-                   "#F0E442", "#0072B2", "#D55E00", "#CC79A7"];
-
-const SCHEME_TRANSFORMS = {
-  default: hex => hex,
-  // Saturate + darken so layers separate on the busy light basemap.
-  high_contrast: hex => {
-    const { r, g, b } = hexToRgb(hex);
-    const { h, s, l } = rgbToHsl(r, g, b);
-    const o = hslToRgb(h, Math.min(1, s * 1.4 + 0.1), Math.max(0, Math.min(1, l * 0.78)));
-    return rgbToHex(o.r, o.g, o.b);
-  },
-  // Nearest Okabe–Ito colour by RGB distance — deterministic, kind-agnostic.
-  colorblind: hex => {
-    const { r, g, b } = hexToRgb(hex);
-    let best = OKABE_ITO[0], bestD = Infinity;
-    OKABE_ITO.forEach(c => {
-      const t = hexToRgb(c);
-      const d = (t.r - r) ** 2 + (t.g - g) ** 2 + (t.b - b) ** 2;
-      if (d < bestD) { bestD = d; best = c; }
-    });
-    return best;
-  },
-  // Luminance-based grey — print / black-and-white friendly.
-  grayscale: hex => {
-    const { r, g, b } = hexToRgb(hex);
-    const y = 0.299 * r + 0.587 * g + 0.114 * b;
-    return rgbToHex(y, y, y);
-  },
-};
 
 const STYLE_KEY = `omos-style-${WORKSPACE_SLUG}`;
 function loadStyleState() {
   try {
     const s = JSON.parse(localStorage.getItem(STYLE_KEY) || "{}");
-    return { scheme: s.scheme || "default", layers: s.layers || {} };
-  } catch (_) { return { scheme: "default", layers: {} }; }
+    return { layers: s.layers || {} };
+  } catch (_) { return { layers: {} }; }
 }
-// scheme: one of SCHEME_TRANSFORMS keys; layers: { <kind>: { mode, opacity } }.
+// layers: { <kind>: { mode, opacity } }
 const layerStyleState = loadStyleState();
 function persistStyleState() {
   try { localStorage.setItem(STYLE_KEY, JSON.stringify(layerStyleState)); } catch (_) {}
 }
-function activeScheme() { return layerStyleState.scheme || "default"; }
-
-// Kinds whose colour encodes *meaning* (speed limit, accident severity, bike
-// infra class) rather than identity — recolouring them would break the
-// transparent-scoring principle, so colour schemes deliberately skip them.
-const SEMANTIC_COLOR_KINDS = new Set(["accidents", "streets_with_speed", "dedicated_bike_network"]);
 
 // Every sublayer suffix the renderer can produce, for show/hide sweeps.
 const ALL_SUBS = ["-line", "-fill", "-outline", "-circle", "-symbol", "-new", "-heatmap"];
@@ -825,47 +739,6 @@ function clearFocus() {
   _focusKind = null;
 }
 
-// CSS filter applied to the map canvas so the *base map* (raster tiles) matches
-// the active scheme too — without it, switching style appears to do nothing when
-// few data layers are on. Colourblind-safe is palette-based (it re-maps layer
-// colours), so it leaves the base map untouched.
-const BASEMAP_FILTER = {
-  default: "",
-  high_contrast: "contrast(1.12) saturate(1.25)",
-  colorblind: "",
-  grayscale: "grayscale(1)",
-};
-function applyBasemapFilter(name) {
-  const canvas = map && map.getCanvas && map.getCanvas();
-  if (canvas) canvas.style.filter = BASEMAP_FILTER[name] || "";
-}
-
-function applyColorScheme(name) {
-  layerStyleState.scheme = name;
-  persistStyleState();
-  applyBasemapFilter(name);
-  // Re-bake icon badges in the new colour (colour is baked into the SVG).
-  LAYER_KINDS.forEach(kind => {
-    const s = LAYER_STYLE[kind];
-    if (s && s.point === "icon" && s.icon) {
-      const imgId = iconName(kind);
-      if (map.hasImage(imgId)) map.removeImage(imgId);
-      loadIconImage(imgId);
-    }
-  });
-  // Re-apply colour on identity-coloured sublayers; skip the semantic ramps.
-  LAYER_KINDS.forEach(kind => {
-    if (SEMANTIC_COLOR_KINDS.has(kind)) return;
-    const c = layerColor(kind);
-    if (map.getLayer(kind + "-line")) map.setPaintProperty(kind + "-line", "line-color", c);
-    if (map.getLayer(kind + "-fill")) map.setPaintProperty(kind + "-fill", "fill-color", c);
-    if (map.getLayer(kind + "-outline")) map.setPaintProperty(kind + "-outline", "line-color", c);
-    if (map.getLayer(kind + "-circle")) map.setPaintProperty(kind + "-circle", "circle-color", c);
-    if (map.getLayer(kind + "-heatmap")) map.setPaintProperty(kind + "-heatmap", "heatmap-color", heatmapRamp(c));
-  });
-  document.dispatchEvent(new CustomEvent("omos:layerschanged"));
-}
-
 // Set the map container height via JavaScript (inline style) so that
 // MapLibre always reads a non-zero clientHeight regardless of how the
 // surrounding flex/grid chain computes percentage heights.
@@ -978,14 +851,9 @@ function resizeMap() {
 window.addEventListener("resize", resizeMap);
 window.addEventListener("orientationchange", resizeMap);
 
-function baseColorFor(kind) {
-  return (LAYER_STYLE[kind] && LAYER_STYLE[kind].color) || DEFAULT_COLOR;
-}
-// The single colour accessor the renderer and legend both use, so the active
-// colour scheme is applied in exactly one place.
+// The single colour accessor the renderer and legend both use.
 function layerColor(kind) {
-  const t = SCHEME_TRANSFORMS[activeScheme()] || SCHEME_TRANSFORMS.default;
-  return t(baseColorFor(kind));
+  return (LAYER_STYLE[kind] && LAYER_STYLE[kind].color) || DEFAULT_COLOR;
 }
 
 // ─── POI glyph icons ─────────────────────────────────────────────────────────
@@ -1465,13 +1333,8 @@ function syncAccidentLayers() {
 map.on("styleimagemissing", (e) => loadIconImage(e.id));
 
 map.on("load", () => {
-  // Pre-register POI glyphs so the first paint already shows the icons (in the
-  // persisted colour scheme — loadIconImage reads layerColor()).
+  // Pre-register POI glyphs so the first paint already shows the icons.
   registerMapIcons();
-
-  // Re-apply the persisted base-map tint (data layers are already drawn in the
-  // right colours via layerColor(); this matches the raster base map to them).
-  applyBasemapFilter(activeScheme());
 
   // Seed accident state from the checkbox so first paint matches the UI.
   const accidentsCb = document.querySelector('.layer-toggle[data-layer="accidents"]');
@@ -1495,8 +1358,6 @@ map.on("load", () => {
     ["measures-circle", "measures-fill", "measures-line", "measures-outline"].forEach(id => {
       if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", vis);
     });
-    const filterPanel = document.getElementById("measure-filter-panel");
-    if (filterPanel) filterPanel.classList.toggle("hidden", !e.target.checked);
     document.dispatchEvent(new CustomEvent("omos:layerschanged"));
   });
 
@@ -1570,15 +1431,23 @@ map.on("load", () => {
 // Alpine.js component for the accident filter panel
 function accidentFilter() {
   return {
+    enabled: false,       // mirrors the accidents layer toggle; panel x-shows on it
     viewMode: "circles",
     severity: { fatal: true, serious: true, minor: true },
     modes: { cyclist: false, pedestrian: false, car: false, truck: false },
     availableYears: [],   // discovered from loaded accident features (desc)
-    years: [],            // currently selected years; defaults to most recent only
+    years: [],            // currently selected years; defaults to the most recent 3
     densityEmpty: false,  // true when the density fetch returns no segments
     _densityTimer: null,  // debounce handle for density re-fetches
 
     init() {
+      // The panel only appears while accidents are on. accidentsState.enabled is
+      // kept current by every toggle / story view / saved view, each of which
+      // fires omos:layerschanged — so follow that single signal.
+      this.enabled = accidentsState.enabled;
+      document.addEventListener("omos:layerschanged", () => {
+        this.enabled = accidentsState.enabled;
+      });
       // Apply once the source data is in (deferred via 'idle').
       map.on("idle", () => {
         this.discoverYears();
@@ -1613,8 +1482,9 @@ function accidentFilter() {
       }
       if (seen.size === 0) return;
       this.availableYears = [...seen].sort((a, b) => b - a);
-      // Default: most recent year only. User opts in to older years.
-      this.years = [this.availableYears[0]];
+      // Default: the most recent 3 years together (a steadier picture than a
+      // single year). User can narrow or widen the range.
+      this.years = this.availableYears.slice(0, 3);
       // The latest accident year is the reference point for the bike-lane
       // "added later" highlight — lanes built after it weren't in play when
       // these accidents happened.
@@ -1722,7 +1592,7 @@ function accidentFilter() {
       this.severity = { fatal: true, serious: true, minor: true };
       this.modes = { cyclist: false, pedestrian: false, car: false, truck: false };
       if (this.availableYears.length > 0) {
-        this.years = [this.availableYears[0]];
+        this.years = this.availableYears.slice(0, 3);
       }
       this.applyFilter();
     },
@@ -1831,12 +1701,21 @@ function clearStoryView() {
 // ─── Measure Pipeline filter ─────────────────────────────────────────────────
 
 function measureFilter() {
+  const measuresOn = () => {
+    const cb = document.getElementById("toggle-measures");
+    return !!(cb && cb.checked);
+  };
   return {
+    enabled: false,       // mirrors the Measures layer toggle; panel x-shows on it
     selectedStatuses: ["proposed", "planned", "in_progress", "done", "rejected"],
     selectedCategory: "",
     selectedEffort: "",
 
     init() {
+      // Show the panel only while Measures are on. The toggle and saved-view
+      // restores both fire omos:layerschanged, so follow that single signal.
+      this.enabled = measuresOn();
+      document.addEventListener("omos:layerschanged", () => { this.enabled = measuresOn(); });
       map.on("idle", () => this.applyFilter());
     },
 
@@ -1985,14 +1864,11 @@ function savedViews() {
         );
         cb.checked = on;
       });
-      // Re-sync measures toggle + filter panel.
+      // Re-sync measures toggle (its filter panel follows via omos:layerschanged).
       const measuresCb = document.getElementById("toggle-measures");
       if (measuresCb) {
-        const on = ["measures-circle", "measures-line", "measures-fill"]
+        measuresCb.checked = ["measures-circle", "measures-line", "measures-fill"]
           .some(id => (v.layerVisibility[id] || "none") === "visible");
-        measuresCb.checked = on;
-        const panel = document.getElementById("measure-filter-panel");
-        if (panel) panel.classList.toggle("hidden", !on);
       }
       // Re-sync district scores checkbox.
       const districtCb = document.getElementById("toggle-district-scores");
@@ -2024,18 +1900,6 @@ function basemapSwitcher() {
       this.mode = mode;
       applyBasemap(mode, true);
     },
-  };
-}
-
-// ─── Colour scheme switcher ──────────────────────────────────────────────────
-// Above-map control that recolours every identity-coloured layer at once. It
-// reflects the persisted scheme on init (the layers are already drawn in it,
-// since layerColor() reads it) and re-applies on change.
-function colorSchemeSwitcher() {
-  return {
-    scheme: activeScheme(),
-    init() { this.scheme = activeScheme(); },
-    apply() { applyColorScheme(this.scheme); },
   };
 }
 
@@ -2125,9 +1989,7 @@ function mapLegend() {
           return;
         }
         const s = LAYER_STYLE[kind] || { geom: "point" };
-        // Semantic layers keep their fixed colours (the scheme skips them), so
-        // their swatch must too; everything else follows the active scheme.
-        const col = SEMANTIC_COLOR_KINDS.has(kind) ? baseColorFor(kind) : layerColor(kind);
+        const col = layerColor(kind);
         let shape = shapeFor(s);
         let gradient = "";
         // Point layers follow their active display mode (dots / icons / heatmap).

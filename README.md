@@ -153,13 +153,10 @@ four demo workspaces: **Leipzig**, **Utrecht**, **Musterstadt**, and **Muster-La
   every active layer with a swatch shaped like how it is drawn; place-type point
   layers (schools, parking, transit stops, EV chargers, public buildings) use
   recognisable glyph icons instead of identical dots
-- **Layer differentiation controls** — a "Map style" selector (top-left of the
-  map) recolours every layer at once and tints the base map to match (High
-  contrast, Colourblind-safe, Grayscale for print), while per-layer options
-  switch the display mode (dots / icons / heatmap for points, normal / thick
-  lines, filled / outline areas), adjust opacity, and "focus" a single layer by
-  dimming the rest. Semantic colour scales (speed limits, accident severity,
-  district scores) stay fixed. All choices are remembered in the browser
+- **Per-layer display controls** — each layer has a display-mode switch (dots /
+  icons / heatmap for points, normal / thick lines, filled / outline areas), an
+  opacity slider, and a "focus" toggle that dims every other layer so one stands
+  out. All choices are remembered in the browser
 - **Base map switcher** — pick a Light, Dark, or Satellite base map from a
   control on the map, independent of the UI theme; the choice is remembered
 - **Light & dark mode** — a header toggle switches the whole UI between light and
