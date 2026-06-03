@@ -3,7 +3,7 @@
 
 # OpenMobility OS
 
-**Version:** 0.32.0 (pre-release) — see [CHANGELOG.md](CHANGELOG.md)
+**Version:** 0.34.0 (pre-release) — see [CHANGELOG.md](CHANGELOG.md)
 **License:** See [LICENSE](LICENSE)
 
 > The open, free, self-hostable operating system between open mobility data

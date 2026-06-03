@@ -2,51 +2,192 @@
 {% load i18n %}
 
 {% block content %}
-<article class="prose max-w-3xl">
-  <h1 class="text-3xl font-bold mb-4">{% trans "About OpenMobility OS" %}</h1>
+<div class="max-w-5xl mx-auto">
 
-  <p class="text-slate-700">
-    {% trans "OpenMobility OS is an open, free, self-hostable platform for the mobility transition. It is not a consumer routing tool — it is a decision, prioritization, and transparency platform for municipalities, city planners, local politics, NGOs, journalists, and citizens." %}
-  </p>
+  {# ── Hero ─────────────────────────────────────────────────────────────── #}
+  <section class="mb-14">
+    <span class="inline-flex items-center gap-1.5 rounded-full bg-brand-50 text-brand-700 border border-brand-200 px-3 py-1 text-xs font-semibold tracking-wide uppercase">
+      <span class="h-1.5 w-1.5 rounded-full bg-brand-500"></span>
+      {% trans "Open · Free · Self-hostable" %}
+    </span>
+    <h1 class="mt-5 text-4xl sm:text-5xl font-extrabold tracking-tight text-slate-900 leading-tight">
+      {% trans "The missing operating system between mobility data and political decisions." %}
+    </h1>
+    <p class="mt-5 text-lg text-slate-600 leading-relaxed max-w-3xl">
+      {% trans "OpenMobility OS is not another consumer routing app. It is a decision, prioritization, and transparency platform that turns scattered open data into traceable, defensible choices — so the case for safer streets and better mobility can be made in the open, in any city, in any country." %}
+    </p>
 
-  <h2 class="text-xl font-semibold mt-8 mb-2">{% trans "Deployment modes" %}</h2>
-  <ul class="text-slate-700 space-y-1">
-    <li><strong>public-demo</strong> — {% trans "landing page lists all workspaces" %}</li>
-    <li><strong>single-city</strong> — {% trans "one municipality; landing redirects to that workspace" %}</li>
-    <li><strong>multi-city</strong> — {% trans "county, region, or state; one installation hosts many workspaces" %}</li>
-  </ul>
+    {# Audience pills — who this is built for. #}
+    <div class="mt-7 flex flex-wrap gap-2">
+      {% for who in audiences %}
+        <span class="rounded-full bg-white border border-slate-200 px-3 py-1 text-sm text-slate-600 shadow-sm">{{ who }}</span>
+      {% endfor %}
+    </div>
+  </section>
 
-  <h2 class="text-xl font-semibold mt-8 mb-2">{% trans "Self-hosting" %}</h2>
-  {% comment %}
-  not-prose prevents Tailwind Typography from overriding the dark background
-  with a light one (components.css .prose pre rule).
-  {% endcomment %}
-  <div class="not-prose">
-    <pre style="background:#0f172a;color:#e2e8f0;border-radius:6px;padding:1rem;font-size:0.875rem;overflow-x:auto;line-height:1.6">git clone {{ project_repo_url }}.git
+  {# ── What it is / isn't ───────────────────────────────────────────────── #}
+  <section class="grid gap-4 sm:grid-cols-2 mb-16">
+    <div class="rounded-2xl border border-emerald-200 bg-emerald-50 p-6">
+      <h2 class="flex items-center gap-2 text-base font-semibold text-emerald-800">
+        <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 0 1 0 1.4l-7.5 7.5a1 1 0 0 1-1.4 0L3.3 9.7a1 1 0 1 1 1.4-1.4l3.3 3.29 6.8-6.8a1 1 0 0 1 1.4 0Z" clip-rule="evenodd"/></svg>
+        {% trans "What it is" %}
+      </h2>
+      <ul class="mt-3 space-y-1.5 text-sm text-slate-700">
+        <li>{% trans "A prioritization engine for mobility measures" %}</li>
+        <li>{% trans "A transparent, auditable scoring layer" %}</li>
+        <li>{% trans "A public window into how decisions are made" %}</li>
+      </ul>
+    </div>
+    <div class="rounded-2xl border border-slate-200 bg-white p-6">
+      <h2 class="flex items-center gap-2 text-base font-semibold text-slate-700">
+        <svg class="h-5 w-5 text-slate-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm3.7-10.3a1 1 0 0 0-1.4-1.4L10 8.58 7.7 6.3a1 1 0 0 0-1.4 1.4L8.58 10 6.3 12.3a1 1 0 1 0 1.4 1.4L10 11.42l2.3 2.28a1 1 0 0 0 1.4-1.4L11.42 10l2.28-2.3Z" clip-rule="evenodd"/></svg>
+        {% trans "What it is not" %}
+      </h2>
+      <ul class="mt-3 space-y-1.5 text-sm text-slate-600">
+        <li>{% trans "A turn-by-turn navigation app" %}</li>
+        <li>{% trans "A black-box recommendation engine" %}</li>
+        <li>{% trans "Locked to one city, vendor, or country" %}</li>
+      </ul>
+    </div>
+  </section>
+
+  {# ── Deployment modes ─────────────────────────────────────────────────── #}
+  <section class="mb-16">
+    <h2 class="text-2xl font-bold tracking-tight text-slate-900 mb-1">{% trans "Deployment modes" %}</h2>
+    <p class="text-slate-600 mb-6">{% trans "One codebase, three ways to run it — pick the scope that matches your installation." %}</p>
+    <div class="grid gap-4 sm:grid-cols-3">
+      <div class="card-lift rounded-2xl border border-slate-200 bg-white p-5">
+        <div class="text-xs font-mono font-semibold text-brand-600">public-demo</div>
+        <p class="mt-2 text-sm text-slate-600">{% trans "The landing page lists every workspace — ideal for showcases and open catalogues." %}</p>
+      </div>
+      <div class="card-lift rounded-2xl border border-slate-200 bg-white p-5">
+        <div class="text-xs font-mono font-semibold text-brand-600">single-city</div>
+        <p class="mt-2 text-sm text-slate-600">{% trans "One municipality; the landing page redirects straight into that workspace." %}</p>
+      </div>
+      <div class="card-lift rounded-2xl border border-slate-200 bg-white p-5">
+        <div class="text-xs font-mono font-semibold text-brand-600">multi-city</div>
+        <p class="mt-2 text-sm text-slate-600">{% trans "A county, region, or state — one installation hosts many workspaces side by side." %}</p>
+      </div>
+    </div>
+  </section>
+
+  {# ── Self-hosting terminal ────────────────────────────────────────────── #}
+  <section class="mb-16">
+    <h2 class="text-2xl font-bold tracking-tight text-slate-900 mb-1">{% trans "Self-hosting in under a minute" %}</h2>
+    <p class="text-slate-600 mb-6">{% trans "No proprietary SaaS, no hidden dependencies. Clone it, set two secrets, and bring the whole stack up with Docker Compose." %}</p>
+
+    {% comment %}
+    Dark terminal card with a copy-to-clipboard button. Alpine reads the raw
+    command text from the x-ref'd <pre> (innerText preserves line breaks), so
+    the copied text always matches exactly what is rendered. The card is
+    intentionally slate-900 in both themes — a terminal should read as a
+    terminal.
+    {% endcomment %}
+    <div class="not-prose overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-xl shadow-slate-900/10"
+         x-data="{ copied: false, copyCmd() { const t = this.$refs.cmd.innerText; if (!navigator.clipboard) return; navigator.clipboard.writeText(t).then(() => { this.copied = true; clearTimeout(this._t); this._t = setTimeout(() => { this.copied = false; }, 2000); }); } }">
+      <div class="flex items-center justify-between gap-3 border-b border-slate-700/70 bg-slate-800/60 px-4 py-2.5">
+        <div class="flex items-center gap-1.5">
+          <span class="h-3 w-3 rounded-full bg-red-400/80"></span>
+          <span class="h-3 w-3 rounded-full bg-amber-400/80"></span>
+          <span class="h-3 w-3 rounded-full bg-emerald-400/80"></span>
+          <span class="ml-3 text-xs font-medium text-slate-400">{% trans "quickstart — bash" %}</span>
+        </div>
+        <button type="button" @click="copyCmd()"
+                class="inline-flex items-center gap-1.5 rounded-md border border-slate-600 px-2.5 py-1 text-xs font-medium text-slate-300 hover:border-brand-400 hover:text-brand-300 transition-colors"
+                aria-label="{% trans 'Copy the quickstart commands to the clipboard' %}">
+          <span x-show="!copied" class="inline-flex items-center gap-1.5">
+            <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="7" y="7" width="9" height="9" rx="1.5"/><path d="M13 7V5a1.5 1.5 0 0 0-1.5-1.5h-6A1.5 1.5 0 0 0 4 5v6A1.5 1.5 0 0 0 5.5 12.5H7"/></svg>
+            {% trans "Copy" %}
+          </span>
+          <span x-show="copied" x-cloak class="inline-flex items-center gap-1.5 text-emerald-400">
+            <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 10.5 3.5 3.5L16 6"/></svg>
+            {% trans "Copied!" %}
+          </span>
+        </button>
+      </div>
+      {# Note: the copy button uses this <pre>'s innerText, so we keep it free of
+         shell prompt prefixes — what you copy is exactly what you can paste. #}
+      <pre x-ref="cmd" class="overflow-x-auto px-4 py-4 text-sm leading-relaxed text-slate-100 font-mono">git clone {{ project_repo_url }}.git
 cd openmobility-os
 cp .env.example .env
-# edit .env — set SECRET_KEY and ADMIN_TOKEN
+<span class="text-slate-500"># {% trans "edit .env — set SECRET_KEY and ADMIN_TOKEN" %}</span>
 docker compose up --build</pre>
-  </div>
+    </div>
+    <p class="mt-3 text-xs text-slate-500">{% trans "Every change keeps this command working end-to-end — self-hosting first is a project principle, not an afterthought." %}</p>
+  </section>
 
-  <h2 class="text-xl font-semibold mt-8 mb-2">{% trans "Current version" %}</h2>
-  <p class="text-slate-700">
-    <a href="{{ project_release_url }}" target="_blank" rel="noopener noreferrer" class="no-underline">
-      <code class="bg-slate-100 rounded px-2 py-0.5 hover:bg-slate-200">v{{ platform_version }}</code>
+  {# ── Principles ───────────────────────────────────────────────────────── #}
+  <section class="mb-16">
+    <h2 class="text-2xl font-bold tracking-tight text-slate-900 mb-1">{% trans "Principles we never violate" %}</h2>
+    <p class="text-slate-600 mb-6">{% trans "Six commitments that shape every line of code and every feature." %}</p>
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+
+      <div class="card-lift rounded-2xl border border-slate-200 bg-white p-6">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
+          <svg class="h-5 w-5" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="10" cy="10" r="7.5"/><path d="M2.5 10h15M10 2.5c2.2 2 3.4 4.8 3.4 7.5S12.2 15.5 10 17.5C7.8 15.5 6.6 12.7 6.6 10S7.8 4.5 10 2.5Z"/></svg>
+        </span>
+        <h3 class="mt-4 font-semibold text-slate-900">{% trans "City-agnostic" %}</h3>
+        <p class="mt-1.5 text-sm text-slate-600">{% trans "No logic is wired to any one place. Leipzig is just a demo — every feature works for any municipality, anywhere." %}</p>
+      </div>
+
+      <div class="card-lift rounded-2xl border border-slate-200 bg-white p-6">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
+          <svg class="h-5 w-5" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M7 13l-2.5 2.5a2.1 2.1 0 0 1-3-3L4 10M13 7l2.5-2.5a2.1 2.1 0 0 0-3-3L10 4M7.5 12.5l5-5"/></svg>
+        </span>
+        <h3 class="mt-4 font-semibold text-slate-900">{% trans "API-first & connector-based" %}</h3>
+        <p class="mt-1.5 text-sm text-slate-600">{% trans "Data enters through pluggable adapters — CSV, GeoJSON, OpenStreetMap, GTFS and more. Core code never assumes a vendor." %}</p>
+      </div>
+
+      <div class="card-lift rounded-2xl border border-slate-200 bg-white p-6">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
+          <svg class="h-5 w-5" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 17.5h15M5 17.5V9M9.2 17.5V5M13.4 17.5v-6M17.5 17.5V7"/></svg>
+        </span>
+        <h3 class="mt-4 font-semibold text-slate-900">{% trans "Transparent scoring" %}</h3>
+        <p class="mt-1.5 text-sm text-slate-600">{% trans "No black boxes. Every score exposes its sources, inputs, formula, and uncertainty — traceable back to the raw data." %}</p>
+      </div>
+
+      <div class="card-lift rounded-2xl border border-slate-200 bg-white p-6">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
+          <svg class="h-5 w-5" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="3.5" width="15" height="5" rx="1.5"/><rect x="2.5" y="11.5" width="15" height="5" rx="1.5"/><path d="M5.5 6h.01M5.5 14h.01"/></svg>
+        </span>
+        <h3 class="mt-4 font-semibold text-slate-900">{% trans "Self-hosting first" %}</h3>
+        <p class="mt-1.5 text-sm text-slate-600">{% trans "Docker Compose is the entry point. No mandatory SaaS — a municipality can always run the whole stack on its own hardware." %}</p>
+      </div>
+
+      <div class="card-lift rounded-2xl border border-slate-200 bg-white p-6">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
+          <svg class="h-5 w-5" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="9" width="12" height="8" rx="1.5"/><path d="M6.5 9V6.5a3.5 3.5 0 0 1 6.8-1.2"/></svg>
+        </span>
+        <h3 class="mt-4 font-semibold text-slate-900">{% trans "Open public layer" %}</h3>
+        <p class="mt-1.5 text-sm text-slate-600">{% trans "Read access is always free and login-less. Only write actions are protected, so the public can always check the work." %}</p>
+      </div>
+
+      <div class="card-lift rounded-2xl border border-slate-200 bg-white p-6">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
+          <svg class="h-5 w-5" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 4.5h7M6 2.5v2M4 4.5c0 3.3 2 6 5 7M7.5 11.5c-2 1.5-4 2-4 2M11 17.5l3.2-7 3.3 7M12.2 15h4.2"/></svg>
+        </span>
+        <h3 class="mt-4 font-semibold text-slate-900">{% trans "Internationalized from day one" %}</h3>
+        <p class="mt-1.5 text-sm text-slate-600">{% trans "Every user-facing string goes through translation. The platform speaks the local language, not just English." %}</p>
+      </div>
+
+    </div>
+  </section>
+
+  {# ── Version footer ───────────────────────────────────────────────────── #}
+  <section class="rounded-2xl border border-slate-200 bg-white p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div class="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-slate-600">
+      <a href="{{ project_release_url }}" target="_blank" rel="noopener noreferrer" class="no-underline">
+        <code class="bg-slate-100 rounded px-2 py-0.5 font-semibold text-slate-700 hover:bg-slate-200 transition-colors">v{{ platform_version }}</code>
+      </a>
+      <span class="text-slate-400">·</span>
+      <span>{% trans "Deployment mode:" %} <code class="bg-slate-100 rounded px-2 py-0.5">{{ deployment_mode }}</code></span>
+    </div>
+    <a href="{{ project_repo_url }}" target="_blank" rel="noopener noreferrer"
+       class="inline-flex items-center gap-2 rounded-lg bg-brand-600 text-white px-4 py-2 text-sm font-medium shadow-sm hover:bg-brand-700 transition-colors">
+      <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 1.5a8.5 8.5 0 0 0-2.7 16.6c.43.08.58-.19.58-.41v-1.6c-2.36.51-2.86-1-2.86-1-.39-.98-.95-1.24-.95-1.24-.77-.53.06-.52.06-.52.85.06 1.3.88 1.3.88.76 1.3 1.98.92 2.46.7.08-.55.3-.92.54-1.13-1.88-.21-3.86-.94-3.86-4.18 0-.92.33-1.68.87-2.27-.09-.21-.38-1.07.08-2.24 0 0 .71-.23 2.32.87a8.1 8.1 0 0 1 4.22 0c1.6-1.1 2.31-.87 2.31-.87.46 1.17.17 2.03.08 2.24.54.59.87 1.35.87 2.27 0 3.25-1.98 3.97-3.87 4.18.3.27.58.79.58 1.6v2.37c0 .23.15.5.59.41A8.5 8.5 0 0 0 10 1.5Z" clip-rule="evenodd"/></svg>
+      {% trans "Source on GitHub" %}
     </a>
-    · {% trans "Deployment mode:" %}
-    <code class="bg-slate-100 rounded px-2 py-0.5">{{ deployment_mode }}</code>
-    · <a href="{{ project_repo_url }}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">{% trans "Source on GitHub" %}</a>
-  </p>
+  </section>
 
-  <h2 class="text-xl font-semibold mt-8 mb-2">{% trans "Principles" %}</h2>
-  <ul class="text-slate-700 space-y-1">
-    <li>{% trans "City-agnostic — Leipzig is just a demo." %}</li>
-    <li>{% trans "API-first and connector-based." %}</li>
-    <li>{% trans "Transparent scoring — every value traceable to its source." %}</li>
-    <li>{% trans "Self-hosting first — Docker Compose is the entry point." %}</li>
-    <li>{% trans "Open public layer — read access is always free and login-less." %}</li>
-    <li>{% trans "Internationalized from day one." %}</li>
-  </ul>
-</article>
+</div>
 {% endblock %}

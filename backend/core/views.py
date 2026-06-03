@@ -29,7 +29,23 @@ def platform_landing(request):
 
 
 def about_view(request):
-    return render(request, "core/about.html", {"page_title": _("About OpenMobility OS")})
+    # The audiences the platform is built for — rendered as pills on the About
+    # page. Kept here (not hardcoded in the template) so each label stays a
+    # single gettext-translatable string.
+    audiences = [
+        _("Municipalities"),
+        _("City planners"),
+        _("Local politics"),
+        _("NGOs"),
+        _("Journalists"),
+        _("Researchers"),
+        _("Citizens"),
+    ]
+    return render(
+        request,
+        "core/about.html",
+        {"page_title": _("About OpenMobility OS"), "audiences": audiences},
+    )
 
 
 def methodology_view(request):

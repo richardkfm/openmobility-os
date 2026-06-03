@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **One-click copy on the About page quickstart** — the self-hosting commands
+  now live in a terminal-style box with a "Copy" button, so you can grab the
+  whole `git clone … docker compose up` sequence in a single click.
+
+### Changed
+- **Redesigned the About page** — clearer, more engaging copy explaining what
+  OpenMobility OS is (and what it is not), the audiences it serves, the three
+  deployment modes as cards, and the six project principles as illustrated
+  cards. The page now reads as an at-a-glance overview rather than a wall of
+  text.
+
+### Added
 - **Per-layer display modes** — each layer now has display options: point layers
   switch between dots, place icons, and a density heatmap; line layers between
   normal and thick; area layers between filled and outline-only. Modes are
