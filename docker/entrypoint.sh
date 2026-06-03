@@ -6,6 +6,9 @@ export PYTHONPATH=/app/backend
 
 cd /app
 
+echo "[OpenMobility OS] Compiling translations..."
+python manage.py compilemessages || echo "[OpenMobility OS] compilemessages skipped or failed; continuing."
+
 echo "[OpenMobility OS] Applying database migrations..."
 python manage.py migrate --noinput
 

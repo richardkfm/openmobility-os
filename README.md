@@ -153,6 +153,13 @@ four demo workspaces: **Leipzig**, **Utrecht**, **Musterstadt**, and **Muster-La
   every active layer with a swatch shaped like how it is drawn; place-type point
   layers (schools, parking, transit stops, EV chargers, public buildings) use
   recognisable glyph icons instead of identical dots
+- **Layer differentiation controls** — a "Map style" selector recolours every
+  layer at once (High contrast, Colourblind-safe, Grayscale for print), while
+  per-layer options switch the display mode (dots / icons / heatmap for points,
+  normal / thick lines, filled / outline areas), adjust opacity, and "focus" a
+  single layer by dimming the rest. Semantic colour scales (speed limits,
+  accident severity, district scores) stay fixed. All choices are remembered in
+  the browser
 - **Base map switcher** — pick a Light, Dark, or Satellite base map from a
   control on the map, independent of the UI theme; the choice is remembered
 - **Light & dark mode** — a header toggle switches the whole UI between light and
@@ -336,12 +343,23 @@ line to see its accident count, score breakdown, and per-mode totals.
 
 **Story views (compound presets):**
 
-The **Cycling gap analysis** preset activates three layers together: dedicated
-bike infrastructure (teal = protected, amber = painted lane), cyclist accident
-density (streets coloured red where cycling accidents cluster), and cycling count
-stations. Streets that glow red without any teal or amber overlay are priority
-intervention zones — one click produces a publication-ready view for a planning
-meeting or a social-media post.
+One-click presets arrange several layers (and the right accident view mode) for a
+recurring planning or journalism question, each accompanied by a plain-language
+"reading the map" key. A view only appears when the workspace has the data it
+needs:
+
+- **Cycling gap analysis** — dedicated bike infrastructure (teal = protected,
+  amber = painted lane), cyclist accident density (streets coloured red where
+  cycling accidents cluster), and cycling count stations. Streets that glow red
+  without any teal or amber overlay are priority intervention zones.
+- **Safe routes to school** — school locations against nearby recorded crashes
+  and posted speed limits, so a school ringed by fast streets with crashes
+  nearby stands out as a candidate for safe crossings and traffic calming.
+- **Traffic safety overview** — city-wide accident-severity density with speed
+  limits and traffic-count points, highlighting the worst corridors.
+
+Each produces a publication-ready view for a planning meeting or a social-media
+post in a single click.
 
 **Measure Pipeline (status-coded measures):**
 
