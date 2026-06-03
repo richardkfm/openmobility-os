@@ -8,11 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **Map colour schemes** — a "Map style" selector above the map recolours every
-  layer at once: *High contrast* for busy basemaps, *Colourblind-safe*
-  (Okabe–Ito), and *Grayscale (print)*. Semantic colour scales (speed limits,
-  accident severity, district scores) stay fixed so their meaning never changes.
-  Your choice is remembered in the browser.
+- **Map colour schemes** — a "Map style" selector at the top-left of the map
+  recolours every layer at once *and* tints the base map to match: *High
+  contrast* for busy basemaps, *Colourblind-safe* (Okabe–Ito), and *Grayscale
+  (print)* turns the whole map black-and-white. Semantic colour scales (speed
+  limits, accident severity, district scores) stay fixed so their meaning never
+  changes. Your choice is remembered in the browser.
 - **Per-layer display modes** — each layer now has display options: point layers
   switch between dots, place icons, and a density heatmap; line layers between
   normal and thick; area layers between filled and outline-only. Modes are
@@ -33,6 +34,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   are all covered.
 
 ### Fixed
+- **"Map style" now visibly changes the whole map** — previously it only
+  recoloured data layers, so with few layers toggled on it looked like nothing
+  happened. It now also tints the base map (Grayscale turns the map fully
+  black-and-white, High contrast boosts it); Colourblind-safe still re-maps
+  layer colours only. The control also moved to the top-left corner of the map.
 - **Map page no longer shows stray comment text** — the "Story views" and
   "Map style" section comments were written as multi-line `{# … #}` template
   comments, which Django does not strip, so their text leaked onto the page.
