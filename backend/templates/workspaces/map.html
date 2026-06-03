@@ -297,9 +297,9 @@
       </div>
       {% endif %}
 
-      {# Measure filters — visible when the Measures layer is toggled on #}
-      <div id="measure-filter-panel" class="hidden rounded-lg border bg-white p-4 text-sm"
-           x-data="measureFilter()" x-init="init()">
+      {# Measure filters — shown only while the Measures layer is toggled on. #}
+      <div class="rounded-lg border bg-white p-4 text-sm"
+           x-data="measureFilter()" x-init="init()" x-show="enabled" x-cloak>
         <div class="font-semibold mb-3 flex items-center gap-2">
           <span class="inline-block w-3 h-3 rounded-full" style="background:#6366f1"></span>
           {% trans "Measure filters" %}
@@ -1358,8 +1358,6 @@ map.on("load", () => {
     ["measures-circle", "measures-fill", "measures-line", "measures-outline"].forEach(id => {
       if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", vis);
     });
-    const filterPanel = document.getElementById("measure-filter-panel");
-    if (filterPanel) filterPanel.classList.toggle("hidden", !e.target.checked);
     document.dispatchEvent(new CustomEvent("omos:layerschanged"));
   });
 
@@ -1703,12 +1701,21 @@ function clearStoryView() {
 // ─── Measure Pipeline filter ─────────────────────────────────────────────────
 
 function measureFilter() {
+  const measuresOn = () => {
+    const cb = document.getElementById("toggle-measures");
+    return !!(cb && cb.checked);
+  };
   return {
+    enabled: false,       // mirrors the Measures layer toggle; panel x-shows on it
     selectedStatuses: ["proposed", "planned", "in_progress", "done", "rejected"],
     selectedCategory: "",
     selectedEffort: "",
 
     init() {
+      // Show the panel only while Measures are on. The toggle and saved-view
+      // restores both fire omos:layerschanged, so follow that single signal.
+      this.enabled = measuresOn();
+      document.addEventListener("omos:layerschanged", () => { this.enabled = measuresOn(); });
       map.on("idle", () => this.applyFilter());
     },
 
@@ -1857,14 +1864,11 @@ function savedViews() {
         );
         cb.checked = on;
       });
-      // Re-sync measures toggle + filter panel.
+      // Re-sync measures toggle (its filter panel follows via omos:layerschanged).
       const measuresCb = document.getElementById("toggle-measures");
       if (measuresCb) {
-        const on = ["measures-circle", "measures-line", "measures-fill"]
+        measuresCb.checked = ["measures-circle", "measures-line", "measures-fill"]
           .some(id => (v.layerVisibility[id] || "none") === "visible");
-        measuresCb.checked = on;
-        const panel = document.getElementById("measure-filter-panel");
-        if (panel) panel.classList.toggle("hidden", !on);
       }
       // Re-sync district scores checkbox.
       const districtCb = document.getElementById("toggle-district-scores");

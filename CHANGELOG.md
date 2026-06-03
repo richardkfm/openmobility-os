@@ -28,6 +28,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   are all covered.
 
 ### Changed
+- **Accident, Measure, and District filter panels are consistently tied to
+  their layer toggles** — each set of options now shows only while its layer is
+  on, using one shared mechanism, so the sidebar stays focused and predictable.
 - **Accident filters appear only when the accidents layer is on** — the filter
   panel used to take up sidebar space whenever a workspace had accident data,
   even with the layer switched off. It now shows only while accidents are
