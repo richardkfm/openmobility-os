@@ -27,10 +27,12 @@
     {# Layer panel #}
     <div class="lg:w-64 shrink-0 flex flex-col gap-3">
 
-      {# Story views — compound presets for journalists and planners. Each button
-         is gated by the data the view needs, so a workspace only sees the views
-         it can actually render. The active view's plain-language key + a Clear
-         button replace the list while one is on. #}
+      {% comment %}
+      Story views — compound presets for journalists and planners. Each button is
+      gated by the data the view needs, so a workspace only sees the views it can
+      actually render. The active view's plain-language key + a Clear button
+      replace the list while one is on.
+      {% endcomment %}
       {% if has_cycling_gap_data or has_safe_school_data or has_traffic_safety_data %}
       <div class="rounded-lg border bg-white p-4 text-sm"
            x-data="{ active: null, reading: '' }"
@@ -98,20 +100,6 @@
           <span x-text="open ? '▲' : '▼'" class="text-slate-400 text-xs"></span>
         </button>
         <div x-show="open" class="mt-3 flex flex-col gap-2 text-sm" id="layer-controls">
-          {# Colour scheme — recolours every identity-coloured layer at once.
-             Semantic ramps (speed, accident severity, scores) stay fixed. #}
-          {% if layers %}
-          <label class="flex items-center justify-between gap-2 pb-2 mb-1 border-b">
-            <span class="text-xs text-slate-500">{% trans "Map style" %}</span>
-            <select id="color-scheme-select" @change="applyColorScheme($event.target.value)"
-                    class="text-xs border rounded px-1.5 py-1 text-slate-700">
-              <option value="default">{% trans "Default" %}</option>
-              <option value="high_contrast">{% trans "High contrast" %}</option>
-              <option value="colorblind">{% trans "Colourblind-safe" %}</option>
-              <option value="grayscale">{% trans "Grayscale (print)" %}</option>
-            </select>
-          </label>
-          {% endif %}
           {% for layer in layers %}
           <div x-data="layerControls('{{ layer.value }}')" x-init="init()">
             <div class="flex items-center gap-2">
@@ -415,6 +403,27 @@
     </div>
 
     <div class="flex-1 min-w-0 flex flex-col gap-2">
+
+      {% comment %}
+      Map style — recolours every identity-coloured layer at once. Semantic
+      colour scales (speed, accident severity, district scores) stay fixed.
+      Placed above the map, opposite the on-map base-map switcher.
+      {% endcomment %}
+      {% if layers %}
+      <div class="flex justify-end">
+        <div class="rounded-lg border bg-white shadow-sm px-2.5 py-1 text-xs flex items-center gap-2"
+             x-data="colorSchemeSwitcher()" x-init="init()">
+          <span class="text-slate-500">{% trans "Map style" %}</span>
+          <select x-model="scheme" @change="apply()"
+                  class="text-xs border rounded px-1.5 py-0.5 text-slate-700">
+            <option value="default">{% trans "Default" %}</option>
+            <option value="high_contrast">{% trans "High contrast" %}</option>
+            <option value="colorblind">{% trans "Colourblind-safe" %}</option>
+            <option value="grayscale">{% trans "Grayscale (print)" %}</option>
+          </select>
+        </div>
+      </div>
+      {% endif %}
 
       {# Map + on-map base-map switcher (a display control, kept off the data sidebar). #}
       <div class="relative">
@@ -1446,11 +1455,6 @@ map.on("load", () => {
   // persisted colour scheme — loadIconImage reads layerColor()).
   registerMapIcons();
 
-  // Reflect the persisted colour scheme in its selector (the layers themselves
-  // are already drawn in the right colours, since layerColor() reads it).
-  const schemeSel = document.getElementById("color-scheme-select");
-  if (schemeSel) schemeSel.value = activeScheme();
-
   // Seed accident state from the checkbox so first paint matches the UI.
   const accidentsCb = document.querySelector('.layer-toggle[data-layer="accidents"]');
   if (accidentsCb) accidentsState.enabled = accidentsCb.checked;
@@ -2002,6 +2006,18 @@ function basemapSwitcher() {
       this.mode = mode;
       applyBasemap(mode, true);
     },
+  };
+}
+
+// ─── Colour scheme switcher ──────────────────────────────────────────────────
+// Above-map control that recolours every identity-coloured layer at once. It
+// reflects the persisted scheme on init (the layers are already drawn in it,
+// since layerColor() reads it) and re-applies on change.
+function colorSchemeSwitcher() {
+  return {
+    scheme: activeScheme(),
+    init() { this.scheme = activeScheme(); },
+    apply() { applyColorScheme(this.scheme); },
   };
 }
 

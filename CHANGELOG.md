@@ -8,8 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **Map colour schemes** — a "Map style" selector in the layer panel recolours
-  every layer at once: *High contrast* for busy basemaps, *Colourblind-safe*
+- **Map colour schemes** — a "Map style" selector above the map recolours every
+  layer at once: *High contrast* for busy basemaps, *Colourblind-safe*
   (Okabe–Ito), and *Grayscale (print)*. Semantic colour scales (speed limits,
   accident severity, district scores) stay fixed so their meaning never changes.
   Your choice is remembered in the browser.
@@ -33,6 +33,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   are all covered.
 
 ### Fixed
+- **Map page no longer shows stray comment text** — the "Story views" and
+  "Map style" section comments were written as multi-line `{# … #}` template
+  comments, which Django does not strip, so their text leaked onto the page.
+  They are now proper `{% comment %}` blocks.
+- **The "Map style" switcher now reliably recolours the map** — it moved out of
+  the layer panel to a control above the map (opposite the base-map switcher)
+  and is wired through a dedicated component so changing the scheme always
+  re-applies immediately.
 - **README now reflects the current release and connector list** — the version
   badge was stuck at `0.28.1` while the platform had moved on to the `0.31.x`
   line, and the OpenStreetMap connector feature list still advertised "thirteen
