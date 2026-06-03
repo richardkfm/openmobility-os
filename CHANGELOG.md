@@ -8,12 +8,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **Map colour schemes** — a "Map style" selector at the top-left of the map
-  recolours every layer at once *and* tints the base map to match: *High
-  contrast* for busy basemaps, *Colourblind-safe* (Okabe–Ito), and *Grayscale
-  (print)* turns the whole map black-and-white. Semantic colour scales (speed
-  limits, accident severity, district scores) stay fixed so their meaning never
-  changes. Your choice is remembered in the browser.
 - **Per-layer display modes** — each layer now has display options: point layers
   switch between dots, place icons, and a density heatmap; line layers between
   normal and thick; area layers between filled and outline-only. Modes are
@@ -33,20 +27,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and the longer explanatory copy on the landing, about, and methodology pages
   are all covered.
 
+### Changed
+- **Accident filters appear only when the accidents layer is on** — the filter
+  panel used to take up sidebar space whenever a workspace had accident data,
+  even with the layer switched off. It now shows only while accidents are
+  active, keeping the sidebar focused.
+- **Accidents now default to the most recent 3 years** — turning the layer on
+  shows the latest three years together (a steadier picture than a single year);
+  you can still narrow or widen the range.
+
 ### Fixed
-- **"Map style" now visibly changes the whole map** — previously it only
-  recoloured data layers, so with few layers toggled on it looked like nothing
-  happened. It now also tints the base map (Grayscale turns the map fully
-  black-and-white, High contrast boosts it); Colourblind-safe still re-maps
-  layer colours only. The control also moved to the top-left corner of the map.
-- **Map page no longer shows stray comment text** — the "Story views" and
-  "Map style" section comments were written as multi-line `{# … #}` template
-  comments, which Django does not strip, so their text leaked onto the page.
-  They are now proper `{% comment %}` blocks.
-- **The "Map style" switcher now reliably recolours the map** — it moved out of
-  the layer panel to a control above the map (opposite the base-map switcher)
-  and is wired through a dedicated component so changing the scheme always
-  re-applies immediately.
 - **README now reflects the current release and connector list** — the version
   badge was stuck at `0.28.1` while the platform had moved on to the `0.31.x`
   line, and the OpenStreetMap connector feature list still advertised "thirteen
