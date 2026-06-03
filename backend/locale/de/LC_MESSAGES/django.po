@@ -1146,3 +1146,99 @@ msgstr "Ein Arbeitsbereich mit diesem Slug existiert bereits."
 #, python-format
 msgid "Workspace %(name)s created. Next step: add data sources."
 msgstr "Arbeitsbereich %(name)s erstellt. Nächster Schritt: Datenquellen hinzufügen."
+
+#: backend/templates/workspaces/map.html
+msgid "Map style"
+msgstr "Kartenstil"
+
+#: backend/templates/workspaces/map.html
+msgid "Default"
+msgstr "Standard"
+
+#: backend/templates/workspaces/map.html
+msgid "High contrast"
+msgstr "Hoher Kontrast"
+
+#: backend/templates/workspaces/map.html
+msgid "Colourblind-safe"
+msgstr "Farbenblind-sicher"
+
+#: backend/templates/workspaces/map.html
+msgid "Grayscale (print)"
+msgstr "Graustufen (Druck)"
+
+#: backend/templates/workspaces/map.html
+msgid "Display options"
+msgstr "Anzeigeoptionen"
+
+#: backend/templates/workspaces/map.html
+msgid "Display"
+msgstr "Anzeige"
+
+#: backend/templates/workspaces/map.html
+msgid "Opacity"
+msgstr "Deckkraft"
+
+#: backend/templates/workspaces/map.html
+msgid "Focus this layer"
+msgstr "Diese Ebene hervorheben"
+
+#: backend/templates/workspaces/map.html
+msgid "Clear focus"
+msgstr "Hervorhebung aufheben"
+
+#: backend/templates/workspaces/map.html
+msgid "Dots"
+msgstr "Punkte"
+
+#: backend/templates/workspaces/map.html
+msgid "Icons"
+msgstr "Symbole"
+
+#: backend/templates/workspaces/map.html
+msgid "Heatmap"
+msgstr "Heatmap"
+
+#: backend/templates/workspaces/map.html
+msgid "Normal lines"
+msgstr "Normale Linien"
+
+#: backend/templates/workspaces/map.html
+msgid "Thick lines"
+msgstr "Dicke Linien"
+
+#: backend/templates/workspaces/map.html
+msgid "Filled"
+msgstr "Gefüllt"
+
+#: backend/templates/workspaces/map.html
+msgid "Outline only"
+msgstr "Nur Umriss"
+
+#: backend/templates/workspaces/map.html
+msgid "Safe routes to school"
+msgstr "Sichere Schulwege"
+
+#: backend/templates/workspaces/map.html
+msgid "Schools against nearby crashes and posted speed limits."
+msgstr "Schulen im Vergleich zu nahegelegenen Unfällen und Tempolimits."
+
+#: backend/templates/workspaces/map.html
+msgid "Traffic safety overview"
+msgstr "Überblick Verkehrssicherheit"
+
+#: backend/templates/workspaces/map.html
+msgid "City-wide accident density with speed limits and traffic counts."
+msgstr "Stadtweite Unfalldichte mit Tempolimits und Verkehrszählungen."
+
+#: backend/templates/workspaces/map.html
+msgid "School markers show where children arrive. Coloured dots are recorded crashes (darkest = fatal). Street colours show posted speed limits — a school ringed by fast streets with crashes nearby is a priority for safe crossings and traffic calming."
+msgstr "Schulmarkierungen zeigen, wo Kinder ankommen. Farbige Punkte sind erfasste Unfälle (am dunkelsten = tödlich). Straßenfarben zeigen die zulässige Höchstgeschwindigkeit — eine Schule, die von schnellen Straßen mit nahegelegenen Unfällen umgeben ist, hat Vorrang für sichere Querungen und Verkehrsberuhigung."
+
+#: backend/templates/workspaces/map.html
+msgid "Streets are coloured blue→red by their accident-severity score, with posted speed limits underneath and traffic-count points where available. Red corridors carry the worst safety record and are the strongest candidates for intervention."
+msgstr "Straßen sind nach ihrem Unfallschwere-Score blau→rot eingefärbt, darunter die zulässigen Höchstgeschwindigkeiten und, wo verfügbar, Verkehrszählpunkte. Rote Korridore haben die schlechteste Sicherheitsbilanz und sind die stärksten Kandidaten für Maßnahmen."
+
+#: backend/templates/workspaces/map.html
+msgid "Red/orange streets = cycling accident clusters. Teal = protected bike lanes. Amber = painted lanes. A white dashed overlay marks lanes built after the latest accident year — a flagged cluster under a dashed lane has likely already been addressed. Red streets without any overlay are priority intervention zones."
+msgstr "Rote/orange Straßen = Häufungen von Fahrradunfällen. Türkis = geschützte Radwege. Bernstein = markierte Radstreifen. Eine weiße gestrichelte Überlagerung kennzeichnet Wege, die nach dem letzten Unfalljahr gebaut wurden — eine markierte Häufung unter einem gestrichelten Weg wurde wahrscheinlich bereits adressiert. Rote Straßen ohne Überlagerung sind vorrangige Eingriffszonen."

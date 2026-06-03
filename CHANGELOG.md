@@ -8,6 +8,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Map colour schemes** — a "Map style" selector in the layer panel recolours
+  every layer at once: *High contrast* for busy basemaps, *Colourblind-safe*
+  (Okabe–Ito), and *Grayscale (print)*. Semantic colour scales (speed limits,
+  accident severity, district scores) stay fixed so their meaning never changes.
+  Your choice is remembered in the browser.
+- **Per-layer display modes** — each layer now has display options: point layers
+  switch between dots, place icons, and a density heatmap; line layers between
+  normal and thick; area layers between filled and outline-only. Modes are
+  remembered per layer in the browser.
+- **Per-layer opacity and a focus mode** — fade an individual layer with an
+  opacity slider, or use "Focus this layer" to dim every other layer so one
+  stands out.
+- **Two new story views** — *Safe routes to school* (schools against nearby
+  crashes and posted speed limits) and *Traffic safety overview* (city-wide
+  accident density with speed limits and traffic counts), alongside the existing
+  Cycling gap analysis. Each view only appears when the workspace has the data
+  it needs.
 - **The interface is now fully available in German** — every menu item,
   button, form label, and descriptive text now has a German translation, so
   German-language workspaces no longer fall back to the English source strings.

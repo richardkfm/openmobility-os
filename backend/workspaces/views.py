@@ -63,6 +63,14 @@ def workspace_map(request, workspace_slug: str):
     has_cycling_gap_data = "accidents" in kind_values and any(
         k in kind_values for k in ("dedicated_bike_network", "cycling_counts")
     )
+    # "Safe routes to school" story view overlays school locations with the
+    # accident record — it only makes sense when both are present.
+    has_safe_school_data = "schools" in kind_values and "accidents" in kind_values
+    # "Traffic safety overview" snaps accidents onto the speed-limited street
+    # network, so it needs both an accidents layer and a streets layer.
+    has_traffic_safety_data = "accidents" in kind_values and any(
+        k in kind_values for k in ("streets_with_speed", "streets")
+    )
     has_districts = ws.districts.exists()
 
     response = render(
@@ -74,6 +82,8 @@ def workspace_map(request, workspace_slug: str):
             "layer_kinds": kind_values,
             "has_streets": has_streets,
             "has_cycling_gap_data": has_cycling_gap_data,
+            "has_safe_school_data": has_safe_school_data,
+            "has_traffic_safety_data": has_traffic_safety_data,
             "has_districts": has_districts,
             "measure_categories": Measure.Category.choices,
             "page_title": _("Map — %(name)s") % {"name": ws.name},

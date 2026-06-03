@@ -27,30 +27,63 @@
     {# Layer panel #}
     <div class="lg:w-64 shrink-0 flex flex-col gap-3">
 
-      {# Story views — compound presets for journalists and planners #}
-      {% if has_cycling_gap_data %}
+      {# Story views — compound presets for journalists and planners. Each button
+         is gated by the data the view needs, so a workspace only sees the views
+         it can actually render. The active view's plain-language key + a Clear
+         button replace the list while one is on. #}
+      {% if has_cycling_gap_data or has_safe_school_data or has_traffic_safety_data %}
       <div class="rounded-lg border bg-white p-4 text-sm"
-           x-data="{ gapActive: false }"
-           @gap-analysis-activated.document="gapActive = true"
-           @gap-analysis-cleared.document="gapActive = false">
+           x-data="{ active: null, reading: '' }"
+           @omos:storyview.document="active = $event.detail.key; reading = $event.detail.reading"
+           @omos:storyview-cleared.document="active = null; reading = ''">
         <p class="font-semibold text-xs uppercase tracking-wide text-slate-500 mb-2.5">{% trans "Story views" %}</p>
-        <div x-show="!gapActive">
-          <button @click="activateCyclingGap()"
-                  class="w-full text-left px-3 py-2 rounded-lg bg-slate-50 hover:bg-slate-100 border transition-colors flex items-center gap-2">
-            <span class="flex -space-x-0.5 shrink-0">
-              <span class="inline-block w-3 h-3 rounded-full bg-red-500 border border-white"></span>
-              <span class="inline-block w-3 h-3 rounded-full bg-teal-600 border border-white"></span>
-            </span>
-            {% trans "Cycling gap analysis" %}
-          </button>
-          <p class="text-xs text-slate-400 mt-1.5">{% trans "Overlays cycling accident clusters, protected lanes, and count stations." %}</p>
+        <div x-show="!active" class="flex flex-col gap-3">
+          {% if has_cycling_gap_data %}
+          <div>
+            <button @click="activateStoryView('cycling_gap')"
+                    class="w-full text-left px-3 py-2 rounded-lg bg-slate-50 hover:bg-slate-100 border transition-colors flex items-center gap-2">
+              <span class="flex -space-x-0.5 shrink-0">
+                <span class="inline-block w-3 h-3 rounded-full bg-red-500 border border-white"></span>
+                <span class="inline-block w-3 h-3 rounded-full bg-teal-600 border border-white"></span>
+              </span>
+              {% trans "Cycling gap analysis" %}
+            </button>
+            <p class="text-xs text-slate-400 mt-1.5">{% trans "Overlays cycling accident clusters, protected lanes, and count stations." %}</p>
+          </div>
+          {% endif %}
+          {% if has_safe_school_data %}
+          <div>
+            <button @click="activateStoryView('safe_school')"
+                    class="w-full text-left px-3 py-2 rounded-lg bg-slate-50 hover:bg-slate-100 border transition-colors flex items-center gap-2">
+              <span class="flex -space-x-0.5 shrink-0">
+                <span class="inline-block w-3 h-3 rounded-full bg-amber-500 border border-white"></span>
+                <span class="inline-block w-3 h-3 rounded-full bg-red-500 border border-white"></span>
+              </span>
+              {% trans "Safe routes to school" %}
+            </button>
+            <p class="text-xs text-slate-400 mt-1.5">{% trans "Schools against nearby crashes and posted speed limits." %}</p>
+          </div>
+          {% endif %}
+          {% if has_traffic_safety_data %}
+          <div>
+            <button @click="activateStoryView('traffic_safety')"
+                    class="w-full text-left px-3 py-2 rounded-lg bg-slate-50 hover:bg-slate-100 border transition-colors flex items-center gap-2">
+              <span class="flex -space-x-0.5 shrink-0">
+                <span class="inline-block w-3 h-3 rounded-full bg-blue-600 border border-white"></span>
+                <span class="inline-block w-3 h-3 rounded-full bg-red-600 border border-white"></span>
+              </span>
+              {% trans "Traffic safety overview" %}
+            </button>
+            <p class="text-xs text-slate-400 mt-1.5">{% trans "City-wide accident density with speed limits and traffic counts." %}</p>
+          </div>
+          {% endif %}
         </div>
-        <div x-show="gapActive">
+        <div x-show="active">
           <div class="rounded-md bg-amber-50 border border-amber-200 p-2.5 text-xs text-amber-800 mb-2.5 leading-relaxed">
             <strong>{% trans "Reading the map:" %}</strong>
-            {% trans "Red/orange streets = cycling accident clusters. Teal = protected bike lanes. Amber = painted lanes. A white dashed overlay marks lanes built after the latest accident year — a flagged cluster under a dashed lane has likely already been addressed. Red streets without any overlay are priority intervention zones." %}
+            <span x-text="reading"></span>
           </div>
-          <button @click="clearGapPreset()"
+          <button @click="clearStoryView()"
                   class="w-full text-center text-xs text-slate-500 hover:text-slate-800 underline py-0.5">
             {% trans "Clear preset — restore layers" %}
           </button>
@@ -65,11 +98,61 @@
           <span x-text="open ? '▲' : '▼'" class="text-slate-400 text-xs"></span>
         </button>
         <div x-show="open" class="mt-3 flex flex-col gap-2 text-sm" id="layer-controls">
-          {% for layer in layers %}
-          <label class="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" class="layer-toggle" data-layer="{{ layer.value }}">
-            <span>{{ layer.label }}</span>
+          {# Colour scheme — recolours every identity-coloured layer at once.
+             Semantic ramps (speed, accident severity, scores) stay fixed. #}
+          {% if layers %}
+          <label class="flex items-center justify-between gap-2 pb-2 mb-1 border-b">
+            <span class="text-xs text-slate-500">{% trans "Map style" %}</span>
+            <select id="color-scheme-select" @change="applyColorScheme($event.target.value)"
+                    class="text-xs border rounded px-1.5 py-1 text-slate-700">
+              <option value="default">{% trans "Default" %}</option>
+              <option value="high_contrast">{% trans "High contrast" %}</option>
+              <option value="colorblind">{% trans "Colourblind-safe" %}</option>
+              <option value="grayscale">{% trans "Grayscale (print)" %}</option>
+            </select>
           </label>
+          {% endif %}
+          {% for layer in layers %}
+          <div x-data="layerControls('{{ layer.value }}')" x-init="init()">
+            <div class="flex items-center gap-2">
+              <label class="flex items-center gap-2 cursor-pointer flex-1 min-w-0">
+                <input type="checkbox" class="layer-toggle" data-layer="{{ layer.value }}">
+                <span class="truncate">{{ layer.label }}</span>
+              </label>
+              {% if layer.value != "accidents" %}
+              <button type="button" @click="expanded = !expanded"
+                      class="shrink-0 text-slate-300 hover:text-slate-600 transition-colors"
+                      :title="'{% trans "Display options" %}'" :aria-expanded="expanded">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.53 1.53 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.53 1.53 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.53 1.53 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.532 1.532 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.53 1.53 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.53 1.53 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.53 1.53 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
+                </svg>
+              </button>
+              {% endif %}
+            </div>
+            {% if layer.value != "accidents" %}
+            <div x-show="expanded" x-cloak class="ml-5 mt-1.5 mb-1 flex flex-col gap-1.5 text-xs">
+              <label class="flex items-center justify-between gap-2">
+                <span class="text-slate-500">{% trans "Display" %}</span>
+                <select x-model="mode" @change="setMode($event.target.value)"
+                        class="border rounded px-1.5 py-0.5 text-slate-700">
+                  <template x-for="opt in modeOptions" :key="opt.value">
+                    <option :value="opt.value" x-text="opt.label"></option>
+                  </template>
+                </select>
+              </label>
+              <label class="flex items-center gap-2">
+                <span class="text-slate-500 shrink-0">{% trans "Opacity" %}</span>
+                <input type="range" min="10" max="100" x-model.number="opacity"
+                       @input="onOpacityInput()" class="flex-1 min-w-0">
+                <span class="text-slate-400 w-8 text-right" x-text="opacity + '%'"></span>
+              </label>
+              <button type="button" @click="toggleFocus()"
+                      :class="focused ? 'bg-slate-800 text-white border-slate-800' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'"
+                      class="border rounded px-2 py-1 transition-colors"
+                      x-text="focused ? '{% trans "Clear focus" %}' : '{% trans "Focus this layer" %}'"></button>
+            </div>
+            {% endif %}
+          </div>
           {% empty %}
           <p class="text-xs text-slate-400">{% trans "No layers available. Sync data sources first." %}</p>
           {% endfor %}
@@ -469,6 +552,297 @@ const MEASURE_STATUS_PAINT = [
   "#6366f1"
 ];
 
+// ─── Layer differentiation: colour schemes, display modes, opacity ───────────
+// All viewer-chosen and persisted client-side (like Saved Views) so the public
+// read layer needs no login and no backend round-trip. Nothing here is wired to
+// a specific city — schemes transform whatever base colour a layer kind has,
+// including connector-defined "custom" kinds, so it stays city-agnostic.
+
+// Small hex/colour helpers (no dependency, work fully offline / self-hosted).
+function hexToRgb(hex) {
+  let h = String(hex || "").replace("#", "");
+  if (h.length === 3) h = h.split("").map(c => c + c).join("");
+  const n = parseInt(h, 16);
+  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+}
+function rgbToHex(r, g, b) {
+  const c = v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, "0");
+  return "#" + c(r) + c(g) + c(b);
+}
+function hexToRgba(hex, a) {
+  const { r, g, b } = hexToRgb(hex);
+  return `rgba(${r},${g},${b},${a})`;
+}
+function rgbToHsl(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h = 0, s = 0; const l = (max + min) / 2;
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    if (max === r) h = (g - b) / d + (g < b ? 6 : 0);
+    else if (max === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    h /= 6;
+  }
+  return { h, s, l };
+}
+function hslToRgb(h, s, l) {
+  let r, g, b;
+  if (s === 0) { r = g = b = l; }
+  else {
+    const hue = (p, q, t) => {
+      if (t < 0) t += 1; if (t > 1) t -= 1;
+      if (t < 1 / 6) return p + (q - p) * 6 * t;
+      if (t < 1 / 2) return q;
+      if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+      return p;
+    };
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    const p = 2 * l - q;
+    r = hue(p, q, h + 1 / 3); g = hue(p, q, h); b = hue(p, q, h - 1 / 3);
+  }
+  return { r: r * 255, g: g * 255, b: b * 255 };
+}
+
+// Okabe–Ito qualitative palette — distinguishable under the common forms of
+// colour-vision deficiency. We snap each base colour to its nearest member.
+const OKABE_ITO = ["#000000", "#E69F00", "#56B4E9", "#009E73",
+                   "#F0E442", "#0072B2", "#D55E00", "#CC79A7"];
+
+const SCHEME_TRANSFORMS = {
+  default: hex => hex,
+  // Saturate + darken so layers separate on the busy light basemap.
+  high_contrast: hex => {
+    const { r, g, b } = hexToRgb(hex);
+    const { h, s, l } = rgbToHsl(r, g, b);
+    const o = hslToRgb(h, Math.min(1, s * 1.4 + 0.1), Math.max(0, Math.min(1, l * 0.78)));
+    return rgbToHex(o.r, o.g, o.b);
+  },
+  // Nearest Okabe–Ito colour by RGB distance — deterministic, kind-agnostic.
+  colorblind: hex => {
+    const { r, g, b } = hexToRgb(hex);
+    let best = OKABE_ITO[0], bestD = Infinity;
+    OKABE_ITO.forEach(c => {
+      const t = hexToRgb(c);
+      const d = (t.r - r) ** 2 + (t.g - g) ** 2 + (t.b - b) ** 2;
+      if (d < bestD) { bestD = d; best = c; }
+    });
+    return best;
+  },
+  // Luminance-based grey — print / black-and-white friendly.
+  grayscale: hex => {
+    const { r, g, b } = hexToRgb(hex);
+    const y = 0.299 * r + 0.587 * g + 0.114 * b;
+    return rgbToHex(y, y, y);
+  },
+};
+
+const STYLE_KEY = `omos-style-${WORKSPACE_SLUG}`;
+function loadStyleState() {
+  try {
+    const s = JSON.parse(localStorage.getItem(STYLE_KEY) || "{}");
+    return { scheme: s.scheme || "default", layers: s.layers || {} };
+  } catch (_) { return { scheme: "default", layers: {} }; }
+}
+// scheme: one of SCHEME_TRANSFORMS keys; layers: { <kind>: { mode, opacity } }.
+const layerStyleState = loadStyleState();
+function persistStyleState() {
+  try { localStorage.setItem(STYLE_KEY, JSON.stringify(layerStyleState)); } catch (_) {}
+}
+function activeScheme() { return layerStyleState.scheme || "default"; }
+
+// Kinds whose colour encodes *meaning* (speed limit, accident severity, bike
+// infra class) rather than identity — recolouring them would break the
+// transparent-scoring principle, so colour schemes deliberately skip them.
+const SEMANTIC_COLOR_KINDS = new Set(["accidents", "streets_with_speed", "dedicated_bike_network"]);
+
+// Every sublayer suffix the renderer can produce, for show/hide sweeps.
+const ALL_SUBS = ["-line", "-fill", "-outline", "-circle", "-symbol", "-new", "-heatmap"];
+
+// Display modes ------------------------------------------------------------
+const MODE_LABELS = {
+  dots:    "{% trans "Dots" %}",
+  icons:   "{% trans "Icons" %}",
+  heatmap: "{% trans "Heatmap" %}",
+  normal:  "{% trans "Normal lines" %}",
+  thick:   "{% trans "Thick lines" %}",
+  filled:  "{% trans "Filled" %}",
+  outline: "{% trans "Outline only" %}",
+};
+function defaultModeFor(kind) {
+  const s = LAYER_STYLE[kind] || {};
+  if (s.geom === "line") return "normal";
+  if (s.geom === "area") return "filled";
+  return (s.point === "icon" && s.icon) ? "icons" : "dots";
+}
+function buildModeOptions(kind) {
+  const s = LAYER_STYLE[kind] || {};
+  const opt = v => ({ value: v, label: MODE_LABELS[v] });
+  if (s.geom === "line") return [opt("normal"), opt("thick")];
+  if (s.geom === "area") return [opt("filled"), opt("outline")];
+  const out = [];
+  if (s.point === "icon" && s.icon) out.push(opt("icons"));
+  out.push(opt("dots"), opt("heatmap"));
+  return out;
+}
+function getLayerMode(kind) {
+  const st = layerStyleState.layers[kind];
+  return (st && st.mode) || defaultModeFor(kind);
+}
+function getLayerOpacity(kind) {
+  const st = layerStyleState.layers[kind];
+  return (st && typeof st.opacity === "number") ? st.opacity : 1;
+}
+function naturalLineWidth(kind) {
+  return kind === "dedicated_bike_network" ? 3 : 2.5;
+}
+
+// A heatmap colour ramp derived from a single base colour — used both when a
+// point layer is first added and when the colour scheme changes.
+function heatmapRamp(color) {
+  return [
+    "interpolate", ["linear"], ["heatmap-density"],
+    0,   "rgba(0,0,0,0)",
+    0.2, hexToRgba(color, 0.35),
+    0.5, hexToRgba(color, 0.6),
+    0.8, hexToRgba(color, 0.85),
+    1.0, hexToRgba(color, 1),
+  ];
+}
+
+// Which sublayers should be visible for a kind given its current display mode.
+function visibleSubsFor(kind) {
+  const geom = (LAYER_STYLE[kind] || {}).geom;
+  const mode = getLayerMode(kind);
+  const subs = [];
+  if (geom === "line") {
+    subs.push(kind + "-line");
+    if (kind === "dedicated_bike_network") subs.push(kind + "-new");
+  } else if (geom === "area") {
+    if (mode !== "outline") subs.push(kind + "-fill");
+    subs.push(kind + "-outline");
+  } else {
+    if (mode === "icons" && map.getLayer(kind + "-symbol")) subs.push(kind + "-symbol");
+    else if (mode === "heatmap" && map.getLayer(kind + "-heatmap")) subs.push(kind + "-heatmap");
+    else subs.push(kind + "-circle");
+  }
+  return subs;
+}
+// Show/hide a layer's sublayers, honouring its active display mode.
+function setLayerVisible(kind, on) {
+  const show = on ? new Set(visibleSubsFor(kind)) : new Set();
+  ALL_SUBS.forEach(suf => {
+    const id = kind + suf;
+    if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", show.has(id) ? "visible" : "none");
+  });
+}
+
+// Opacity is a 0–1 multiplier on each sublayer's natural opacity, so 100 % keeps
+// the tuned default look and lower values fade the whole layer evenly.
+function opacitySubsFor(kind) {
+  if (kind === "accidents") {
+    return [
+      ["accidents-circle", "circle-opacity", 0.85],
+      ["accidents-heat", "heatmap-opacity", 0.85],
+      ["accidents-density-line", "line-opacity", 0.9],
+    ];
+  }
+  const out = [];
+  const push = (suf, prop, base) => { if (map.getLayer(kind + suf)) out.push([kind + suf, prop, base]); };
+  push("-line", "line-opacity", 0.85);
+  push("-fill", "fill-opacity", 0.25);
+  push("-outline", "line-opacity", 0.6);
+  push("-circle", "circle-opacity", 0.85);
+  push("-heatmap", "heatmap-opacity", 0.85);
+  push("-new", "line-opacity", 0.95);
+  return out;
+}
+function _applyOpacity(kind, mult) {
+  opacitySubsFor(kind).forEach(([id, prop, base]) => map.setPaintProperty(id, prop, base * mult));
+  if (map.getLayer(kind + "-symbol")) map.setPaintProperty(kind + "-symbol", "icon-opacity", Math.min(1, mult));
+}
+
+function setLayerDisplayMode(kind, mode) {
+  layerStyleState.layers[kind] = Object.assign({}, layerStyleState.layers[kind], { mode });
+  persistStyleState();
+  if ((LAYER_STYLE[kind] || {}).geom === "line" && map.getLayer(kind + "-line")) {
+    const w = naturalLineWidth(kind);
+    map.setPaintProperty(kind + "-line", "line-width", mode === "thick" ? w * 2 : w);
+  }
+  const cb = document.querySelector(`.layer-toggle[data-layer="${kind}"]`);
+  if (cb && cb.checked) setLayerVisible(kind, true);
+  document.dispatchEvent(new CustomEvent("omos:layerschanged"));
+}
+function setLayerOpacity(kind, mult) {
+  layerStyleState.layers[kind] = Object.assign({}, layerStyleState.layers[kind], { opacity: mult });
+  persistStyleState();
+  if (_focusKind && _focusKind !== kind) return; // a dim is in effect; keep it
+  _applyOpacity(kind, mult);
+}
+// Re-apply any stored mode/opacity once a layer's sublayers exist (called from
+// the renderer). Visibility itself is driven by the layer checkbox.
+function applyStoredLayerSettings(kind) {
+  const st = layerStyleState.layers[kind];
+  if (!st) return;
+  if (st.mode && (LAYER_STYLE[kind] || {}).geom === "line" && map.getLayer(kind + "-line")) {
+    const w = naturalLineWidth(kind);
+    map.setPaintProperty(kind + "-line", "line-width", st.mode === "thick" ? w * 2 : w);
+  }
+  if (typeof st.opacity === "number" && st.opacity !== 1) _applyOpacity(kind, st.opacity);
+  const cb = document.querySelector(`.layer-toggle[data-layer="${kind}"]`);
+  if (cb && cb.checked) setLayerVisible(kind, true);
+}
+
+// Focus / emphasis: dim every other layer so one stands out. Transient — not
+// persisted, reset on reload.
+let _focusKind = null;
+let _focusOthers = null;
+function currentFocusKind() { return _focusKind; }
+function focusLayer(kind) {
+  if (_focusKind) clearFocus();
+  _focusKind = kind;
+  _focusOthers = [];
+  document.querySelectorAll(".layer-toggle").forEach(cb => {
+    const k = cb.dataset.layer;
+    if (k === kind) return;
+    _focusOthers.push(k);
+    _applyOpacity(k, getLayerOpacity(k) * 0.12);
+  });
+  _applyOpacity(kind, getLayerOpacity(kind));
+}
+function clearFocus() {
+  if (!_focusOthers) return;
+  _focusOthers.forEach(k => _applyOpacity(k, getLayerOpacity(k)));
+  _focusOthers = null;
+  _focusKind = null;
+}
+
+function applyColorScheme(name) {
+  layerStyleState.scheme = name;
+  persistStyleState();
+  // Re-bake icon badges in the new colour (colour is baked into the SVG).
+  LAYER_KINDS.forEach(kind => {
+    const s = LAYER_STYLE[kind];
+    if (s && s.point === "icon" && s.icon) {
+      const imgId = iconName(kind);
+      if (map.hasImage(imgId)) map.removeImage(imgId);
+      loadIconImage(imgId);
+    }
+  });
+  // Re-apply colour on identity-coloured sublayers; skip the semantic ramps.
+  LAYER_KINDS.forEach(kind => {
+    if (SEMANTIC_COLOR_KINDS.has(kind)) return;
+    const c = layerColor(kind);
+    if (map.getLayer(kind + "-line")) map.setPaintProperty(kind + "-line", "line-color", c);
+    if (map.getLayer(kind + "-fill")) map.setPaintProperty(kind + "-fill", "fill-color", c);
+    if (map.getLayer(kind + "-outline")) map.setPaintProperty(kind + "-outline", "line-color", c);
+    if (map.getLayer(kind + "-circle")) map.setPaintProperty(kind + "-circle", "circle-color", c);
+    if (map.getLayer(kind + "-heatmap")) map.setPaintProperty(kind + "-heatmap", "heatmap-color", heatmapRamp(c));
+  });
+  document.dispatchEvent(new CustomEvent("omos:layerschanged"));
+}
+
 // Set the map container height via JavaScript (inline style) so that
 // MapLibre always reads a non-zero clientHeight regardless of how the
 // surrounding flex/grid chain computes percentage heights.
@@ -581,8 +955,14 @@ function resizeMap() {
 window.addEventListener("resize", resizeMap);
 window.addEventListener("orientationchange", resizeMap);
 
-function layerColor(kind) {
+function baseColorFor(kind) {
   return (LAYER_STYLE[kind] && LAYER_STYLE[kind].color) || DEFAULT_COLOR;
+}
+// The single colour accessor the renderer and legend both use, so the active
+// colour scheme is applied in exactly one place.
+function layerColor(kind) {
+  const t = SCHEME_TRANSFORMS[activeScheme()] || SCHEME_TRANSFORMS.default;
+  return t(baseColorFor(kind));
 }
 
 // ─── POI glyph icons ─────────────────────────────────────────────────────────
@@ -633,7 +1013,7 @@ function loadIconImage(imageId) {
   const kind = imageId.startsWith("icon-") ? imageId.slice(5) : null;
   const s = kind && LAYER_STYLE[kind];
   if (!s || s.point !== "icon" || !s.icon) return;
-  const svg = iconSvg(s.icon, s.color);
+  const svg = iconSvg(s.icon, layerColor(kind));
   const img = new Image(44, 44);
   img.onload = () => { if (!map.hasImage(imageId)) map.addImage(imageId, img, { pixelRatio: 2 }); };
   img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
@@ -941,30 +1321,43 @@ function addGeoJsonLayer(id, url, color) {
         }
         if (types.has("Point") || types.has("MultiPoint")) {
           const style = LAYER_STYLE[id] || {};
-          if (style.point === "icon" && style.icon) {
-            // A recognisable glyph badge instead of a generic dot, so distinct
-            // places (a school, a single building…) stand out from dot layers.
+          const hasIcon = style.point === "icon" && style.icon;
+          // Pre-create every point rendering so the display-mode switcher is just
+          // a visibility toggle (no source re-creation). The default mode follows
+          // the layer's intent: identifiable places start as icons, dense
+          // sensor/count layers start as dots.
+          const defMode = defaultModeFor(id);
+          // Dots — small haloed circles; legible on the satellite basemap too.
+          map.addLayer({ id: id + "-circle", type: "circle", source: id,
+            layout: { visibility: (startVis === "visible" && defMode === "dots") ? "visible" : "none" },
+            paint: { "circle-radius": 5, "circle-color": color, "circle-opacity": 0.85,
+                     "circle-stroke-width": 1, "circle-stroke-color": "#fff" } });
+          if (hasIcon) {
+            // A recognisable glyph badge so distinct places stand out from dots.
             map.addLayer({ id: id + "-symbol", type: "symbol", source: id,
               layout: {
-                visibility: startVis,
+                visibility: (startVis === "visible" && defMode === "icons") ? "visible" : "none",
                 "icon-image": iconName(id),
                 "icon-size": 0.78,
                 "icon-allow-overlap": true,
               } });
-          } else {
-            // Dense sensor/count points stay small dots so density reads clearly;
-            // a thin white halo keeps them legible on the satellite basemap too.
-            map.addLayer({ id: id + "-circle", type: "circle", source: id,
-              layout: { visibility: startVis },
-              paint: { "circle-radius": 5, "circle-color": color, "circle-opacity": 0.85,
-                       "circle-stroke-width": 1, "circle-stroke-color": "#fff" } });
           }
+          // Generic density heatmap — available for any point layer, hidden until
+          // the viewer picks the Heatmap display mode.
+          map.addLayer({ id: id + "-heatmap", type: "heatmap", source: id,
+            layout: { visibility: (startVis === "visible" && defMode === "heatmap") ? "visible" : "none" },
+            paint: {
+              "heatmap-weight": 0.4,
+              "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 0, 0.4, 10, 1, 14, 2],
+              "heatmap-color": heatmapRamp(color),
+              "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 0, 6, 10, 16, 14, 34],
+              "heatmap-opacity": 0.85,
+            } });
         }
 
-        // Bind the generic property popup to whichever point sublayer exists.
-        const pointLayer = map.getLayer(id + "-symbol") ? id + "-symbol"
-          : map.getLayer(id + "-circle") ? id + "-circle" : null;
-        if (pointLayer) {
+        // Bind the generic property popup to each clickable point sublayer.
+        [id + "-symbol", id + "-circle"].forEach(pointLayer => {
+          if (!map.getLayer(pointLayer)) return;
           map.on("click", pointLayer, (e) => {
             const props = e.features[0].properties;
             const content = Object.entries(props).slice(0, 8)
@@ -977,7 +1370,10 @@ function addGeoJsonLayer(id, url, color) {
           });
           map.on("mouseenter", pointLayer, () => { map.getCanvas().style.cursor = "pointer"; });
           map.on("mouseleave", pointLayer, () => { map.getCanvas().style.cursor = ""; });
-        }
+        });
+
+        // Re-apply any viewer-saved display mode / opacity now the sublayers exist.
+        applyStoredLayerSettings(id);
       }
     })
     .catch(() => console.warn("Layer failed to load:", id));
@@ -1046,8 +1442,14 @@ function syncAccidentLayers() {
 map.on("styleimagemissing", (e) => loadIconImage(e.id));
 
 map.on("load", () => {
-  // Pre-register POI glyphs so the first paint already shows the icons.
+  // Pre-register POI glyphs so the first paint already shows the icons (in the
+  // persisted colour scheme — loadIconImage reads layerColor()).
   registerMapIcons();
+
+  // Reflect the persisted colour scheme in its selector (the layers themselves
+  // are already drawn in the right colours, since layerColor() reads it).
+  const schemeSel = document.getElementById("color-scheme-select");
+  if (schemeSel) schemeSel.value = activeScheme();
 
   // Seed accident state from the checkbox so first paint matches the UI.
   const accidentsCb = document.querySelector('.layer-toggle[data-layer="accidents"]');
@@ -1137,10 +1539,7 @@ map.on("load", () => {
         document.dispatchEvent(new CustomEvent("omos:layerschanged"));
         return;
       }
-      const vis = e.target.checked ? "visible" : "none";
-      ["-line", "-fill", "-outline", "-circle", "-symbol", "-new"].forEach(suffix => {
-        if (map.getLayer(kind + suffix)) map.setLayoutProperty(kind + suffix, "visibility", vis);
-      });
+      setLayerVisible(kind, e.target.checked);
       document.dispatchEvent(new CustomEvent("omos:layerschanged"));
     });
   });
@@ -1163,15 +1562,19 @@ function accidentFilter() {
         this.discoverYears();
         this.applyFilter();
       });
-      // Sync to the cycling gap preset when it activates/clears.
-      document.addEventListener("gap-analysis-activated", () => {
-        this.viewMode = "density";
-        this.modes.cyclist = true;
-        accidentsState.mode = "density";
+      // Sync the panel to whatever accident view a story view asks for.
+      document.addEventListener("omos:storyview", (e) => {
+        const d = e.detail || {};
+        if (!d.accidents) return;
+        this.viewMode = d.accidents;
+        accidentsState.mode = d.accidents;
+        this.modes = { cyclist: false, pedestrian: false, car: false, truck: false };
+        (d.modes || []).forEach(m => { if (m in this.modes) this.modes[m] = true; });
         syncAccidentLayers();
-        this.fetchDensity();
+        if (d.accidents === "density") this.fetchDensity();
+        else this.applyFilter();
       });
-      document.addEventListener("gap-analysis-cleared", () => {
+      document.addEventListener("omos:storyview-cleared", () => {
         this.resetFilter();
       });
     },
@@ -1304,57 +1707,84 @@ function accidentFilter() {
   };
 }
 
-// ─── Cycling gap analysis preset ────────────────────────────────────────────
+// ─── Story views (compound presets) ──────────────────────────────────────────
+// A story view is a named, one-click arrangement of layers + accident view mode
+// for a recurring planning/journalism question. Each entry only enables the
+// layers that actually exist in this workspace, so the same config works for any
+// city. The "reading" text is the plain-language key shown while it is active.
+const STORY_VIEWS = {
+  cycling_gap: {
+    layers: ["dedicated_bike_network", "cycling_counts"],
+    accidents: "density",
+    accidentModes: ["cyclist"],
+    reading: "{% trans "Red/orange streets = cycling accident clusters. Teal = protected bike lanes. Amber = painted lanes. A white dashed overlay marks lanes built after the latest accident year — a flagged cluster under a dashed lane has likely already been addressed. Red streets without any overlay are priority intervention zones." %}",
+  },
+  safe_school: {
+    layers: ["schools", "streets_with_speed", "bike_network", "dedicated_bike_network"],
+    accidents: "circles",
+    accidentModes: [],
+    reading: "{% trans "School markers show where children arrive. Coloured dots are recorded crashes (darkest = fatal). Street colours show posted speed limits — a school ringed by fast streets with crashes nearby is a priority for safe crossings and traffic calming." %}",
+  },
+  traffic_safety: {
+    layers: ["streets_with_speed", "traffic_counts"],
+    accidents: "density",
+    accidentModes: [],
+    reading: "{% trans "Streets are coloured blue→red by their accident-severity score, with posted speed limits underneath and traffic-count points where available. Red corridors carry the worst safety record and are the strongest candidates for intervention." %}",
+  },
+};
 
-let _savedLayerState = {};
+let _storyActive = null;
+let _storySnapshot = null;
 
-function activateCyclingGap() {
-  // Snapshot visibility of every current layer.
-  _savedLayerState = {};
+function activateStoryView(key) {
+  const cfg = STORY_VIEWS[key];
+  if (!cfg) return;
+
+  // Snapshot visibility of every current layer so Clear can restore it.
+  _storySnapshot = {};
   map.getStyle().layers.forEach(l => {
-    if (l.id !== "osm-tiles") {
-      _savedLayerState[l.id] = map.getLayoutProperty(l.id, "visibility") || "visible";
-    }
+    if (l.id !== "osm-tiles") _storySnapshot[l.id] = map.getLayoutProperty(l.id, "visibility") || "visible";
   });
-
-  // Hide all data layers and uncheck all layer toggles.
+  // Hide everything and uncheck every toggle, then build the view up cleanly.
   map.getStyle().layers.forEach(l => {
     if (l.id !== "osm-tiles") map.setLayoutProperty(l.id, "visibility", "none");
   });
   document.querySelectorAll(".layer-toggle").forEach(cb => { cb.checked = false; });
   accidentsState.enabled = false;
 
-  // Enable dedicated bike network.
-  ["dedicated_bike_network-line", "dedicated_bike_network-new"].forEach(id => {
-    if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", "visible");
+  // Enable each configured layer that exists here (honouring its display mode).
+  cfg.layers.forEach(kind => {
+    const cb = document.querySelector(`.layer-toggle[data-layer="${kind}"]`);
+    if (!cb) return;
+    if (!ALL_SUBS.some(suf => map.getLayer(kind + suf))) return;
+    cb.checked = true;
+    setLayerVisible(kind, true);
   });
-  const bikeCb = document.querySelector('.layer-toggle[data-layer="dedicated_bike_network"]');
-  if (bikeCb) bikeCb.checked = true;
 
-  // Enable cycling counts if present.
-  if (map.getLayer("cycling_counts-circle")) {
-    map.setLayoutProperty("cycling_counts-circle", "visibility", "visible");
-    const countsCb = document.querySelector('.layer-toggle[data-layer="cycling_counts"]');
-    if (countsCb) countsCb.checked = true;
+  // Accidents view mode, if the workspace has accidents. The accident filter
+  // component listens for omos:storyview to sync its panel + fetch density.
+  if (cfg.accidents && document.querySelector('.layer-toggle[data-layer="accidents"]')) {
+    accidentsState.enabled = true;
+    accidentsState.mode = cfg.accidents;
+    syncAccidentLayers();
+    const acb = document.querySelector('.layer-toggle[data-layer="accidents"]');
+    if (acb) acb.checked = true;
   }
 
-  // Enable accidents density layer and fire the filter component via event.
-  accidentsState.enabled = true;
-  accidentsState.mode = "density";
-  syncAccidentLayers();
-  const accidentsCb = document.querySelector('.layer-toggle[data-layer="accidents"]');
-  if (accidentsCb) accidentsCb.checked = true;
-
-  document.dispatchEvent(new CustomEvent("gap-analysis-activated"));
+  _storyActive = key;
+  document.dispatchEvent(new CustomEvent("omos:storyview", { detail: {
+    key, accidents: cfg.accidents || null, modes: cfg.accidentModes || [], reading: cfg.reading,
+  } }));
   document.dispatchEvent(new CustomEvent("omos:layerschanged"));
 }
 
-function clearGapPreset() {
-  // Restore snapshotted layer visibility.
-  Object.entries(_savedLayerState).forEach(([id, vis]) => {
-    if (map.getLayer(id)) map.setLayoutProperty(id, vis === "visible" ? "visible" : "none");
-  });
-  _savedLayerState = {};
+function clearStoryView() {
+  if (_storySnapshot) {
+    Object.entries(_storySnapshot).forEach(([id, vis]) => {
+      if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", vis === "visible" ? "visible" : "none");
+    });
+  }
+  _storySnapshot = null;
 
   // Re-sync checkboxes from the restored layer state.
   document.querySelectorAll(".layer-toggle").forEach(cb => {
@@ -1366,13 +1796,13 @@ function clearGapPreset() {
       accidentsState.enabled = wasOn;
       return;
     }
-    const wasOn = ["-line", "-fill", "-circle", "-symbol", "-new"].some(
+    cb.checked = ALL_SUBS.some(
       s => map.getLayer(kind + s) && map.getLayoutProperty(kind + s, "visibility") === "visible"
     );
-    cb.checked = wasOn;
   });
 
-  document.dispatchEvent(new CustomEvent("gap-analysis-cleared"));
+  _storyActive = null;
+  document.dispatchEvent(new CustomEvent("omos:storyview-cleared"));
   document.dispatchEvent(new CustomEvent("omos:layerschanged"));
 }
 
@@ -1575,6 +2005,33 @@ function basemapSwitcher() {
   };
 }
 
+// ─── Per-layer display controls ──────────────────────────────────────────────
+// Thin Alpine wrapper around the layerStyleState setters: a display-mode select,
+// an opacity slider, and a focus toggle, shown when the layer row is expanded.
+function layerControls(kind) {
+  return {
+    expanded: false,
+    mode: getLayerMode(kind),
+    opacity: Math.round(getLayerOpacity(kind) * 100),
+    focused: false,
+    modeOptions: buildModeOptions(kind),
+    init() {
+      this.focused = (currentFocusKind() === kind);
+      // Only one layer is focused at a time — stay in sync when another row
+      // takes or releases focus.
+      document.addEventListener("omos:focuschanged", () => {
+        this.focused = (currentFocusKind() === kind);
+      });
+    },
+    setMode(m) { this.mode = m; setLayerDisplayMode(kind, m); },
+    onOpacityInput() { setLayerOpacity(kind, this.opacity / 100); },
+    toggleFocus() {
+      if (this.focused) clearFocus(); else focusLayer(kind);
+      document.dispatchEvent(new CustomEvent("omos:focuschanged"));
+    },
+  };
+}
+
 // ─── Legend ──────────────────────────────────────────────────────────────────
 // Lists every currently-visible layer with a swatch shaped like how it is drawn
 // on the map (line / area / dot / glyph), so the colour ↔ meaning mapping is
@@ -1634,13 +2091,30 @@ function mapLegend() {
           return;
         }
         const s = LAYER_STYLE[kind] || { geom: "point" };
-        const shape = shapeFor(s);
+        // Semantic layers keep their fixed colours (the scheme skips them), so
+        // their swatch must too; everything else follows the active scheme.
+        const col = SEMANTIC_COLOR_KINDS.has(kind) ? baseColorFor(kind) : layerColor(kind);
+        let shape = shapeFor(s);
+        let gradient = "";
+        // Point layers follow their active display mode (dots / icons / heatmap).
+        if (s.geom !== "line" && s.geom !== "area") {
+          const mode = getLayerMode(kind);
+          if (mode === "heatmap") {
+            shape = "ramp";
+            gradient = `linear-gradient(90deg, ${hexToRgba(col, 0.15)}, ${col})`;
+          } else if (mode === "icons" && s.point === "icon" && s.icon) {
+            shape = "icon";
+          } else {
+            shape = "dot";
+          }
+        }
         rows.push({
           key: kind,
           label: LAYER_LABELS[kind] || kind,
-          color: s.color || DEFAULT_COLOR,
+          color: col,
           shape,
-          icon: shape === "icon" ? iconSvg(s.icon, s.color, 16) : "",
+          gradient,
+          icon: shape === "icon" ? iconSvg(s.icon, col, 16) : "",
         });
       });
       const mcb = document.getElementById("toggle-measures");
