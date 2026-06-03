@@ -404,51 +404,49 @@
 
     <div class="flex-1 min-w-0 flex flex-col gap-2">
 
-      {% comment %}
-      Map style — recolours every identity-coloured layer at once. Semantic
-      colour scales (speed, accident severity, district scores) stay fixed.
-      Placed above the map, opposite the on-map base-map switcher.
-      {% endcomment %}
-      {% if layers %}
-      <div class="flex justify-end">
-        <div class="rounded-lg border bg-white shadow-sm px-2.5 py-1 text-xs flex items-center gap-2"
-             x-data="colorSchemeSwitcher()" x-init="init()">
-          <span class="text-slate-500">{% trans "Map style" %}</span>
-          <select x-model="scheme" @change="apply()"
-                  class="text-xs border rounded px-1.5 py-0.5 text-slate-700">
-            <option value="default">{% trans "Default" %}</option>
-            <option value="high_contrast">{% trans "High contrast" %}</option>
-            <option value="colorblind">{% trans "Colourblind-safe" %}</option>
-            <option value="grayscale">{% trans "Grayscale (print)" %}</option>
-          </select>
-        </div>
-      </div>
-      {% endif %}
-
-      {# Map + on-map base-map switcher (a display control, kept off the data sidebar). #}
+      {# Map with on-map controls stacked at the top-left corner. #}
       <div class="relative">
         <div id="map" class="rounded-lg border"></div>
 
-        {# Base map switcher — independent of the app dark/light theme; remembered across sessions. #}
-        <div class="absolute top-3 left-3 z-10 rounded-lg border bg-white/95 backdrop-blur shadow-md p-1 text-xs"
-             x-data="basemapSwitcher()" x-init="init()">
-          <div class="flex rounded overflow-hidden border">
-            <button @click="set('light')"
-                    :class="mode === 'light' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'"
-                    class="px-2.5 py-1 transition-colors">{% trans "Light" %}</button>
-            <button @click="set('dark')"
-                    :class="mode === 'dark' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'"
-                    class="px-2.5 py-1 border-l transition-colors">{% trans "Dark" %}</button>
-            {% if map_tile_url_satellite %}
-            <button @click="set('satellite')"
-                    :class="mode === 'satellite' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'"
-                    class="px-2.5 py-1 border-l transition-colors">{% trans "Satellite" %}</button>
-            {% endif %}
+        <div class="absolute top-3 left-3 z-10 flex flex-col gap-2 items-start">
+
+          {# Base map switcher — independent of the app dark/light theme; remembered across sessions. #}
+          <div class="rounded-lg border bg-white/95 backdrop-blur shadow-md p-1 text-xs"
+               x-data="basemapSwitcher()" x-init="init()">
+            <div class="flex rounded overflow-hidden border">
+              <button @click="set('light')"
+                      :class="mode === 'light' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'"
+                      class="px-2.5 py-1 transition-colors">{% trans "Light" %}</button>
+              <button @click="set('dark')"
+                      :class="mode === 'dark' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'"
+                      class="px-2.5 py-1 border-l transition-colors">{% trans "Dark" %}</button>
+              {% if map_tile_url_satellite %}
+              <button @click="set('satellite')"
+                      :class="mode === 'satellite' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'"
+                      class="px-2.5 py-1 border-l transition-colors">{% trans "Satellite" %}</button>
+              {% endif %}
+            </div>
+            <button x-show="mode !== 'auto'" @click="set('auto')"
+                    class="block w-full text-center text-[10px] leading-tight text-slate-500 hover:text-slate-800 mt-0.5">
+              {% trans "Follow app theme" %}
+            </button>
           </div>
-          <button x-show="mode !== 'auto'" @click="set('auto')"
-                  class="block w-full text-center text-[10px] leading-tight text-slate-500 hover:text-slate-800 mt-0.5">
-            {% trans "Follow app theme" %}
-          </button>
+
+          {# Map style — recolours data layers and tints the base map to match. #}
+          {% if layers %}
+          <div class="rounded-lg border bg-white/95 backdrop-blur shadow-md px-2 py-1 text-xs flex items-center gap-1.5"
+               x-data="colorSchemeSwitcher()" x-init="init()">
+            <span class="text-slate-500">{% trans "Map style" %}</span>
+            <select x-model="scheme" @change="apply()"
+                    class="text-xs border rounded px-1 py-0.5 text-slate-700 bg-white">
+              <option value="default">{% trans "Default" %}</option>
+              <option value="high_contrast">{% trans "High contrast" %}</option>
+              <option value="colorblind">{% trans "Colourblind-safe" %}</option>
+              <option value="grayscale">{% trans "Grayscale (print)" %}</option>
+            </select>
+          </div>
+          {% endif %}
+
         </div>
       </div>
 
@@ -827,9 +825,25 @@ function clearFocus() {
   _focusKind = null;
 }
 
+// CSS filter applied to the map canvas so the *base map* (raster tiles) matches
+// the active scheme too — without it, switching style appears to do nothing when
+// few data layers are on. Colourblind-safe is palette-based (it re-maps layer
+// colours), so it leaves the base map untouched.
+const BASEMAP_FILTER = {
+  default: "",
+  high_contrast: "contrast(1.12) saturate(1.25)",
+  colorblind: "",
+  grayscale: "grayscale(1)",
+};
+function applyBasemapFilter(name) {
+  const canvas = map && map.getCanvas && map.getCanvas();
+  if (canvas) canvas.style.filter = BASEMAP_FILTER[name] || "";
+}
+
 function applyColorScheme(name) {
   layerStyleState.scheme = name;
   persistStyleState();
+  applyBasemapFilter(name);
   // Re-bake icon badges in the new colour (colour is baked into the SVG).
   LAYER_KINDS.forEach(kind => {
     const s = LAYER_STYLE[kind];
@@ -1454,6 +1468,10 @@ map.on("load", () => {
   // Pre-register POI glyphs so the first paint already shows the icons (in the
   // persisted colour scheme — loadIconImage reads layerColor()).
   registerMapIcons();
+
+  // Re-apply the persisted base-map tint (data layers are already drawn in the
+  // right colours via layerColor(); this matches the raster base map to them).
+  applyBasemapFilter(activeScheme());
 
   // Seed accident state from the checkbox so first paint matches the UI.
   const accidentsCb = document.querySelector('.layer-toggle[data-layer="accidents"]');
