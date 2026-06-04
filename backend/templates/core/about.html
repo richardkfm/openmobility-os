@@ -105,8 +105,6 @@
           </span>
         </button>
       </div>
-      {# Note: the copy button uses this <pre>'s innerText, so we keep it free of
-         shell prompt prefixes — what you copy is exactly what you can paste. #}
       <pre x-ref="cmd" class="overflow-x-auto px-4 py-4 text-sm leading-relaxed text-slate-100 font-mono">git clone {{ project_repo_url }}.git
 cd openmobility-os
 cp .env.example .env

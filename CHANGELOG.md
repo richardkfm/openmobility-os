@@ -25,6 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   deployment modes as cards, and the six project principles as illustrated
   cards. The page now reads as an at-a-glance overview rather than a wall of
   text.
+- Removed a stray developer comment from the About page self-hosting box
+  (no change to the page itself).
 
 ### Added
 - **Per-layer display modes** — each layer now has display options: point layers
