@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **The new-workspace wizard finds your coordinates for you** — instead of
+  looking up and typing four bounding-box numbers, type a city, town,
+  municipality, or region name and the wizard geocodes it via OpenStreetMap
+  (Nominatim), filling in the bounding box and country automatically. When a
+  search matches several places you pick from a list; you can still adjust any
+  field by hand. The geocoder endpoint is configurable via `OSM_NOMINATIM_API`
+  so you can point it at your own Nominatim instance for self-contained hosting.
 - **One-click copy on the About page quickstart** — the self-hosting commands
   now live in a terminal-style box with a "Copy" button, so you can grab the
   whole `git clone … docker compose up` sequence in a single click.

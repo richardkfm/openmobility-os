@@ -41,6 +41,7 @@ env = environ.Env(
         "Imagery © Esri, Maxar, Earthstar Geographics",
     ),
     OSM_OVERPASS_API=(str, "https://overpass-api.de/api/interpreter"),
+    OSM_NOMINATIM_API=(str, "https://nominatim.openstreetmap.org/search"),
     AUTO_SEED_DEMO=(bool, True),
     PROJECT_REPO_URL=(str, "https://github.com/richardkfm/openmobility-os"),
 )
@@ -77,6 +78,7 @@ MAP_TILE_ATTRIBUTION_DARK = env("MAP_TILE_ATTRIBUTION_DARK")
 MAP_TILE_URL_SATELLITE = env("MAP_TILE_URL_SATELLITE")
 MAP_TILE_ATTRIBUTION_SATELLITE = env("MAP_TILE_ATTRIBUTION_SATELLITE")
 OSM_OVERPASS_API = env("OSM_OVERPASS_API")
+OSM_NOMINATIM_API = env("OSM_NOMINATIM_API")
 MOBILITHEK_CATALOG_URL = env(
     "MOBILITHEK_CATALOG_URL",
     default="https://mobilithek.info/mdp-api/files/catalogue/DCAT-AP.rdf",
