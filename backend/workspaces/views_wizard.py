@@ -3,6 +3,7 @@
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.gis.geos import Point, Polygon
+from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils.text import slugify
@@ -11,6 +12,7 @@ from django.utils.translation import gettext as _
 from core.decorators import admin_required
 from core.middleware import SESSION_KEY
 
+from .geocoding import GeocodingError, geocode_place
 from .models import Workspace
 
 
@@ -46,6 +48,30 @@ def wizard_start(request):
         "workspaces/wizard.html",
         {"page_title": _("Add a new workspace")},
     )
+
+
+@admin_required
+def wizard_geocode(request):
+    """Resolve a place name to a bounding box so the wizard can fill it in.
+
+    Returns JSON ``{"results": [...]}`` so the front-end can offer matches and
+    auto-populate the coordinate fields. Keeps the admin from having to look up
+    and type four numbers by hand.
+    """
+    query = request.GET.get("q", "").strip()
+    if not query:
+        return JsonResponse({"results": []})
+
+    country_code = request.GET.get("country_code") or None
+    try:
+        results = geocode_place(query, country_code=country_code)
+    except GeocodingError as exc:
+        return JsonResponse(
+            {"error": _("Place lookup failed: %(reason)s") % {"reason": str(exc)}},
+            status=502,
+        )
+
+    return JsonResponse({"results": [r.as_dict() for r in results]})
 
 
 @admin_required

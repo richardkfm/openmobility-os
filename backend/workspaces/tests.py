@@ -12,6 +12,7 @@ from django.contrib.gis.geos import Polygon
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.test import TestCase, override_settings
+from django.urls import reverse
 
 from datasets.models import DataSource
 from workspaces.management.commands.seed_unfallatlas import (
@@ -270,3 +271,120 @@ class SeedUnfallatlasYamlConfigTests(TestCase):
         self.assertEqual(set(sources), {"Unfallatlas 2023", "Unfallatlas 2024"})
         self.assertEqual(sources["Unfallatlas 2023"].config["encoding"], "latin-1")
         self.assertEqual(sources["Unfallatlas 2024"].config["encoding"], "utf-8")
+
+
+# A trimmed-down sample of a Nominatim ``jsonv2`` response for "Lyon, France".
+# boundingbox is [south, north, west, east] as strings, per the Nominatim API.
+_NOMINATIM_LYON = [
+    {
+        "lat": "45.7578137",
+        "lon": "4.8320114",
+        "name": "Lyon",
+        "display_name": "Lyon, Métropole de Lyon, France",
+        "boundingbox": ["45.7073666", "45.8082628", "4.7718134", "4.8983774"],
+        "address": {"city": "Lyon", "country": "France", "country_code": "fr"},
+    }
+]
+
+
+class GeocodePlaceTests(TestCase):
+    """Unit tests for the Nominatim parsing helper (no network)."""
+
+    def _patch(self, payload, status=200):
+        resp = mock.Mock()
+        resp.json.return_value = payload
+        resp.raise_for_status.return_value = None
+        return mock.patch("workspaces.geocoding.requests.get", return_value=resp)
+
+    def test_parses_bbox_and_center(self):
+        from workspaces.geocoding import geocode_place
+
+        with self._patch(_NOMINATIM_LYON):
+            results = geocode_place("Lyon")
+
+        self.assertEqual(len(results), 1)
+        r = results[0]
+        self.assertEqual(r.name, "Lyon")
+        self.assertEqual(r.country_code, "FR")
+        # bbox is (west, south, east, north)
+        self.assertEqual(r.bbox, (4.7718134, 45.7073666, 4.8983774, 45.8082628))
+        self.assertEqual(r.center, (4.8320114, 45.7578137))
+
+    def test_as_dict_shape(self):
+        from workspaces.geocoding import geocode_place
+
+        with self._patch(_NOMINATIM_LYON):
+            d = geocode_place("Lyon")[0].as_dict()
+
+        self.assertEqual(d["country_code"], "FR")
+        self.assertEqual(d["bbox"]["minx"], 4.7718134)
+        self.assertEqual(d["bbox"]["maxy"], 45.8082628)
+        self.assertEqual(d["center"]["lat"], 45.7578137)
+
+    def test_blank_query_skips_request(self):
+        from workspaces.geocoding import geocode_place
+
+        with mock.patch("workspaces.geocoding.requests.get") as get:
+            self.assertEqual(geocode_place("   "), [])
+            get.assert_not_called()
+
+    def test_unparseable_records_are_dropped(self):
+        from workspaces.geocoding import geocode_place
+
+        bad = [{"display_name": "no coords here"}]
+        with self._patch(bad):
+            self.assertEqual(geocode_place("nowhere"), [])
+
+    def test_network_error_raises_geocoding_error(self):
+        import requests as _requests
+
+        from workspaces.geocoding import GeocodingError, geocode_place
+
+        with mock.patch(
+            "workspaces.geocoding.requests.get",
+            side_effect=_requests.RequestException("boom"),
+        ):
+            with self.assertRaises(GeocodingError):
+                geocode_place("Lyon")
+
+
+@override_settings(ADMIN_TOKEN="test-token")
+class WizardGeocodeViewTests(TestCase):
+    """The geocode endpoint used by the new-workspace wizard."""
+
+    def _auth(self):
+        return {"HTTP_AUTHORIZATION": "Bearer test-token"}
+
+    def test_requires_admin(self):
+        resp = self.client.get(reverse("workspace_geocode"), {"q": "Lyon"})
+        self.assertEqual(resp.status_code, 403)
+
+    def test_returns_results_as_json(self):
+        resp_obj = mock.Mock()
+        resp_obj.json.return_value = _NOMINATIM_LYON
+        resp_obj.raise_for_status.return_value = None
+        with mock.patch("workspaces.geocoding.requests.get", return_value=resp_obj):
+            resp = self.client.get(reverse("workspace_geocode"), {"q": "Lyon"}, **self._auth())
+
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(len(data["results"]), 1)
+        self.assertEqual(data["results"][0]["country_code"], "FR")
+        self.assertEqual(data["results"][0]["bbox"]["minx"], 4.7718134)
+
+    def test_blank_query_returns_empty(self):
+        resp = self.client.get(reverse("workspace_geocode"), {"q": ""}, **self._auth())
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json(), {"results": []})
+
+    def test_geocoder_failure_returns_502(self):
+        import requests as _requests
+
+        with mock.patch(
+            "workspaces.geocoding.requests.get",
+            side_effect=_requests.RequestException("down"),
+        ):
+            resp = self.client.get(reverse("workspace_geocode"), {"q": "Lyon"}, **self._auth())
+
+        self.assertEqual(resp.status_code, 502)
+        self.assertIn("error", resp.json())

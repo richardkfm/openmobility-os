@@ -3,7 +3,7 @@
 
 # OpenMobility OS
 
-**Version:** 0.34.0 (pre-release) — see [CHANGELOG.md](CHANGELOG.md)
+**Version:** 0.35.0 (pre-release) — see [CHANGELOG.md](CHANGELOG.md)
 **License:** See [LICENSE](LICENSE)
 
 > The open, free, self-hostable operating system between open mobility data
@@ -227,7 +227,8 @@ four demo workspaces: **Leipzig**, **Utrecht**, **Musterstadt**, and **Muster-La
 - **Transparent scoring** — nine dimensions, every value traceable to its source
 - **Public shareable URLs** for every measure
 - **Methodology pages** — every formula and data source documented
-- **New-workspace wizard** — add any city in three steps
+- **New-workspace wizard** — add any city in three steps; search for the place
+  by name and the bounding box is filled in for you (geocoded via OpenStreetMap)
 - **Internationalization** — German and English out of the box, extensible
   to any language
 - **Admin-token protection** for write actions
@@ -458,13 +459,19 @@ Authorization: Bearer <your-ADMIN_TOKEN>
 
 1. On the landing page, click **New workspace** (visible only when logged in as admin).
 2. Fill in the wizard form:
+   - **Find your place** — type a city, town, municipality, or region and the
+     wizard geocodes it via OpenStreetMap (Nominatim), filling in the bounding
+     box and country for you. No need to look up coordinates by hand; you can
+     still adjust any field afterwards. The geocoder endpoint is configurable
+     via `OSM_NOMINATIM_API`, so you can point it at your own Nominatim instance.
    - **Name** (required) and **Slug** (auto-derived from name, must be unique)
    - **Kind** — city, town, municipality, county, or state
    - **Country code** (ISO 3166-1 alpha-2, e.g. `DE`, `FR`, `US`)
    - **Language code** (BCP-47, e.g. `de`, `en`, `fr`)
    - **Timezone** (e.g. `Europe/Berlin`)
-   - **Bounding box** (optional) — `minx`, `miny`, `maxx`, `maxy` in WGS 84.
-     Used by the OSM connector to scope Overpass queries.
+   - **Bounding box** — `minx`, `miny`, `maxx`, `maxy` in WGS 84, filled in by
+     the place search above (or by hand). Used by the OSM connector to scope
+     Overpass queries.
    - Short descriptions in German and/or English (optional)
 3. Click **Create workspace**. You are taken straight to the data hub to add
    your first data sources.
