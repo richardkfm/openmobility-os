@@ -684,7 +684,22 @@ function opacitySubsFor(kind) {
       ["accidents-circle", "circle-opacity", 0.85],
       ["accidents-heat", "heatmap-opacity", 0.85],
       ["accidents-density-line", "line-opacity", 0.9],
-    ];
+    ].filter(([id]) => map.getLayer(id));
+  }
+  // The two overlays without a layer-toggle row, so focus can dim them too.
+  if (kind === "measures") {
+    return [
+      ["measures-line", "line-opacity", 0.9],
+      ["measures-fill", "fill-opacity", 0.35],
+      ["measures-outline", "line-opacity", 0.8],
+      ["measures-circle", "circle-opacity", 0.9],
+    ].filter(([id]) => map.getLayer(id));
+  }
+  if (kind === "district-scores") {
+    return [
+      ["district-scores-fill", "fill-opacity", 0.55],
+      ["district-scores-outline", "line-opacity", 0.5],
+    ].filter(([id]) => map.getLayer(id));
   }
   const out = [];
   const push = (suf, prop, base) => { if (map.getLayer(kind + suf)) out.push([kind + suf, prop, base]); };
@@ -744,6 +759,12 @@ function focusLayer(kind) {
   document.querySelectorAll(".layer-toggle").forEach(cb => {
     const k = cb.dataset.layer;
     if (k === kind) return;
+    _focusOthers.push(k);
+    _applyOpacity(k, getLayerOpacity(k) * 0.12);
+  });
+  // Measures and district scores live outside the layer-toggle list but still
+  // compete for attention — dim them like every other non-focused layer.
+  ["measures", "district-scores"].forEach(k => {
     _focusOthers.push(k);
     _applyOpacity(k, getLayerOpacity(k) * 0.12);
   });
@@ -1351,6 +1372,16 @@ function syncAccidentLayers() {
   }
 }
 
+// Infer the accident view mode from which accidents sublayer is visible — used
+// when visibility is restored wholesale (saved views, clearing a story view) so
+// accidentsState, the filter panel, and the legend follow the map.
+function deriveAccidentMode() {
+  const vis = id => map.getLayer(id) && map.getLayoutProperty(id, "visibility") === "visible";
+  if (vis("accidents-heat")) return "heatmap";
+  if (vis("accidents-density-line")) return "density";
+  return "circles";
+}
+
 // Lazily draw any glyph the renderer asks for but that isn't registered yet —
 // a safety net so symbol layers never render with a missing image.
 map.on("styleimagemissing", (e) => loadIconImage(e.id));
@@ -1470,6 +1501,14 @@ function accidentFilter() {
       this.enabled = accidentsState.enabled;
       document.addEventListener("omos:layerschanged", () => {
         this.enabled = accidentsState.enabled;
+        // Saved views and story-view clears restore visibility wholesale and
+        // update accidentsState.mode — follow it so the Circles/Heatmap/Density
+        // buttons never contradict the map. Density data is fetched on demand,
+        // so entering density this way needs a (re-)fetch.
+        if (this.viewMode !== accidentsState.mode) {
+          this.viewMode = accidentsState.mode;
+          if (this.enabled && this.viewMode === "density") this.fetchDensity();
+        }
       });
       // Apply once the source data is in (deferred via 'idle').
       map.on("idle", () => {
@@ -1709,6 +1748,10 @@ function clearStoryView() {
         .some(id => map.getLayer(id) && map.getLayoutProperty(id, "visibility") === "visible");
       cb.checked = wasOn;
       accidentsState.enabled = wasOn;
+      // Restore the pre-story view mode too, so the panel buttons and legend
+      // don't keep showing the story's mode (e.g. Density) over the snapshot.
+      accidentsState.mode = deriveAccidentMode();
+      syncAccidentLayers();
       return;
     }
     cb.checked = ALL_SUBS.some(
@@ -1880,6 +1923,11 @@ function savedViews() {
             .some(id => (v.layerVisibility[id] || "none") === "visible");
           cb.checked = on;
           accidentsState.enabled = on;
+          // The restored layout properties are already applied, so the view
+          // mode can be read straight off the map; syncing it here keeps the
+          // filter panel and legend consistent with the saved view.
+          accidentsState.mode = deriveAccidentMode();
+          syncAccidentLayers();
           return;
         }
         const on = ["-line", "-fill", "-circle", "-symbol", "-new"].some(

@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Saved views now restore the accident view mode consistently** — loading a
+  saved view keeps the Circles / Heatmap / Density buttons and the map legend
+  in sync with what the map actually shows, and re-fetches the density-line
+  data when the saved view used the Density view.
+- **Clearing a story view resets the accident view-mode buttons** — they now
+  follow the restored map instead of staying on the story's mode.
+- **"Focus this layer" now also dims the Measures overlay and the District
+  scores choropleth**, so the focused layer truly stands out.
+
 ### Added
 - **Full-screen map mode** — a new button on the map (below the base-map
   switcher) expands the map, its on-map controls, and the legend to fill the
