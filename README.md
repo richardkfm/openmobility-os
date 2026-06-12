@@ -363,7 +363,10 @@ needs:
   limits and traffic-count points, highlighting the worst corridors.
 
 Each produces a publication-ready view for a planning meeting or a social-media
-post in a single click.
+post in a single click. Activating a story view resets its layers to their
+standard display look (so a custom per-layer display mode never undermines the
+preset), and manually changing layers afterwards dismisses the "reading the
+map" key — your changes are kept, the stale explanation is not.
 
 **Measure Pipeline (status-coded measures):**
 
@@ -394,8 +397,10 @@ link to the full measure detail page, including its priority score.
 
 The "Save PNG" button (header, next to "Back to dashboard") downloads the
 current map canvas as a PNG file named `<workspace>-map-<date>.png`. The
-download captures whatever layers and zoom level are currently visible, making
-it easy to produce screenshots for city council slides or social-media posts.
+download captures whatever layers and zoom level are currently visible and
+composites the on-screen legend (bottom-left) and the basemap attribution
+(bottom-right) into the image, so the file is publication-ready for city
+council slides or social-media posts without further editing.
 
 **Saved views:**
 

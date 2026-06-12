@@ -7,7 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **The workspace menu bar now highlights the current page** — Dashboard, Map,
+  Measures, Data hub, and Methodology show an underline and darker label while
+  you are on them (detail pages count toward their section).
+
+### Changed
+- **"Save PNG" now produces a publication-ready image** — the export includes
+  the on-screen legend (bottom-left) and the basemap attribution
+  (bottom-right), so a shared or printed map keeps its key and credits.
+- **Story views always present their layers in the standard look** — a layer
+  you had switched to a custom display mode (e.g. schools as a heatmap) no
+  longer overrides the curated preset; activating a story view resets the
+  included layers' display mode to their default.
+- **On phones and small screens the Story views and Layers panels start
+  collapsed**, so the map is visible without scrolling; tap a panel header to
+  expand it.
+- The per-layer display-options button (the gear next to each layer) is darker
+  and easier to spot.
+
 ### Fixed
+- **The "Reading the map" story banner now clears when you change the map
+  manually** — toggling layers, measures, district scores, or the accident
+  view while a story view is active dismisses the banner instead of letting it
+  describe a map that no longer matches. Your manual changes are kept.
 - **Saved views now restore the accident view mode consistently** — loading a
   saved view keeps the Circles / Heatmap / Density buttons and the map legend
   in sync with what the map actually shows, and re-fetches the density-line
