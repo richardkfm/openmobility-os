@@ -85,6 +85,31 @@ body {
   overflow-x: auto;
 }
 
+/* Map fullscreen — "map-is-fullscreen" is set by the map page in both the
+   native Fullscreen API path and the fixed-position fallback; the fallback
+   additionally gets "map-fullscreen-fallback" to fill the viewport itself.
+   The shell keeps its flex column (map frame + legend), the frame grows to
+   take all remaining height, and the map fills the frame. */
+#map-shell.map-is-fullscreen {
+  background: #f8fafc;
+  padding: 0.75rem;
+}
+#map-shell.map-is-fullscreen .map-frame {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+#map-shell.map-is-fullscreen #map {
+  height: 100% !important;
+}
+#map-shell.map-fullscreen-fallback {
+  position: fixed;
+  inset: 0;
+  z-index: 50; /* above the sticky header (z-40) */
+}
+html.dark #map-shell.map-is-fullscreen {
+  background: #0f172a;
+}
+
 /* HTMX loading indicator */
 .htmx-indicator {
   display: none;

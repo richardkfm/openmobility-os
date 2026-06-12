@@ -159,6 +159,8 @@ four demo workspaces: **Leipzig**, **Utrecht**, **Musterstadt**, and **Muster-La
   out. All choices are remembered in the browser
 - **Base map switcher** — pick a Light, Dark, or Satellite base map from a
   control on the map, independent of the UI theme; the choice is remembered
+- **Full-screen map mode** — expand the map, its on-map controls, and the
+  legend to the whole screen for presentations; Escape returns to the page
 - **Light & dark mode** — a header toggle switches the whole UI between light and
   dark; the choice is remembered and defaults to the visitor's OS preference.
   The map base map follows the theme until you pick one explicitly
@@ -290,7 +292,11 @@ The map at `/<slug>/map/` uses MapLibre GL JS with OSM vector tiles (or any
 XYZ tile server you configure via `MAP_TILE_URL`). A **Base map** switcher on
 the map lets you flip between Light, Dark, and Satellite imagery independently
 of the UI theme, and a **legend** below the map always shows which colour and
-marker means which active layer.
+marker means which active layer. A **full-screen** button (below the base-map
+switcher) expands the map together with its on-map controls and the legend to
+fill the whole screen — handy for presentations and council meetings; press it
+again or hit Escape to return. Browsers without native full-screen support
+(e.g. iPhone Safari) get the same mode via a built-in fallback.
 
 **Layer panel (left sidebar):**
 

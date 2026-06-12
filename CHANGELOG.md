@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Full-screen map mode** — a new button on the map (below the base-map
+  switcher) expands the map, its on-map controls, and the legend to fill the
+  whole screen — ideal for presentations and council meetings. Exit with the
+  button or the Escape key. Works in every browser, including those without
+  native full-screen support (e.g. iPhone Safari) via a built-in fallback.
 - **The new-workspace wizard finds your coordinates for you** — instead of
   looking up and typing four bounding-box numbers, type a city, town,
   municipality, or region name and the wizard geocodes it via OpenStreetMap

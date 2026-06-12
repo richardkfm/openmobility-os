@@ -407,10 +407,11 @@
 
     </div>
 
-    <div class="flex-1 min-w-0 flex flex-col gap-2">
+    {# The shell is what goes fullscreen: map, on-map controls, and the legend. #}
+    <div id="map-shell" class="flex-1 min-w-0 flex flex-col gap-2">
 
       {# Map with on-map controls stacked at the top-left corner. #}
-      <div class="relative">
+      <div class="relative map-frame">
         <div id="map" class="rounded-lg border"></div>
 
         <div class="absolute top-3 left-3 z-10 flex flex-col gap-2 items-start">
@@ -434,6 +435,22 @@
             <button x-show="mode !== 'auto'" @click="set('auto')"
                     class="block w-full text-center text-[10px] leading-tight text-slate-500 hover:text-slate-800 mt-0.5">
               {% trans "Follow app theme" %}
+            </button>
+          </div>
+
+          {# Fullscreen toggle — map, on-map controls, and legend fill the screen. #}
+          <div x-data="fullscreenMode()" x-init="init()">
+            <button type="button" @click="toggle()"
+                    class="rounded-lg border bg-white/95 backdrop-blur shadow-md p-1.5 text-slate-600 hover:text-slate-900 transition-colors flex items-center"
+                    :aria-pressed="active.toString()"
+                    :aria-label="active ? '{% trans "Exit full screen" %}' : '{% trans "Full screen" %}'"
+                    :title="active ? '{% trans "Exit full screen" %}' : '{% trans "Full screen" %}'">
+              <svg x-show="!active" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>
+              </svg>
+              <svg x-show="active" x-cloak xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/>
+              </svg>
             </button>
           </div>
 
@@ -840,11 +857,17 @@ window.addEventListener("omos:themechange", function () {
   if (readBasemapMode() === "auto") applyBasemap("auto", false);
 });
 
-// Keep the map sized to the viewport on resize and device rotation.
+// Keep the map sized to the viewport on resize and device rotation. In
+// fullscreen the shell's flex layout sizes the map instead (components.css),
+// so the inline pixel height is cleared rather than recomputed.
+function mapIsFullscreen() {
+  const shell = document.getElementById("map-shell");
+  return !!shell && shell.classList.contains("map-is-fullscreen");
+}
 function resizeMap() {
   const el = document.getElementById("map");
   if (el) {
-    el.style.height = Math.max(480, window.innerHeight - 220) + "px";
+    el.style.height = mapIsFullscreen() ? "" : Math.max(480, window.innerHeight - 220) + "px";
     map.resize();
   }
 }
@@ -1883,6 +1906,62 @@ function savedViews() {
       this.views = this.views.filter(v => v.timestamp !== timestamp);
       this._persist();
     },
+  };
+}
+
+// ─── Fullscreen mode ─────────────────────────────────────────────────────────
+// Expands the map shell (map + on-map controls + legend) to the whole screen
+// via the Fullscreen API, with a fixed-position fallback for browsers that
+// lack element fullscreen (e.g. iPhone Safari). The sidebar panels stay
+// outside on purpose: fullscreen is for reading and presenting an arranged
+// map, not reconfiguring it. The "map-is-fullscreen" class drives the layout
+// (components.css) in both the native and the fallback path.
+function fullscreenMode() {
+  return {
+    active: false,
+    shell() { return document.getElementById("map-shell"); },
+    init() {
+      ["fullscreenchange", "webkitfullscreenchange"].forEach(ev =>
+        document.addEventListener(ev, () => this.sync()));
+      // Native fullscreen exits on Escape by itself; mirror that for the
+      // fixed-position fallback.
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && this.active) this.exit();
+      });
+    },
+    sync() {
+      const shell = this.shell();
+      const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
+      this.active = fsEl === shell || shell.classList.contains("map-fullscreen-fallback");
+      shell.classList.toggle("map-is-fullscreen", this.active);
+      // Re-measure once now and once after layout settles, mirroring map.load.
+      resizeMap();
+      requestAnimationFrame(resizeMap);
+    },
+    enter() {
+      const shell = this.shell();
+      if (shell.requestFullscreen) {
+        shell.requestFullscreen().catch(() => this._enterFallback());
+      } else if (shell.webkitRequestFullscreen) {
+        shell.webkitRequestFullscreen();
+      } else {
+        this._enterFallback();
+      }
+    },
+    _enterFallback() {
+      this.shell().classList.add("map-fullscreen-fallback");
+      this.sync();
+    },
+    exit() {
+      const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
+      if (fsEl) {
+        (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+      } else {
+        this.shell().classList.remove("map-fullscreen-fallback");
+        this.sync();
+      }
+    },
+    toggle() { this.active ? this.exit() : this.enter(); },
   };
 }
 
