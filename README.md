@@ -159,6 +159,8 @@ four demo workspaces: **Leipzig**, **Utrecht**, **Musterstadt**, and **Muster-La
   out. All choices are remembered in the browser
 - **Base map switcher** — pick a Light, Dark, or Satellite base map from a
   control on the map, independent of the UI theme; the choice is remembered
+- **Full-screen map mode** — expand the map, its on-map controls, and the
+  legend to the whole screen for presentations; Escape returns to the page
 - **Light & dark mode** — a header toggle switches the whole UI between light and
   dark; the choice is remembered and defaults to the visitor's OS preference.
   The map base map follows the theme until you pick one explicitly
@@ -290,7 +292,11 @@ The map at `/<slug>/map/` uses MapLibre GL JS with OSM vector tiles (or any
 XYZ tile server you configure via `MAP_TILE_URL`). A **Base map** switcher on
 the map lets you flip between Light, Dark, and Satellite imagery independently
 of the UI theme, and a **legend** below the map always shows which colour and
-marker means which active layer.
+marker means which active layer. A **full-screen** button (below the base-map
+switcher) expands the map together with its on-map controls and the legend to
+fill the whole screen — handy for presentations and council meetings; press it
+again or hit Escape to return. Browsers without native full-screen support
+(e.g. iPhone Safari) get the same mode via a built-in fallback.
 
 **Layer panel (left sidebar):**
 
@@ -357,7 +363,10 @@ needs:
   limits and traffic-count points, highlighting the worst corridors.
 
 Each produces a publication-ready view for a planning meeting or a social-media
-post in a single click.
+post in a single click. Activating a story view resets its layers to their
+standard display look (so a custom per-layer display mode never undermines the
+preset), and manually changing layers afterwards dismisses the "reading the
+map" key — your changes are kept, the stale explanation is not.
 
 **Measure Pipeline (status-coded measures):**
 
@@ -388,8 +397,10 @@ link to the full measure detail page, including its priority score.
 
 The "Save PNG" button (header, next to "Back to dashboard") downloads the
 current map canvas as a PNG file named `<workspace>-map-<date>.png`. The
-download captures whatever layers and zoom level are currently visible, making
-it easy to produce screenshots for city council slides or social-media posts.
+download captures whatever layers and zoom level are currently visible and
+composites the on-screen legend (bottom-left) and the basemap attribution
+(bottom-right) into the image, so the file is publication-ready for city
+council slides or social-media posts without further editing.
 
 **Saved views:**
 

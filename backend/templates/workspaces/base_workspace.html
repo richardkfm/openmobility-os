@@ -2,15 +2,32 @@
 {% load i18n %}
 
 {% block subnav %}
+{% comment %}
+The current section gets aria-current="page", which both marks it for assistive
+tech and triggers the .nav-link underline. Detail pages count toward their
+parent section (a measure detail highlights "Measures", and so on).
+{% endcomment %}
+{% with current=request.resolver_match.url_name %}
 <div class="border-t bg-white">
   <div class="mx-auto max-w-7xl px-4 py-2 flex items-center gap-6 text-sm overflow-x-auto">
     <span class="font-medium text-slate-900 whitespace-nowrap">{{ workspace.name }}</span>
     {% if workspace.is_demo %}<span class="rounded-full bg-amber-100 text-amber-800 text-xs px-2 py-0.5 shrink-0">{% trans "Demo" %}</span>{% endif %}
-    <a href="{% url 'workspace_dashboard' workspace.slug %}" class="text-slate-600 hover:text-slate-900 whitespace-nowrap">{% trans "Dashboard" %}</a>
-    <a href="{% url 'workspace_map' workspace.slug %}" class="text-slate-600 hover:text-slate-900 whitespace-nowrap">{% trans "Map" %}</a>
-    <a href="{% url 'measures_list' workspace.slug %}" class="text-slate-600 hover:text-slate-900 whitespace-nowrap">{% trans "Measures" %}</a>
-    <a href="{% url 'data_hub' workspace.slug %}" class="text-slate-600 hover:text-slate-900 whitespace-nowrap">{% trans "Data hub" %}</a>
-    <a href="{% url 'workspace_methodology' workspace.slug %}" class="text-slate-600 hover:text-slate-900 whitespace-nowrap">{% trans "Methodology" %}</a>
+    <a href="{% url 'workspace_dashboard' workspace.slug %}"
+       {% if current == "workspace_dashboard" %}aria-current="page"{% endif %}
+       class="nav-link whitespace-nowrap {% if current == 'workspace_dashboard' %}text-slate-900 font-medium{% else %}text-slate-600 hover:text-slate-900{% endif %}">{% trans "Dashboard" %}</a>
+    <a href="{% url 'workspace_map' workspace.slug %}"
+       {% if current == "workspace_map" %}aria-current="page"{% endif %}
+       class="nav-link whitespace-nowrap {% if current == 'workspace_map' %}text-slate-900 font-medium{% else %}text-slate-600 hover:text-slate-900{% endif %}">{% trans "Map" %}</a>
+    <a href="{% url 'measures_list' workspace.slug %}"
+       {% if current == "measures_list" or current == "measure_detail" %}aria-current="page"{% endif %}
+       class="nav-link whitespace-nowrap {% if current == 'measures_list' or current == 'measure_detail' %}text-slate-900 font-medium{% else %}text-slate-600 hover:text-slate-900{% endif %}">{% trans "Measures" %}</a>
+    <a href="{% url 'data_hub' workspace.slug %}"
+       {% if current == "data_hub" or current == "data_source_add" or current == "data_source_detail" or current == "catalog_index" or current == "catalog_browse" %}aria-current="page"{% endif %}
+       class="nav-link whitespace-nowrap {% if current == 'data_hub' or current == 'data_source_add' or current == 'data_source_detail' or current == 'catalog_index' or current == 'catalog_browse' %}text-slate-900 font-medium{% else %}text-slate-600 hover:text-slate-900{% endif %}">{% trans "Data hub" %}</a>
+    <a href="{% url 'workspace_methodology' workspace.slug %}"
+       {% if current == "workspace_methodology" %}aria-current="page"{% endif %}
+       class="nav-link whitespace-nowrap {% if current == 'workspace_methodology' %}text-slate-900 font-medium{% else %}text-slate-600 hover:text-slate-900{% endif %}">{% trans "Methodology" %}</a>
   </div>
 </div>
+{% endwith %}
 {% endblock %}

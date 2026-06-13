@@ -35,11 +35,15 @@
       {% endcomment %}
       {% if has_cycling_gap_data or has_safe_school_data or has_traffic_safety_data %}
       <div class="rounded-lg border bg-white p-4 text-sm"
-           x-data="{ active: null, reading: '' }"
-           @omos:storyview.document="active = $event.detail.key; reading = $event.detail.reading"
-           @omos:storyview-cleared.document="active = null; reading = ''">
-        <p class="font-semibold text-xs uppercase tracking-wide text-slate-500 mb-2.5">{% trans "Story views" %}</p>
-        <div x-show="!active" class="flex flex-col gap-3">
+           x-data="{ active: null, reading: '', open: window.matchMedia('(min-width: 1024px)').matches }"
+           @omos:storyview.document="active = $event.detail.key; reading = $event.detail.reading; open = true"
+           @omos:storyview-cleared.document="active = null; reading = ''"
+           @omos:storyview-dismissed.document="active = null; reading = ''">
+        <button @click="open = !open" class="flex items-center justify-between w-full font-semibold text-xs uppercase tracking-wide text-slate-500">
+          {% trans "Story views" %}
+          <span x-text="open ? '▲' : '▼'" class="text-slate-400"></span>
+        </button>
+        <div x-show="open && !active" class="flex flex-col gap-3 mt-2.5">
           {% if has_cycling_gap_data %}
           <div>
             <button @click="activateStoryView('cycling_gap')"
@@ -80,7 +84,7 @@
           </div>
           {% endif %}
         </div>
-        <div x-show="active">
+        <div x-show="open && active" class="mt-2.5">
           <div class="rounded-md bg-amber-50 border border-amber-200 p-2.5 text-xs text-amber-800 mb-2.5 leading-relaxed">
             <strong>{% trans "Reading the map:" %}</strong>
             <span x-text="reading"></span>
@@ -93,8 +97,8 @@
       </div>
       {% endif %}
 
-      {# Layer toggles #}
-      <div class="rounded-lg border bg-white p-4" x-data="{ open: true }">
+      {# Layer toggles — start collapsed on small screens so the map stays above the fold. #}
+      <div class="rounded-lg border bg-white p-4" x-data="{ open: window.matchMedia('(min-width: 1024px)').matches }">
         <button @click="open = !open" class="flex items-center justify-between w-full font-semibold text-sm">
           {% trans "Layers" %}
           <span x-text="open ? '▲' : '▼'" class="text-slate-400 text-xs"></span>
@@ -109,7 +113,8 @@
               </label>
               {% if layer.value != "accidents" %}
               <button type="button" @click="expanded = !expanded"
-                      class="shrink-0 text-slate-300 hover:text-slate-600 transition-colors"
+                      class="shrink-0 text-slate-400 hover:text-slate-700 transition-colors"
+                      :class="expanded ? 'text-slate-700' : ''"
                       :title="'{% trans "Display options" %}'" :aria-expanded="expanded">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
                   <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.53 1.53 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.53 1.53 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.53 1.53 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.532 1.532 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.53 1.53 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.53 1.53 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.53 1.53 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
@@ -407,10 +412,11 @@
 
     </div>
 
-    <div class="flex-1 min-w-0 flex flex-col gap-2">
+    {# The shell is what goes fullscreen: map, on-map controls, and the legend. #}
+    <div id="map-shell" class="flex-1 min-w-0 flex flex-col gap-2">
 
       {# Map with on-map controls stacked at the top-left corner. #}
-      <div class="relative">
+      <div class="relative map-frame">
         <div id="map" class="rounded-lg border"></div>
 
         <div class="absolute top-3 left-3 z-10 flex flex-col gap-2 items-start">
@@ -434,6 +440,22 @@
             <button x-show="mode !== 'auto'" @click="set('auto')"
                     class="block w-full text-center text-[10px] leading-tight text-slate-500 hover:text-slate-800 mt-0.5">
               {% trans "Follow app theme" %}
+            </button>
+          </div>
+
+          {# Fullscreen toggle — map, on-map controls, and legend fill the screen. #}
+          <div x-data="fullscreenMode()" x-init="init()">
+            <button type="button" @click="toggle()"
+                    class="rounded-lg border bg-white/95 backdrop-blur shadow-md p-1.5 text-slate-600 hover:text-slate-900 transition-colors flex items-center"
+                    :aria-pressed="active.toString()"
+                    :aria-label="active ? '{% trans "Exit full screen" %}' : '{% trans "Full screen" %}'"
+                    :title="active ? '{% trans "Exit full screen" %}' : '{% trans "Full screen" %}'">
+              <svg x-show="!active" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>
+              </svg>
+              <svg x-show="active" x-cloak xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/>
+              </svg>
             </button>
           </div>
 
@@ -667,7 +689,22 @@ function opacitySubsFor(kind) {
       ["accidents-circle", "circle-opacity", 0.85],
       ["accidents-heat", "heatmap-opacity", 0.85],
       ["accidents-density-line", "line-opacity", 0.9],
-    ];
+    ].filter(([id]) => map.getLayer(id));
+  }
+  // The two overlays without a layer-toggle row, so focus can dim them too.
+  if (kind === "measures") {
+    return [
+      ["measures-line", "line-opacity", 0.9],
+      ["measures-fill", "fill-opacity", 0.35],
+      ["measures-outline", "line-opacity", 0.8],
+      ["measures-circle", "circle-opacity", 0.9],
+    ].filter(([id]) => map.getLayer(id));
+  }
+  if (kind === "district-scores") {
+    return [
+      ["district-scores-fill", "fill-opacity", 0.55],
+      ["district-scores-outline", "line-opacity", 0.5],
+    ].filter(([id]) => map.getLayer(id));
   }
   const out = [];
   const push = (suf, prop, base) => { if (map.getLayer(kind + suf)) out.push([kind + suf, prop, base]); };
@@ -693,6 +730,8 @@ function setLayerDisplayMode(kind, mode) {
   }
   const cb = document.querySelector(`.layer-toggle[data-layer="${kind}"]`);
   if (cb && cb.checked) setLayerVisible(kind, true);
+  // Lets every gear row mirror a mode set programmatically (e.g. by a story view).
+  document.dispatchEvent(new CustomEvent("omos:layermodechanged", { detail: { kind, mode } }));
   document.dispatchEvent(new CustomEvent("omos:layerschanged"));
 }
 function setLayerOpacity(kind, mult) {
@@ -727,6 +766,12 @@ function focusLayer(kind) {
   document.querySelectorAll(".layer-toggle").forEach(cb => {
     const k = cb.dataset.layer;
     if (k === kind) return;
+    _focusOthers.push(k);
+    _applyOpacity(k, getLayerOpacity(k) * 0.12);
+  });
+  // Measures and district scores live outside the layer-toggle list but still
+  // compete for attention — dim them like every other non-focused layer.
+  ["measures", "district-scores"].forEach(k => {
     _focusOthers.push(k);
     _applyOpacity(k, getLayerOpacity(k) * 0.12);
   });
@@ -807,6 +852,8 @@ const map = new maplibregl.Map({
   preserveDrawingBuffer: true,
 });
 
+// The active basemap credit line — also composited into PNG exports.
+let _currentAttr = _initialBasemap.attr;
 let _attribCtrl = new maplibregl.AttributionControl({ customAttribution: _initialBasemap.attr });
 map.addControl(_attribCtrl);
 map.addControl(new maplibregl.NavigationControl(), "top-right");
@@ -819,6 +866,7 @@ map.addControl(new maplibregl.ScaleControl({ unit: "metric" }), "bottom-left");
 function applyBasemap(mode, persist) {
   if (persist) { try { localStorage.setItem(BASEMAP_KEY, mode); } catch (_) {} }
   const { tiles, attr } = basemapTiles(resolveBasemap(mode));
+  _currentAttr = attr;
   const src = map.getSource("osm");
   if (src && src.setTiles) src.setTiles(tiles);
   if (_attribCtrl) map.removeControl(_attribCtrl);
@@ -840,11 +888,17 @@ window.addEventListener("omos:themechange", function () {
   if (readBasemapMode() === "auto") applyBasemap("auto", false);
 });
 
-// Keep the map sized to the viewport on resize and device rotation.
+// Keep the map sized to the viewport on resize and device rotation. In
+// fullscreen the shell's flex layout sizes the map instead (components.css),
+// so the inline pixel height is cleared rather than recomputed.
+function mapIsFullscreen() {
+  const shell = document.getElementById("map-shell");
+  return !!shell && shell.classList.contains("map-is-fullscreen");
+}
 function resizeMap() {
   const el = document.getElementById("map");
   if (el) {
-    el.style.height = Math.max(480, window.innerHeight - 220) + "px";
+    el.style.height = mapIsFullscreen() ? "" : Math.max(480, window.innerHeight - 220) + "px";
     map.resize();
   }
 }
@@ -1328,6 +1382,16 @@ function syncAccidentLayers() {
   }
 }
 
+// Infer the accident view mode from which accidents sublayer is visible — used
+// when visibility is restored wholesale (saved views, clearing a story view) so
+// accidentsState, the filter panel, and the legend follow the map.
+function deriveAccidentMode() {
+  const vis = id => map.getLayer(id) && map.getLayoutProperty(id, "visibility") === "visible";
+  if (vis("accidents-heat")) return "heatmap";
+  if (vis("accidents-density-line")) return "density";
+  return "circles";
+}
+
 // Lazily draw any glyph the renderer asks for but that isn't registered yet —
 // a safety net so symbol layers never render with a missing image.
 map.on("styleimagemissing", (e) => loadIconImage(e.id));
@@ -1354,6 +1418,7 @@ map.on("load", () => {
   });
 
   document.getElementById("toggle-measures")?.addEventListener("change", (e) => {
+    dismissStoryView();
     const vis = e.target.checked ? "visible" : "none";
     ["measures-circle", "measures-fill", "measures-line", "measures-outline"].forEach(id => {
       if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", vis);
@@ -1415,6 +1480,7 @@ map.on("load", () => {
 
   document.querySelectorAll(".layer-toggle").forEach(checkbox => {
     checkbox.addEventListener("change", (e) => {
+      dismissStoryView(); // change events only fire on user interaction
       const kind = e.target.dataset.layer;
       if (kind === "accidents") {
         accidentsState.enabled = e.target.checked;
@@ -1447,6 +1513,14 @@ function accidentFilter() {
       this.enabled = accidentsState.enabled;
       document.addEventListener("omos:layerschanged", () => {
         this.enabled = accidentsState.enabled;
+        // Saved views and story-view clears restore visibility wholesale and
+        // update accidentsState.mode — follow it so the Circles/Heatmap/Density
+        // buttons never contradict the map. Density data is fetched on demand,
+        // so entering density this way needs a (re-)fetch.
+        if (this.viewMode !== accidentsState.mode) {
+          this.viewMode = accidentsState.mode;
+          if (this.enabled && this.viewMode === "density") this.fetchDensity();
+        }
       });
       // Apply once the source data is in (deferred via 'idle').
       map.on("idle", () => {
@@ -1492,6 +1566,7 @@ function accidentFilter() {
     },
 
     setViewMode(mode) {
+      dismissStoryView(); // only reachable via the panel buttons, i.e. by the user
       this.viewMode = mode;
       accidentsState.mode = mode;
       syncAccidentLayers();
@@ -1644,12 +1719,16 @@ function activateStoryView(key) {
   document.querySelectorAll(".layer-toggle").forEach(cb => { cb.checked = false; });
   accidentsState.enabled = false;
 
-  // Enable each configured layer that exists here (honouring its display mode).
+  // Enable each configured layer that exists here, in its standard display
+  // mode — a persisted custom mode (e.g. schools as a heatmap) would undermine
+  // the curated reading, so the layer's display setting is reset to default.
   cfg.layers.forEach(kind => {
     const cb = document.querySelector(`.layer-toggle[data-layer="${kind}"]`);
     if (!cb) return;
     if (!ALL_SUBS.some(suf => map.getLayer(kind + suf))) return;
     cb.checked = true;
+    const def = defaultModeFor(kind);
+    if (getLayerMode(kind) !== def) setLayerDisplayMode(kind, def);
     setLayerVisible(kind, true);
   });
 
@@ -1686,6 +1765,10 @@ function clearStoryView() {
         .some(id => map.getLayer(id) && map.getLayoutProperty(id, "visibility") === "visible");
       cb.checked = wasOn;
       accidentsState.enabled = wasOn;
+      // Restore the pre-story view mode too, so the panel buttons and legend
+      // don't keep showing the story's mode (e.g. Density) over the snapshot.
+      accidentsState.mode = deriveAccidentMode();
+      syncAccidentLayers();
       return;
     }
     cb.checked = ALL_SUBS.some(
@@ -1696,6 +1779,18 @@ function clearStoryView() {
   _storyActive = null;
   document.dispatchEvent(new CustomEvent("omos:storyview-cleared"));
   document.dispatchEvent(new CustomEvent("omos:layerschanged"));
+}
+
+// Dismiss (without restoring) the active story view when the user manually
+// changes the layer arrangement — the banner's reading would otherwise keep
+// describing a map that no longer matches. The user's new arrangement is kept
+// as-is; only the banner and the snapshot are dropped, and filters stay put
+// (unlike clearStoryView, which restores and resets).
+function dismissStoryView() {
+  if (!_storyActive) return;
+  _storyActive = null;
+  _storySnapshot = null;
+  document.dispatchEvent(new CustomEvent("omos:storyview-dismissed"));
 }
 
 // ─── Measure Pipeline filter ─────────────────────────────────────────────────
@@ -1776,6 +1871,7 @@ function districtScores() {
     init() {},
 
     toggle(checked) {
+      dismissStoryView();
       this.enabled = checked;
       const vis = checked ? "visible" : "none";
       if (map.getLayer("district-scores-fill")) map.setLayoutProperty("district-scores-fill", "visibility", vis);
@@ -1857,6 +1953,11 @@ function savedViews() {
             .some(id => (v.layerVisibility[id] || "none") === "visible");
           cb.checked = on;
           accidentsState.enabled = on;
+          // The restored layout properties are already applied, so the view
+          // mode can be read straight off the map; syncing it here keeps the
+          // filter panel and legend consistent with the saved view.
+          accidentsState.mode = deriveAccidentMode();
+          syncAccidentLayers();
           return;
         }
         const on = ["-line", "-fill", "-circle", "-symbol", "-new"].some(
@@ -1883,6 +1984,62 @@ function savedViews() {
       this.views = this.views.filter(v => v.timestamp !== timestamp);
       this._persist();
     },
+  };
+}
+
+// ─── Fullscreen mode ─────────────────────────────────────────────────────────
+// Expands the map shell (map + on-map controls + legend) to the whole screen
+// via the Fullscreen API, with a fixed-position fallback for browsers that
+// lack element fullscreen (e.g. iPhone Safari). The sidebar panels stay
+// outside on purpose: fullscreen is for reading and presenting an arranged
+// map, not reconfiguring it. The "map-is-fullscreen" class drives the layout
+// (components.css) in both the native and the fallback path.
+function fullscreenMode() {
+  return {
+    active: false,
+    shell() { return document.getElementById("map-shell"); },
+    init() {
+      ["fullscreenchange", "webkitfullscreenchange"].forEach(ev =>
+        document.addEventListener(ev, () => this.sync()));
+      // Native fullscreen exits on Escape by itself; mirror that for the
+      // fixed-position fallback.
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && this.active) this.exit();
+      });
+    },
+    sync() {
+      const shell = this.shell();
+      const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
+      this.active = fsEl === shell || shell.classList.contains("map-fullscreen-fallback");
+      shell.classList.toggle("map-is-fullscreen", this.active);
+      // Re-measure once now and once after layout settles, mirroring map.load.
+      resizeMap();
+      requestAnimationFrame(resizeMap);
+    },
+    enter() {
+      const shell = this.shell();
+      if (shell.requestFullscreen) {
+        shell.requestFullscreen().catch(() => this._enterFallback());
+      } else if (shell.webkitRequestFullscreen) {
+        shell.webkitRequestFullscreen();
+      } else {
+        this._enterFallback();
+      }
+    },
+    _enterFallback() {
+      this.shell().classList.add("map-fullscreen-fallback");
+      this.sync();
+    },
+    exit() {
+      const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
+      if (fsEl) {
+        (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+      } else {
+        this.shell().classList.remove("map-fullscreen-fallback");
+        this.sync();
+      }
+    },
+    toggle() { this.active ? this.exit() : this.enter(); },
   };
 }
 
@@ -1920,6 +2077,11 @@ function layerControls(kind) {
       document.addEventListener("omos:focuschanged", () => {
         this.focused = (currentFocusKind() === kind);
       });
+      // Follow programmatic mode changes (story views reset layers to their
+      // standard look) so the select never shows a stale mode.
+      document.addEventListener("omos:layermodechanged", (e) => {
+        if (e.detail.kind === kind) this.mode = e.detail.mode;
+      });
     },
     setMode(m) { this.mode = m; setLayerDisplayMode(kind, m); },
     onOpacityInput() { setLayerOpacity(kind, this.opacity / 100); },
@@ -1933,37 +2095,89 @@ function layerControls(kind) {
 // ─── Legend ──────────────────────────────────────────────────────────────────
 // Lists every currently-visible layer with a swatch shaped like how it is drawn
 // on the map (line / area / dot / glyph), so the colour ↔ meaning mapping is
-// always on screen. Labels come from the translated server context.
-function mapLegend() {
-  const MEASURES_LABEL = "{% trans "Measures" %}";
-  const DISTRICTS_LABEL = "{% trans "District scores" %}";
-  const BIKE_PROTECTED_LABEL = "{% trans "Protected (separated path / track)" %}";
-  const BIKE_LANE_LABEL = "{% trans "Painted lane (on-street)" %}";
-  const BIKE_NEW_PREFIX = "{% trans "Bike lane added after" %}";
-  const ACCIDENT_DENSITY_LABEL = "{% trans "Accident density (by street)" %}";
-  const ACCIDENT_HEATMAP_LABEL = "{% trans "Accident heatmap" %}";
-  // Gradients mirror the actual map paint, so the swatch matches the map.
-  const DISTRICT_GRADIENT = "linear-gradient(90deg,#dbeafe,#f97316,#7f1d1d)";
-  const ACCIDENT_DENSITY_GRADIENT = "linear-gradient(90deg,#2563eb,#16a34a,#eab308,#f97316,#dc2626)";
-  const ACCIDENT_HEATMAP_GRADIENT = "linear-gradient(90deg,rgba(251,191,36,0.7),#f97316,#dc2626,#7f1d1d)";
+// always on screen. Labels come from the translated server context. The row
+// model is built by a standalone function because the PNG exporter composites
+// the same legend into the downloaded image.
+const MEASURES_LABEL = "{% trans "Measures" %}";
+const DISTRICTS_LABEL = "{% trans "District scores" %}";
+const BIKE_PROTECTED_LABEL = "{% trans "Protected (separated path / track)" %}";
+const BIKE_LANE_LABEL = "{% trans "Painted lane (on-street)" %}";
+const BIKE_NEW_PREFIX = "{% trans "Bike lane added after" %}";
+const ACCIDENT_DENSITY_LABEL = "{% trans "Accident density (by street)" %}";
+const ACCIDENT_HEATMAP_LABEL = "{% trans "Accident heatmap" %}";
+// Gradients mirror the actual map paint, so the swatch matches the map.
+const DISTRICT_GRADIENT = "linear-gradient(90deg,#dbeafe,#f97316,#7f1d1d)";
+const ACCIDENT_DENSITY_GRADIENT = "linear-gradient(90deg,#2563eb,#16a34a,#eab308,#f97316,#dc2626)";
+const ACCIDENT_HEATMAP_GRADIENT = "linear-gradient(90deg,rgba(251,191,36,0.7),#f97316,#dc2626,#7f1d1d)";
 
-  function shapeFor(s) {
-    if (s.geom === "line") return "line";
-    if (s.geom === "area") return "area";
-    if (s.point === "icon") return "icon";
-    return "dot";
+function _legendShapeFor(s) {
+  if (s.geom === "line") return "line";
+  if (s.geom === "area") return "area";
+  if (s.point === "icon") return "icon";
+  return "dot";
+}
+// The accidents layer changes look with its view mode (circles / heatmap /
+// density), so its legend entry has to follow accidentsState, not LAYER_STYLE.
+function _legendAccidentRow() {
+  if (accidentsState.mode === "density") {
+    return { key: "accidents", label: ACCIDENT_DENSITY_LABEL, shape: "ramp", gradient: ACCIDENT_DENSITY_GRADIENT, icon: "" };
   }
-  // The accidents layer changes look with its view mode (circles / heatmap /
-  // density), so its legend entry has to follow accidentsState, not LAYER_STYLE.
-  function accidentRow() {
-    if (accidentsState.mode === "density") {
-      return { key: "accidents", label: ACCIDENT_DENSITY_LABEL, shape: "ramp", gradient: ACCIDENT_DENSITY_GRADIENT, icon: "" };
-    }
-    if (accidentsState.mode === "heatmap") {
-      return { key: "accidents", label: ACCIDENT_HEATMAP_LABEL, shape: "ramp", gradient: ACCIDENT_HEATMAP_GRADIENT, icon: "" };
-    }
-    return { key: "accidents", label: LAYER_LABELS["accidents"] || "accidents", color: LAYER_STYLE.accidents.color, shape: "dot", icon: "" };
+  if (accidentsState.mode === "heatmap") {
+    return { key: "accidents", label: ACCIDENT_HEATMAP_LABEL, shape: "ramp", gradient: ACCIDENT_HEATMAP_GRADIENT, icon: "" };
   }
+  return { key: "accidents", label: LAYER_LABELS["accidents"] || "accidents", color: LAYER_STYLE.accidents.color, shape: "dot", icon: "" };
+}
+
+function buildLegendRows() {
+  const rows = [];
+  document.querySelectorAll(".layer-toggle").forEach(cb => {
+    if (!cb.checked) return;
+    const kind = cb.dataset.layer;
+    if (kind === "accidents") { rows.push(_legendAccidentRow()); return; }
+    // The dedicated bike layer is split into its two quality classes, which
+    // are the whole point of the layer — surface both, not one teal line.
+    if (kind === "dedicated_bike_network") {
+      rows.push({ key: "bike-protected", label: BIKE_PROTECTED_LABEL, color: "#0d9488", shape: "line", icon: "" });
+      rows.push({ key: "bike-lane", label: BIKE_LANE_LABEL, color: "#f59e0b", shape: "line", icon: "" });
+      // Only meaningful once we have an accident reference year to compare against.
+      if (bikeEraState.cutoffYear != null) {
+        rows.push({ key: "bike-new", label: BIKE_NEW_PREFIX + " " + bikeEraState.cutoffYear, shape: "dash", icon: "" });
+      }
+      return;
+    }
+    const s = LAYER_STYLE[kind] || { geom: "point" };
+    const col = layerColor(kind);
+    let shape = _legendShapeFor(s);
+    let gradient = "";
+    // Point layers follow their active display mode (dots / icons / heatmap).
+    if (s.geom !== "line" && s.geom !== "area") {
+      const mode = getLayerMode(kind);
+      if (mode === "heatmap") {
+        shape = "ramp";
+        gradient = `linear-gradient(90deg, ${hexToRgba(col, 0.15)}, ${col})`;
+      } else if (mode === "icons" && s.point === "icon" && s.icon) {
+        shape = "icon";
+      } else {
+        shape = "dot";
+      }
+    }
+    rows.push({
+      key: kind,
+      label: LAYER_LABELS[kind] || kind,
+      color: col,
+      shape,
+      gradient,
+      icon: shape === "icon" ? iconSvg(s.icon, col, 16) : "",
+    });
+  });
+  const mcb = document.getElementById("toggle-measures");
+  if (mcb && mcb.checked) rows.push({ key: "_measures", label: MEASURES_LABEL, color: "#6366f1", shape: "dot", icon: "" });
+  const dcb = document.getElementById("toggle-district-scores");
+  if (dcb && dcb.checked) rows.push({ key: "_districts", label: DISTRICTS_LABEL, shape: "ramp", gradient: DISTRICT_GRADIENT, icon: "" });
+  return rows;
+}
+
+function mapLegend() {
   return {
     rows: [],
     init() {
@@ -1971,65 +2185,119 @@ function mapLegend() {
       // Rebuild once data layers have settled so toggled-on layers appear.
       map.on("idle", () => this.rebuild());
     },
-    rebuild() {
-      const rows = [];
-      document.querySelectorAll(".layer-toggle").forEach(cb => {
-        if (!cb.checked) return;
-        const kind = cb.dataset.layer;
-        if (kind === "accidents") { rows.push(accidentRow()); return; }
-        // The dedicated bike layer is split into its two quality classes, which
-        // are the whole point of the layer — surface both, not one teal line.
-        if (kind === "dedicated_bike_network") {
-          rows.push({ key: "bike-protected", label: BIKE_PROTECTED_LABEL, color: "#0d9488", shape: "line", icon: "" });
-          rows.push({ key: "bike-lane", label: BIKE_LANE_LABEL, color: "#f59e0b", shape: "line", icon: "" });
-          // Only meaningful once we have an accident reference year to compare against.
-          if (bikeEraState.cutoffYear != null) {
-            rows.push({ key: "bike-new", label: BIKE_NEW_PREFIX + " " + bikeEraState.cutoffYear, shape: "dash", icon: "" });
-          }
-          return;
-        }
-        const s = LAYER_STYLE[kind] || { geom: "point" };
-        const col = layerColor(kind);
-        let shape = shapeFor(s);
-        let gradient = "";
-        // Point layers follow their active display mode (dots / icons / heatmap).
-        if (s.geom !== "line" && s.geom !== "area") {
-          const mode = getLayerMode(kind);
-          if (mode === "heatmap") {
-            shape = "ramp";
-            gradient = `linear-gradient(90deg, ${hexToRgba(col, 0.15)}, ${col})`;
-          } else if (mode === "icons" && s.point === "icon" && s.icon) {
-            shape = "icon";
-          } else {
-            shape = "dot";
-          }
-        }
-        rows.push({
-          key: kind,
-          label: LAYER_LABELS[kind] || kind,
-          color: col,
-          shape,
-          gradient,
-          icon: shape === "icon" ? iconSvg(s.icon, col, 16) : "",
-        });
-      });
-      const mcb = document.getElementById("toggle-measures");
-      if (mcb && mcb.checked) rows.push({ key: "_measures", label: MEASURES_LABEL, color: "#6366f1", shape: "dot", icon: "" });
-      const dcb = document.getElementById("toggle-district-scores");
-      if (dcb && dcb.checked) rows.push({ key: "_districts", label: DISTRICTS_LABEL, shape: "ramp", gradient: DISTRICT_GRADIENT, icon: "" });
-      this.rows = rows;
-    },
+    rebuild() { this.rows = buildLegendRows(); },
   };
 }
 
 // ─── Export PNG ───────────────────────────────────────────────────────────────
+// The export composites the live legend (bottom-left) and the basemap credit
+// (bottom-right) onto the map canvas, so the downloaded image keeps its key
+// and required attribution when shared or printed.
+
+// Extract the colour stops of a CSS linear-gradient(...) string, in order.
+function _gradientStops(gradient) {
+  return String(gradient || "").match(/#[0-9a-fA-F]{3,8}|rgba?\([^)]*\)/g) || [];
+}
+
+// Draw one legend swatch at (x, cy-centred), w wide, mirroring the HTML legend
+// shapes. Icon rows are simplified to their coloured badge — the glyph itself
+// is unreadable at swatch size anyway.
+function _drawLegendSwatch(ctx, row, x, cy, w, pr) {
+  const color = row.color || DEFAULT_COLOR;
+  if (row.shape === "ramp") {
+    const stops = _gradientStops(row.gradient);
+    let fill = color;
+    if (stops.length > 1) {
+      fill = ctx.createLinearGradient(x, 0, x + w, 0);
+      stops.forEach((c, i) => { try { fill.addColorStop(i / (stops.length - 1), c); } catch (_) {} });
+    }
+    ctx.fillStyle = fill;
+    ctx.fillRect(x, cy - 3 * pr, w, 6 * pr);
+  } else if (row.shape === "dash") {
+    ctx.fillStyle = "#64748b";
+    ctx.fillRect(x, cy - 3 * pr, w, 6 * pr);
+    ctx.fillStyle = "#fff";
+    for (let dx = 1 * pr; dx < w - 2 * pr; dx += 5 * pr) ctx.fillRect(x + dx, cy - 3 * pr, 2.5 * pr, 6 * pr);
+  } else if (row.shape === "line") {
+    ctx.fillStyle = color;
+    ctx.fillRect(x, cy - 2 * pr, w, 4 * pr);
+  } else if (row.shape === "area") {
+    const s = 11 * pr;
+    ctx.globalAlpha = 0.35;
+    ctx.fillStyle = color;
+    ctx.fillRect(x + (w - s) / 2, cy - s / 2, s, s);
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = pr;
+    ctx.strokeRect(x + (w - s) / 2, cy - s / 2, s, s);
+  } else {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(x + w / 2, cy, (row.shape === "icon" ? 6 : 4.5) * pr, 0, Math.PI * 2);
+    ctx.fill();
+    if (row.shape === "icon") {
+      ctx.strokeStyle = "#fff";
+      ctx.lineWidth = 1.5 * pr;
+      ctx.stroke();
+    }
+  }
+}
 
 document.getElementById("export-png")?.addEventListener("click", () => {
-  const canvas = map.getCanvas();
+  const src = map.getCanvas();
+  const out = document.createElement("canvas");
+  out.width = src.width;
+  out.height = src.height;
+  const ctx = out.getContext("2d");
+  ctx.drawImage(src, 0, 0);
+
+  // Device-pixel scale, so overlay sizes match what the viewer saw on screen.
+  const pr = Math.max(1, out.width / Math.max(1, map.getContainer().clientWidth));
+  ctx.font = `${12 * pr}px Inter, system-ui, sans-serif`;
+  ctx.textBaseline = "middle";
+
+  // Basemap credit — bottom-right strip (HTML stripped to plain text).
+  const attrEl = document.createElement("div");
+  attrEl.innerHTML = _currentAttr || "";
+  const attrText = (attrEl.textContent || "").trim();
+  if (attrText) {
+    const tw = ctx.measureText(attrText).width;
+    const ah = 18 * pr;
+    ctx.fillStyle = "rgba(255,255,255,0.85)";
+    ctx.fillRect(out.width - tw - 12 * pr, out.height - ah, tw + 12 * pr, ah);
+    ctx.fillStyle = "#475569";
+    ctx.fillText(attrText, out.width - tw - 6 * pr, out.height - ah / 2);
+  }
+
+  // Legend card — bottom-left, same rows as the on-screen legend.
+  const rows = buildLegendRows();
+  if (rows.length) {
+    const lineH = 20 * pr, swW = 16 * pr, gap = 7 * pr, pad = 10 * pr;
+    const textW = Math.max(...rows.map(r => ctx.measureText(r.label).width));
+    const boxW = pad * 2 + swW + gap + textW;
+    const boxH = pad * 2 + rows.length * lineH;
+    const bx = 10 * pr;
+    const by = out.height - boxH - 26 * pr;
+    ctx.fillStyle = "rgba(255,255,255,0.92)";
+    ctx.strokeStyle = "rgba(100,116,139,0.4)";
+    ctx.lineWidth = pr;
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(bx, by, boxW, boxH, 6 * pr);
+    else ctx.rect(bx, by, boxW, boxH);
+    ctx.fill();
+    ctx.stroke();
+    rows.forEach((row, i) => {
+      const cy = by + pad + i * lineH + lineH / 2;
+      _drawLegendSwatch(ctx, row, bx + pad, cy, swW, pr);
+      ctx.fillStyle = "#334155";
+      ctx.fillText(row.label, bx + pad + swW + gap, cy);
+    });
+  }
+
   const today = new Date().toISOString().slice(0, 10);
   const a = document.createElement("a");
   a.download = `${WORKSPACE_SLUG}-map-${today}.png`;
-  a.href = canvas.toDataURL("image/png");
+  a.href = out.toDataURL("image/png");
   a.click();
 });
 </script>
