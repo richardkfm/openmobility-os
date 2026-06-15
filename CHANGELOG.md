@@ -8,11 +8,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **The involved-mode filter now applies to the accident heatmap** — you can
+  render a cyclist-only (or pedestrian-only, etc.) crash heatmap, not just in
+  the Circles view. The Involved modes checkboxes are active in every accident
+  view now.
 - **The workspace menu bar now highlights the current page** — Dashboard, Map,
   Measures, Data hub, and Methodology show an underline and darker label while
   you are on them (detail pages count toward their section).
 
 ### Changed
+- **Story views now show accidents as a heatmap** — all three presets (Cycling
+  gap analysis, Safe routes to school, Traffic safety overview) display crashes
+  as a density heatmap over the last three years. "Cycling gap analysis" in
+  particular now reliably shows the cyclist-crash heatmap together with the
+  dedicated/painted bike lanes; previously it used the density-lines view,
+  which rendered nothing without a separate streets layer.
 - **"Save PNG" now produces a publication-ready image** — the export includes
   the on-screen legend (bottom-left) and the basemap attribution
   (bottom-right), so a shared or printed map keeps its key and credits.

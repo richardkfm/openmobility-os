@@ -274,9 +274,9 @@
           </label>
         </div>
 
-        {# Mode filters (circles only — heatmap uses weight, not per-point filter) #}
+        {# Mode filters — apply to every accident view (circles, heatmap, density). #}
         <p class="text-xs text-slate-500 mb-2 font-medium uppercase tracking-wide">{% trans "Involved modes" %}</p>
-        <div class="flex flex-col gap-1" :class="viewMode === 'heatmap' ? 'opacity-40 pointer-events-none' : ''">
+        <div class="flex flex-col gap-1">
           <label class="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" x-model="modes.cyclist" @change="applyFilter()">
             {% trans "Cyclists" %}
@@ -294,7 +294,6 @@
             {% trans "Trucks" %}
           </label>
         </div>
-        <p x-show="viewMode === 'heatmap'" class="text-xs text-slate-400 mt-1">{% trans "Mode filter applies in circles and density views." %}</p>
 
         <button @click="resetFilter()" class="mt-3 w-full text-xs text-slate-500 hover:text-slate-800 underline text-left">
           {% trans "Reset filters" %}
@@ -1535,6 +1534,10 @@ function accidentFilter() {
         accidentsState.mode = d.accidents;
         this.modes = { cyclist: false, pedestrian: false, car: false, truck: false };
         (d.modes || []).forEach(m => { if (m in this.modes) this.modes[m] = true; });
+        // Story views present a steady recent picture: reset to the most recent
+        // three years (when the data carries years) so the preset is consistent
+        // regardless of any prior manual year selection.
+        if (this.availableYears.length > 0) this.years = this.availableYears.slice(0, 3);
         syncAccidentLayers();
         if (d.accidents === "density") this.fetchDensity();
         else this.applyFilter();
@@ -1643,24 +1646,23 @@ function accidentFilter() {
         baseClauses.push(["in", ["to-number", ["get", "year"]], ["literal", this.years.map(Number)]]);
       }
 
-      // Circle mode also applies the mode filter when any modes are selected.
-      const circleClauses = [...baseClauses];
+      // The involved-mode filter (when any modes are selected) applies to both
+      // the circle and the heatmap view, so a cyclist-only heatmap is possible
+      // — this is what makes the "Cycling gap analysis" story meaningful.
       const activeModes = Object.entries(this.modes)
         .filter(([, on]) => on)
         .map(([k]) => k);
-      if (activeModes.length > 0 && this.viewMode === "circles") {
+      const clauses = [...baseClauses];
+      if (activeModes.length > 0) {
         const modeConditions = activeModes.map(m => [
           "in", m, ["coalesce", ["get", "involved_modes"], ""]
         ]);
-        circleClauses.push(["any", ...modeConditions]);
+        clauses.push(["any", ...modeConditions]);
       }
 
-      const circleFilter = circleClauses.length === 1 ? circleClauses[0] : ["all", ...circleClauses];
-      const heatFilter = baseClauses.length === 1 ? baseClauses[0] : ["all", ...baseClauses];
-
-      if (map.getLayer("accidents-circle")) map.setFilter("accidents-circle", circleFilter);
-      // Heatmap respects severity + year filters; mode filter is not applied (density view)
-      if (map.getLayer("accidents-heat")) map.setFilter("accidents-heat", heatFilter);
+      const filter = clauses.length === 1 ? clauses[0] : ["all", ...clauses];
+      if (map.getLayer("accidents-circle")) map.setFilter("accidents-circle", filter);
+      if (map.getLayer("accidents-heat")) map.setFilter("accidents-heat", filter);
     },
 
     resetFilter() {
@@ -1682,21 +1684,21 @@ function accidentFilter() {
 const STORY_VIEWS = {
   cycling_gap: {
     layers: ["dedicated_bike_network", "cycling_counts"],
-    accidents: "density",
+    accidents: "heatmap",
     accidentModes: ["cyclist"],
-    reading: "{% trans "Red/orange streets = cycling accident clusters. Teal = protected bike lanes. Amber = painted lanes. A white dashed overlay marks lanes built after the latest accident year — a flagged cluster under a dashed lane has likely already been addressed. Red streets without any overlay are priority intervention zones." %}",
+    reading: "{% trans "The heatmap shows where cyclist crashes cluster over the last three years (yellow → red = denser). Teal = protected bike lanes, amber = painted lanes; a white dashed overlay marks lanes built after the latest accident year. Dense red areas with no teal or amber lane underneath are priority intervention zones." %}",
   },
   safe_school: {
     layers: ["schools", "streets_with_speed", "bike_network", "dedicated_bike_network"],
-    accidents: "circles",
+    accidents: "heatmap",
     accidentModes: [],
-    reading: "{% trans "School markers show where children arrive. Coloured dots are recorded crashes (darkest = fatal). Street colours show posted speed limits — a school ringed by fast streets with crashes nearby is a priority for safe crossings and traffic calming." %}",
+    reading: "{% trans "School markers show where children arrive. The heatmap shows where crashes cluster (yellow → red = denser), and street colours show posted speed limits — a school ringed by fast streets and a dense crash area is a priority for safe crossings and traffic calming." %}",
   },
   traffic_safety: {
     layers: ["streets_with_speed", "traffic_counts"],
-    accidents: "density",
+    accidents: "heatmap",
     accidentModes: [],
-    reading: "{% trans "Streets are coloured blue→red by their accident-severity score, with posted speed limits underneath and traffic-count points where available. Red corridors carry the worst safety record and are the strongest candidates for intervention." %}",
+    reading: "{% trans "The heatmap shows where crashes cluster across the city (yellow → red = denser), with posted speed limits underneath and traffic-count points where available. The densest red areas carry the worst safety record and are the strongest candidates for intervention." %}",
   },
 };
 

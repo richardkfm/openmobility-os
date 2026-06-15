@@ -328,7 +328,9 @@ the same data:
   dangerous they are. This view requires a synced streets layer; if none is
   present, the toggle is hidden and the panel explains how to add one.
 
-The year, severity, and **involved-mode** filters drive the density aggregation,
+The year, severity, and **involved-mode** filters apply to all three views — so
+you can render, for example, a cyclist-only crash heatmap for the last three
+years. The same filters drive the density aggregation,
 so you can filter to *cyclist* accidents, see which streets glow red, then toggle
 the **Dedicated bike lanes / paths** layer on top to spot corridors with high
 cyclist-accident counts and no real cycling infrastructure. That layer renders
@@ -353,14 +355,19 @@ recurring planning or journalism question, each accompanied by a plain-language
 needs:
 
 - **Cycling gap analysis** — dedicated bike infrastructure (teal = protected,
-  amber = painted lane), cyclist accident density (streets coloured red where
-  cycling accidents cluster), and cycling count stations. Streets that glow red
-  without any teal or amber overlay are priority intervention zones.
-- **Safe routes to school** — school locations against nearby recorded crashes
+  amber = painted lane), a cyclist-crash heatmap for the last three years (red
+  where cycling crashes cluster), and cycling count stations shown together.
+  Dense red areas with no teal or amber lane underneath are priority
+  intervention zones.
+- **Safe routes to school** — school locations against a nearby-crash heatmap
   and posted speed limits, so a school ringed by fast streets with crashes
   nearby stands out as a candidate for safe crossings and traffic calming.
-- **Traffic safety overview** — city-wide accident-severity density with speed
-  limits and traffic-count points, highlighting the worst corridors.
+- **Traffic safety overview** — a city-wide crash heatmap with speed
+  limits and traffic-count points, highlighting the worst areas.
+
+All three story views show accidents as a heatmap; the year, severity, and
+involved-mode filters still apply, so each preset reads as a clean density
+surface over its supporting layers.
 
 Each produces a publication-ready view for a planning meeting or a social-media
 post in a single click. Activating a story view resets its layers to their
