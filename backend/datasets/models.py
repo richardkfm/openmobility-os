@@ -49,6 +49,8 @@ class DataSource(models.Model):
         SEALED_SURFACES = "sealed_surfaces", _("Sealed surfaces")
         HEAT_CORRIDORS = "heat_corridors", _("Heat / fresh-air corridors")
         WATER_BODIES = "water_bodies", _("Water bodies / retention areas")
+        FLOOD_RISK = "flood_risk", _("Flood hazard zones")
+        DROUGHT_RISK = "drought_risk", _("Drought / heat-stress areas")
         EV_CHARGING = "ev_charging", _("EV charging stations")
         TRAFFIC_COUNTS = "traffic_counts", _("Traffic counts")
         CYCLING_COUNTS = "cycling_counts", _("Cycling counts")

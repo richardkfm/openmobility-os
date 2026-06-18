@@ -1242,3 +1242,47 @@ msgstr "Straßen sind nach ihrem Unfallschwere-Score blau→rot eingefärbt, dar
 #: backend/templates/workspaces/map.html
 msgid "Red/orange streets = cycling accident clusters. Teal = protected bike lanes. Amber = painted lanes. A white dashed overlay marks lanes built after the latest accident year — a flagged cluster under a dashed lane has likely already been addressed. Red streets without any overlay are priority intervention zones."
 msgstr "Rote/orange Straßen = Häufungen von Fahrradunfällen. Türkis = geschützte Radwege. Bernstein = markierte Radstreifen. Eine weiße gestrichelte Überlagerung kennzeichnet Wege, die nach dem letzten Unfalljahr gebaut wurden — eine markierte Häufung unter einem gestrichelten Weg wurde wahrscheinlich bereits adressiert. Rote Straßen ohne Überlagerung sind vorrangige Eingriffszonen."
+
+#: backend/datasets/models.py
+msgid "Flood hazard zones"
+msgstr "Überschwemmungsgebiete"
+
+#: backend/datasets/models.py
+msgid "Drought / heat-stress areas"
+msgstr "Dürre-/Hitzestressgebiete"
+
+#: backend/templates/workspaces/map.html
+msgid "Urban heat & shade"
+msgstr "Urbane Hitze & Schatten"
+
+#: backend/templates/workspaces/map.html
+msgid "Sealed surfaces and heat corridors against green cover and trees."
+msgstr "Versiegelte Flächen und Hitzekorridore im Vergleich zu Grünflächen und Bäumen."
+
+#: backend/templates/workspaces/map.html
+msgid "Flood & water resilience"
+msgstr "Hochwasser & Wasserresilienz"
+
+#: backend/templates/workspaces/map.html
+msgid "Water bodies and flood hazard against impervious, sealed ground."
+msgstr "Gewässer und Hochwassergefahr im Vergleich zu versiegeltem, undurchlässigem Boden."
+
+#: backend/templates/workspaces/map.html
+msgid "Cooling green network"
+msgstr "Kühlendes Grünnetz"
+
+#: backend/templates/workspaces/map.html
+msgid "Parks, trees and fresh-air corridors relative to where people live."
+msgstr "Parks, Bäume und Frischluftkorridore im Verhältnis zu den Wohnorten der Menschen."
+
+#: backend/templates/workspaces/map.html
+msgid "Grey areas are sealed, heat-trapping surfaces; green areas and tree dots are the cooling cover that offsets them, and the rose corridors are fresh-air channels that must stay open. A grey cluster with little green or few trees around it — especially one cutting across a corridor — is a priority for depaving, shade and greening."
+msgstr "Graue Flächen sind versiegelte, hitzespeichernde Oberflächen; Grünflächen und Baumpunkte sind die kühlende Vegetation, die sie ausgleicht, und die rosa Korridore sind Frischluftbahnen, die offen bleiben müssen. Ein grauer Cluster mit wenig Grün oder wenigen Bäumen ringsum — besonders einer, der einen Korridor durchschneidet — ist vorrangig für Entsiegelung, Beschattung und Begrünung."
+
+#: backend/templates/workspaces/map.html
+msgid "Blue is open water and retention; the lighter blue zones are mapped flood hazard; grey areas are sealed surfaces where rain cannot soak away. Sealed surfaces sitting inside or upstream of a flood zone are where runoff concentrates — the strongest candidates for unsealing, retention basins and sponge-city measures."
+msgstr "Blau steht für offenes Wasser und Retention; die helleren blauen Zonen sind kartierte Hochwassergefahr; graue Flächen sind versiegelte Oberflächen, auf denen Regen nicht versickern kann. Versiegelte Flächen innerhalb oder oberhalb eines Überschwemmungsgebiets sind dort, wo sich Abfluss konzentriert — die besten Kandidaten für Entsiegelung, Rückhaltebecken und Schwammstadt-Maßnahmen."
+
+#: backend/templates/workspaces/map.html
+msgid "Green areas, tree dots and rose fresh-air corridors are the city's network of cool refuges; the population grid underneath shows where people actually live. Densely populated cells with no green space or corridor within easy reach are the gaps to close with new parks, street trees and protected ventilation paths."
+msgstr "Grünflächen, Baumpunkte und rosa Frischluftkorridore bilden das Netz kühler Rückzugsorte der Stadt; das Bevölkerungsraster darunter zeigt, wo Menschen tatsächlich wohnen. Dicht besiedelte Zellen ohne Grünraum oder Korridor in erreichbarer Nähe sind die Lücken, die mit neuen Parks, Straßenbäumen und geschützten Belüftungsbahnen zu schließen sind."

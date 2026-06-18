@@ -127,9 +127,12 @@ class Command(BaseCommand):
                 style = self.style.SUCCESS if success else self.style.WARNING
                 self.stdout.write(style(f"     sync {source.name}: {msg}"))
             # Also sync the live street/bike network sources the "Density lines"
-            # accident view and cycling-gap analysis depend on, so the feature is
-            # usable straight after seeding. These hit the network (Overpass), so
-            # a failure only warns — the rest of the demo still seeds fine.
+            # accident view and cycling-gap analysis depend on, plus the
+            # climate-readiness layers (trees, green, water, sealed surfaces)
+            # that feed the climate story views and heat-vulnerability rule, so
+            # the features are usable straight after seeding. These hit the
+            # network (Overpass), so a failure only warns — the rest of the demo
+            # still seeds fine.
             elif (
                 not options.get("no_network")
                 and source.source_type == DataSource.SourceType.OSM_OVERPASS
@@ -139,6 +142,10 @@ class Command(BaseCommand):
                     DataSource.LayerKind.STREETS_WITH_SPEED,
                     DataSource.LayerKind.BIKE_NETWORK,
                     DataSource.LayerKind.DEDICATED_BIKE_NETWORK,
+                    DataSource.LayerKind.TREES,
+                    DataSource.LayerKind.GREEN_AREAS,
+                    DataSource.LayerKind.WATER_BODIES,
+                    DataSource.LayerKind.SEALED_SURFACES,
                 )
             ):
                 success, msg = _run_sync(source)

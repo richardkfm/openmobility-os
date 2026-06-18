@@ -33,7 +33,7 @@
       actually render. The active view's plain-language key + a Clear button
       replace the list while one is on.
       {% endcomment %}
-      {% if has_cycling_gap_data or has_safe_school_data or has_traffic_safety_data %}
+      {% if has_cycling_gap_data or has_safe_school_data or has_traffic_safety_data or has_urban_heat_data or has_flood_water_data or has_cooling_green_data %}
       <div class="rounded-lg border bg-white p-4 text-sm"
            x-data="{ active: null, reading: '', open: window.matchMedia('(min-width: 1024px)').matches }"
            @omos:storyview.document="active = $event.detail.key; reading = $event.detail.reading; open = true"
@@ -81,6 +81,45 @@
               {% trans "Traffic safety overview" %}
             </button>
             <p class="text-xs text-slate-400 mt-1.5">{% trans "City-wide accident density with speed limits and traffic counts." %}</p>
+          </div>
+          {% endif %}
+          {% if has_urban_heat_data %}
+          <div>
+            <button @click="activateStoryView('urban_heat')"
+                    class="w-full text-left px-3 py-2 rounded-lg bg-slate-50 hover:bg-slate-100 border transition-colors flex items-center gap-2">
+              <span class="flex -space-x-0.5 shrink-0">
+                <span class="inline-block w-3 h-3 rounded-full bg-rose-400 border border-white"></span>
+                <span class="inline-block w-3 h-3 rounded-full bg-green-500 border border-white"></span>
+              </span>
+              {% trans "Urban heat & shade" %}
+            </button>
+            <p class="text-xs text-slate-400 mt-1.5">{% trans "Sealed surfaces and heat corridors against green cover and trees." %}</p>
+          </div>
+          {% endif %}
+          {% if has_flood_water_data %}
+          <div>
+            <button @click="activateStoryView('flood_water')"
+                    class="w-full text-left px-3 py-2 rounded-lg bg-slate-50 hover:bg-slate-100 border transition-colors flex items-center gap-2">
+              <span class="flex -space-x-0.5 shrink-0">
+                <span class="inline-block w-3 h-3 rounded-full bg-sky-500 border border-white"></span>
+                <span class="inline-block w-3 h-3 rounded-full bg-stone-500 border border-white"></span>
+              </span>
+              {% trans "Flood & water resilience" %}
+            </button>
+            <p class="text-xs text-slate-400 mt-1.5">{% trans "Water bodies and flood hazard against impervious, sealed ground." %}</p>
+          </div>
+          {% endif %}
+          {% if has_cooling_green_data %}
+          <div>
+            <button @click="activateStoryView('cooling_green')"
+                    class="w-full text-left px-3 py-2 rounded-lg bg-slate-50 hover:bg-slate-100 border transition-colors flex items-center gap-2">
+              <span class="flex -space-x-0.5 shrink-0">
+                <span class="inline-block w-3 h-3 rounded-full bg-green-500 border border-white"></span>
+                <span class="inline-block w-3 h-3 rounded-full bg-emerald-700 border border-white"></span>
+              </span>
+              {% trans "Cooling green network" %}
+            </button>
+            <p class="text-xs text-slate-400 mt-1.5">{% trans "Parks, trees and fresh-air corridors relative to where people live." %}</p>
           </div>
           {% endif %}
         </div>
@@ -541,6 +580,8 @@ const LAYER_STYLE = {
   sealed_surfaces:        { color: "#78716c", geom: "area" },
   heat_corridors:         { color: "#fb7185", geom: "area" },
   water_bodies:           { color: "#38bdf8", geom: "area" },
+  flood_risk:             { color: "#0ea5e9", geom: "area" },
+  drought_risk:           { color: "#d97706", geom: "area" },
   land_use:               { color: "#a3a3a3", geom: "area" },
   air_quality:            { color: "#14b8a6", geom: "point", point: "dot" },
   noise:                  { color: "#db2777", geom: "area" },
@@ -1699,6 +1740,24 @@ const STORY_VIEWS = {
     accidents: "heatmap",
     accidentModes: [],
     reading: "{% trans "The heatmap shows where crashes cluster across the city (yellow → red = denser), with posted speed limits underneath and traffic-count points where available. The densest red areas carry the worst safety record and are the strongest candidates for intervention." %}",
+  },
+  urban_heat: {
+    layers: ["heat_corridors", "sealed_surfaces", "green_areas", "trees"],
+    accidents: null,
+    accidentModes: [],
+    reading: "{% trans "Grey areas are sealed, heat-trapping surfaces; green areas and tree dots are the cooling cover that offsets them, and the rose corridors are fresh-air channels that must stay open. A grey cluster with little green or few trees around it — especially one cutting across a corridor — is a priority for depaving, shade and greening." %}",
+  },
+  flood_water: {
+    layers: ["water_bodies", "flood_risk", "sealed_surfaces"],
+    accidents: null,
+    accidentModes: [],
+    reading: "{% trans "Blue is open water and retention; the lighter blue zones are mapped flood hazard; grey areas are sealed surfaces where rain cannot soak away. Sealed surfaces sitting inside or upstream of a flood zone are where runoff concentrates — the strongest candidates for unsealing, retention basins and sponge-city measures." %}",
+  },
+  cooling_green: {
+    layers: ["green_areas", "trees", "heat_corridors", "population_grid"],
+    accidents: null,
+    accidentModes: [],
+    reading: "{% trans "Green areas, tree dots and rose fresh-air corridors are the city's network of cool refuges; the population grid underneath shows where people actually live. Densely populated cells with no green space or corridor within easy reach are the gaps to close with new parks, street trees and protected ventilation paths." %}",
   },
 };
 
