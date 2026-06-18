@@ -1109,3 +1109,47 @@ msgstr ""
 #, python-format
 msgid "Workspace %(name)s created. Next step: add data sources."
 msgstr ""
+
+#: backend/datasets/models.py
+msgid "Flood hazard zones"
+msgstr ""
+
+#: backend/datasets/models.py
+msgid "Drought / heat-stress areas"
+msgstr ""
+
+#: backend/templates/workspaces/map.html
+msgid "Urban heat & shade"
+msgstr ""
+
+#: backend/templates/workspaces/map.html
+msgid "Sealed surfaces and heat corridors against green cover and trees."
+msgstr ""
+
+#: backend/templates/workspaces/map.html
+msgid "Flood & water resilience"
+msgstr ""
+
+#: backend/templates/workspaces/map.html
+msgid "Water bodies and flood hazard against impervious, sealed ground."
+msgstr ""
+
+#: backend/templates/workspaces/map.html
+msgid "Cooling green network"
+msgstr ""
+
+#: backend/templates/workspaces/map.html
+msgid "Parks, trees and fresh-air corridors relative to where people live."
+msgstr ""
+
+#: backend/templates/workspaces/map.html
+msgid "Grey areas are sealed, heat-trapping surfaces; green areas and tree dots are the cooling cover that offsets them, and the rose corridors are fresh-air channels that must stay open. A grey cluster with little green or few trees around it — especially one cutting across a corridor — is a priority for depaving, shade and greening."
+msgstr ""
+
+#: backend/templates/workspaces/map.html
+msgid "Blue is open water and retention; the lighter blue zones are mapped flood hazard; grey areas are sealed surfaces where rain cannot soak away. Sealed surfaces sitting inside or upstream of a flood zone are where runoff concentrates — the strongest candidates for unsealing, retention basins and sponge-city measures."
+msgstr ""
+
+#: backend/templates/workspaces/map.html
+msgid "Green areas, tree dots and rose fresh-air corridors are the city's network of cool refuges; the population grid underneath shows where people actually live. Densely populated cells with no green space or corridor within easy reach are the gaps to close with new parks, street trees and protected ventilation paths."
+msgstr ""

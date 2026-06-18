@@ -3,6 +3,7 @@
 from dataclasses import dataclass, field
 from unittest import TestCase
 
+from measures.rules.climate import rule_heat_vulnerability
 from measures.rules.electrification import rule_ev_charging_gap
 from measures.rules.equity import rule_population_equity_gap
 from measures.rules.transit import (
@@ -340,3 +341,93 @@ class CyclingInfrastructureGapRuleTests(TestCase):
             _GeoWorkspace(), [accidents_fs, streets_fs, dedicated_fs, loose_fs]
         )
         self.assertEqual(candidates, [])
+
+
+def _square(size, *, x=0.0, y=0.0):
+    """A square Polygon feature; its GEOS area in SRID 4326 is size²."""
+    half = size / 2
+    ring = [
+        [x - half, y - half],
+        [x + half, y - half],
+        [x + half, y + half],
+        [x - half, y + half],
+        [x - half, y - half],
+    ]
+    return {
+        "type": "Feature",
+        "geometry": {"type": "Polygon", "coordinates": [ring]},
+        "properties": {},
+    }
+
+
+def _tree_point(i):
+    return {
+        "type": "Feature",
+        "geometry": {"type": "Point", "coordinates": [10.0 + i * 0.001, 50.0]},
+        "properties": {},
+    }
+
+
+class HeatVulnerabilityRuleTests(TestCase):
+    def _sealed(self, n=6, size=0.01):
+        return _FakeFS("sealed_surfaces", {"features": [_square(size) for _ in range(n)]})
+
+    def test_triggers_when_sealed_dominates_green(self):
+        # Six large sealed squares, only one small green square → green covers
+        # far less than the OK ratio → heat-vulnerable.
+        sealed = self._sealed()
+        green = _FakeFS("green_areas", {"features": [_square(0.01)]})
+        trees = _FakeFS("trees", {"features": [_tree_point(i) for i in range(10)]})
+
+        candidates = rule_heat_vulnerability(_FakeWorkspace(), [sealed, green, trees])
+
+        self.assertEqual(len(candidates), 1)
+        c = candidates[0]
+        self.assertEqual(c.slug, "entsiegelung-und-begruenung")
+        self.assertEqual(c.category, "public_space")
+        self.assertEqual(c.evidence["sealed_feature_count"], 6)
+        self.assertEqual(c.evidence["tree_count"], 10)
+        self.assertLess(c.evidence["green_to_sealed_ratio"], 3.0)
+        # Climate is the headline dimension and carries a source citation.
+        self.assertIn("climate", c.scores)
+        self.assertGreater(c.scores["climate"]["display"], 50)
+        self.assertTrue(c.scores["climate"]["sources"])
+
+    def test_silent_when_well_greened_and_no_heat_corridor(self):
+        # Green area exceeds the OK ratio (≥3× sealed) and no heat corridors are
+        # flagged → nothing to recommend.
+        sealed = self._sealed(n=6, size=0.01)  # total area 6e-4
+        green = _FakeFS("green_areas", {"features": [_square(0.032), _square(0.032)]})
+        self.assertEqual(rule_heat_vulnerability(_FakeWorkspace(), [sealed, green]), [])
+
+    def test_heat_corridor_raises_confidence_and_adds_source(self):
+        sealed = self._sealed()
+        green = _FakeFS("green_areas", {"features": [_square(0.01)]})
+        heat = _FakeFS("heat_corridors", {"features": [_square(0.02)]})
+
+        candidates = rule_heat_vulnerability(_FakeWorkspace(), [sealed, green, heat])
+
+        self.assertEqual(len(candidates), 1)
+        climate = candidates[0].scores["climate"]
+        self.assertEqual(climate["confidence"], "high")
+        # OSM + DWD attribution when an authoritative corridor layer corroborates.
+        self.assertEqual(len(climate["sources"]), 2)
+        self.assertEqual(candidates[0].evidence["heat_corridor_count"], 1)
+
+    def test_well_greened_still_fires_when_heat_corridor_present(self):
+        # Even an adequately greened city must act if heat corridors are flagged.
+        sealed = self._sealed(n=6, size=0.01)
+        green = _FakeFS("green_areas", {"features": [_square(0.032), _square(0.032)]})
+        heat = _FakeFS("heat_corridors", {"features": [_square(0.02)]})
+        self.assertEqual(
+            len(rule_heat_vulnerability(_FakeWorkspace(), [sealed, green, heat])), 1
+        )
+
+    def test_skips_without_sealed_layer(self):
+        green = _FakeFS("green_areas", {"features": [_square(0.01)]})
+        self.assertEqual(rule_heat_vulnerability(_FakeWorkspace(), [green]), [])
+
+    def test_skips_when_too_few_sealed_features(self):
+        sealed = self._sealed(n=3)
+        green = _FakeFS("green_areas", {"features": [_square(0.01)]})
+        self.assertEqual(rule_heat_vulnerability(_FakeWorkspace(), [sealed, green]), [])

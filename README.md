@@ -172,10 +172,11 @@ four demo workspaces: **Leipzig**, **Utrecht**, **Musterstadt**, and **Muster-La
 - **Data connectors** (fully implemented):
   - CSV (URL or direct file upload) with column mapping and encoding detection
   - GeoJSON URL with property remapping
-  - OpenStreetMap via Overpass API — fifteen built-in templates
+  - OpenStreetMap via Overpass API — seventeen built-in templates
     (`streets`, `streets_with_speed`, `bike_network`,
     `dedicated_bike_network`, `transit_stops`, `schools`, `parking`,
-    `trees`, `parks_and_green`, `districts`, `kindergartens`, `hospitals`,
+    `trees`, `parks_and_green`, `water_bodies`, `sealed_surfaces`,
+    `districts`, `kindergartens`, `hospitals`,
     `public_buildings`, `pedestrian_crossings`, `ev_chargers_osm`) plus a
     custom-query escape hatch
   - Static GTFS zip (transit stops, routes, coverage) — enriches stops with
@@ -308,7 +309,7 @@ Toggle individual data layers on and off. Available layer kinds include:
 | Public transit | Transit stops (with headway / night / barrier-free enrichment), transit routes, transit coverage (300–500 m buffers) |
 | Safety | Accidents |
 | Community | Schools, districts |
-| Environment | Trees, green areas, parks, heat corridors, water bodies, air quality, sealed surfaces, land use |
+| Environment / climate | Trees, green areas, parks, heat / fresh-air corridors, water bodies & retention, flood hazard zones, drought / heat-stress areas, sealed surfaces, air quality, land use |
 
 Each layer is fetched as GeoJSON from `/api/v1/workspaces/<slug>/features/<layer_kind>/`
 and cached for 30 seconds on the server.
@@ -364,8 +365,17 @@ needs:
   nearby stands out as a candidate for safe crossings and traffic calming.
 - **Traffic safety overview** — a city-wide crash heatmap with speed
   limits and traffic-count points, highlighting the worst areas.
+- **Urban heat & shade** — sealed (heat-trapping) surfaces and heat /
+  fresh-air corridors against the green cover and trees that offset them; a
+  heavily sealed area with little green is a priority for depaving and greening.
+- **Flood & water resilience** — water bodies and mapped flood hazard against
+  the impervious, sealed ground where rain cannot soak away, surfacing where
+  runoff concentrates.
+- **Cooling green network** — parks, trees and fresh-air corridors against the
+  population grid, showing which densely populated areas lack a cool refuge
+  within easy reach.
 
-All three story views show accidents as a heatmap; the year, severity, and
+The traffic story views show accidents as a heatmap; the year, severity, and
 involved-mode filters still apply, so each preset reads as a clean density
 surface over its supporting layers.
 

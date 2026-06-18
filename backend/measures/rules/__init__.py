@@ -1,4 +1,5 @@
 from .bike_infrastructure import rule_missing_protected_bike_lane
+from .climate import rule_heat_vulnerability
 from .cycling_gap import rule_cycling_infrastructure_gap
 from .electrification import rule_ev_charging_gap
 from .equity import rule_population_equity_gap
@@ -20,4 +21,5 @@ RULES = [
     rule_unsafe_school_route,
     rule_ev_charging_gap,
     rule_population_equity_gap,
+    rule_heat_vulnerability,
 ]

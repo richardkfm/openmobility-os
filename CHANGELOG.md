@@ -8,6 +8,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Climate-readiness data and story views for cities** — OpenMobility OS can
+  now map the layers that matter for extreme heat, drought and flooding:
+  street trees, green areas and parks, water bodies and retention, sealed
+  (impervious) surfaces, heat / fresh-air corridors, plus two new layer kinds
+  for **flood hazard zones** and **drought / heat-stress areas**.
+- **Three climate story views** — one-click presets for planners and
+  journalists: *Urban heat & shade* (sealed surfaces and heat corridors against
+  green cover and trees), *Flood & water resilience* (water and flood hazard
+  against sealed ground), and *Cooling green network* (parks, trees and
+  fresh-air corridors relative to where people live). Each view only appears
+  when the workspace has the data to render it.
+- **New OpenStreetMap connector templates** for water bodies / retention areas
+  and an impervious-surface proxy, so any workspace can pull these layers
+  straight from OSM.
+- **Heat-vulnerability measure** — the scoring engine now flags neighborhoods
+  with lots of sealed surface and little green cover and proposes depaving and
+  greening, with a transparent climate score that exposes its inputs, sources
+  (OSM, and DWD where available) and confidence.
+- **Leipzig demo** now ships climate data sources out of the box (OSM trees,
+  green, water and sealed surfaces, plus illustrative heat corridors and flood
+  zones), with ready-to-enable configs for official sources (Saxony LfULG
+  flood-zone WFS, the Leipzig tree cadastre on opendata.leipzig.de, and DWD
+  heat indices) and a tree-canopy goal.
 - **The involved-mode filter now applies to the accident heatmap** — you can
   render a cyclist-only (or pedestrian-only, etc.) crash heatmap, not just in
   the Circles view. The Involved modes checkboxes are active in every accident

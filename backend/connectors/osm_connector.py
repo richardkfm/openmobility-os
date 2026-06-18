@@ -97,6 +97,38 @@ OVERPASS_TEMPLATES: dict[str, str] = {
         );
         out geom tags;
     """,
+    # Blue infrastructure: open water plus engineered retention. Climate
+    # planners read this against sealed surfaces to find where heavy rain has
+    # nowhere to go and where evaporative cooling is available. City-agnostic —
+    # purely OSM water tagging, no country-specific assumptions.
+    "water_bodies": """
+        [out:json][timeout:60];
+        (
+          way["natural"="water"]({bbox});
+          relation["natural"="water"]({bbox});
+          way["water"]({bbox});
+          way["waterway"="riverbank"]({bbox});
+          way["landuse"="reservoir"]({bbox});
+          way["landuse"="basin"]({bbox});
+        );
+        out geom tags;
+    """,
+    # Impervious-surface proxy. Most cities have no official sealing cadastre,
+    # so we approximate from land use that is almost always paved/built over:
+    # industrial/commercial/retail blocks, large surface parking and airport
+    # aprons. Combined with low tree/green cover this is the strongest open
+    # signal for urban heat islands.
+    "sealed_surfaces": """
+        [out:json][timeout:60];
+        (
+          way["landuse"="industrial"]({bbox});
+          way["landuse"="commercial"]({bbox});
+          way["landuse"="retail"]({bbox});
+          way["amenity"="parking"]["parking"!="underground"]({bbox});
+          way["aeroway"="apron"]({bbox});
+        );
+        out geom tags;
+    """,
     # Admin level 9 = "Stadtbezirk" (city district) in Germany; level 10 =
     # "Ortsteil" (sub-district). Most municipalities map districts at one of
     # these two levels. Operators can override this template with `custom_query`

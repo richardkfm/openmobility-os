@@ -95,6 +95,19 @@ goals:
     rationale_en: "Source: MiD 2017 (BMDV). Target: reduce to 30% by 2030."
     source_url: https://www.mobilitaet-in-deutschland.de/
 
+  # Climate-adaptation goal — anchors the goal_alignment dimension for the
+  # heat-vulnerability rule. Illustrative target; replace with the
+  # municipality's own canopy / unsealing commitment.
+  - code: tree_canopy_2035
+    title_de: Kronendachanteil (Baumkronen) auf 30% bis 2035
+    title_en: Tree-canopy cover to 30% by 2035
+    target_value: 30
+    current_value: 21
+    unit: "%"
+    deadline_year: 2035
+    rationale_de: "Beschattung und Verdunstung senken die Hitzebelastung in dicht bebauten Quartieren."
+    rationale_en: "Shade and evapotranspiration reduce heat stress in densely built neighborhoods."
+
 data_sources:
   - name: OSM — Radnetz
     source_type: osm_overpass
@@ -400,6 +413,93 @@ data_sources:
     config:
       template: ev_chargers_osm
 
+  # ---- Climate-readiness layers (heat, drought, water) -------------------
+  # OSM-derived layers below are synced automatically by `seed_demo` (they
+  # hit the Overpass network; a failure only warns). Together they feed the
+  # "Urban heat & shade", "Cooling green network" and "Flood & water
+  # resilience" story views and the heat-vulnerability measure rule.
+
+  - name: OSM — Baumkataster (Einzelbäume)
+    source_type: osm_overpass
+    layer_kind: trees
+    license: ODbL
+    attribution: "© OpenStreetMap contributors"
+    source_url: https://www.openstreetmap.org/
+    config:
+      template: trees
+
+  - name: OSM — Grün- und Parkflächen
+    source_type: osm_overpass
+    layer_kind: green_areas
+    license: ODbL
+    attribution: "© OpenStreetMap contributors"
+    source_url: https://www.openstreetmap.org/
+    config:
+      template: parks_and_green
+
+  - name: OSM — Wasserflächen & Retention
+    source_type: osm_overpass
+    layer_kind: water_bodies
+    license: ODbL
+    attribution: "© OpenStreetMap contributors"
+    source_url: https://www.openstreetmap.org/
+    config:
+      template: water_bodies
+
+  - name: OSM — Versiegelte Flächen (Näherung)
+    source_type: osm_overpass
+    layer_kind: sealed_surfaces
+    license: ODbL
+    attribution: "© OpenStreetMap contributors"
+    source_url: https://www.openstreetmap.org/
+    config:
+      template: sealed_surfaces
+
+  # Illustrative heat / fresh-air corridors so the climate story views render
+  # even fully offline. Replace with the municipality's Klimaanalyse /
+  # Frischluftbahnen dataset (often a WFS) for production use.
+  - name: Beispiel — Frischluft-/Hitzekorridore (Demo-Daten)
+    source_type: manual
+    layer_kind: heat_corridors
+    license: "CC0 (example data — not a real climate analysis)"
+    attribution: "Illustrative demo data only"
+    config:
+      feature_collection:
+        type: FeatureCollection
+        features:
+          - type: Feature
+            properties: {name: "Frischluftbahn Auwald", note: "illustrative"}
+            geometry:
+              type: Polygon
+              coordinates: [[[12.330, 51.330], [12.360, 51.330], [12.360, 51.360], [12.330, 51.360], [12.330, 51.330]]]
+          - type: Feature
+            properties: {name: "Hitzekorridor Zentrum-Ost", note: "illustrative"}
+            geometry:
+              type: Polygon
+              coordinates: [[[12.395, 51.335], [12.420, 51.335], [12.420, 51.352], [12.395, 51.352], [12.395, 51.335]]]
+
+  # Illustrative flood-hazard zones near the Weiße Elster / Pleiße floodplain.
+  # Replace with the Saxony LfULG Überschwemmungsgebiete WFS (see below).
+  - name: Beispiel — Überschwemmungsgebiete (Demo-Daten)
+    source_type: manual
+    layer_kind: flood_risk
+    license: "CC0 (example data — not official flood zones)"
+    attribution: "Illustrative demo data only"
+    config:
+      feature_collection:
+        type: FeatureCollection
+        features:
+          - type: Feature
+            properties: {name: "HQ100 Weiße Elster", return_period: "100a", note: "illustrative"}
+            geometry:
+              type: Polygon
+              coordinates: [[[12.335, 51.300], [12.355, 51.300], [12.358, 51.345], [12.338, 51.345], [12.335, 51.300]]]
+          - type: Feature
+            properties: {name: "HQ100 Pleiße", return_period: "100a", note: "illustrative"}
+            geometry:
+              type: Polygon
+              coordinates: [[[12.375, 51.305], [12.390, 51.305], [12.392, 51.335], [12.377, 51.335], [12.375, 51.305]]]
+
   # ---- Optional German federal & municipal portals -----------------------
   # The following commented-out examples are ready to enable once a
   # municipality has confirmed the live URLs / package IDs. They are
@@ -482,6 +582,50 @@ data_sources:
   #     grid_id_column: Gitter_ID_100m
   #     indicator_columns: ["Einwohner", "Alter_unter_18", "Alter_65_und_aelter"]
   #     min_population: 1
+  #
+  # ---- Climate adaptation: official live sources -------------------------
+  # These replace the illustrative demo layers above with authoritative data.
+  # Left commented so a fresh `docker compose up` never depends on third-party
+  # uptime; an operator enables them once the live URLs are confirmed.
+  #
+  # Sachsen LfULG — Überschwemmungsgebiete (statutory flood zones, WFS).
+  # Browse layers at https://www.umwelt.sachsen.de/umwelt/infosysteme/ida/
+  #
+  # - name: LfULG Sachsen — Überschwemmungsgebiete (HQ100)
+  #   source_type: wfs
+  #   layer_kind: flood_risk
+  #   license: "DL-DE BY 2.0"
+  #   attribution: "© Freistaat Sachsen, LfULG"
+  #   source_url: https://www.umwelt.sachsen.de/
+  #   config:
+  #     url: <LfULG WFS GetCapabilities URL>
+  #     type_name: <ueberschwemmungsgebiete-layer>
+  #     srs: EPSG:4326
+  #
+  # opendata.leipzig.de (CKAN) — Straßenbaumkataster (full municipal tree
+  # cadastre, far richer than OSM). Drop in the package_id from the portal:
+  #
+  # - name: opendata.leipzig.de — Straßenbaumkataster
+  #   source_type: ckan
+  #   layer_kind: trees
+  #   license: "DL-DE BY 2.0"
+  #   attribution: "Stadt Leipzig"
+  #   source_url: https://opendata.leipzig.de/
+  #   config:
+  #     portal_url: https://opendata.leipzig.de
+  #     package_id: strassenbaumkataster
+  #
+  # DWD — Klimakennzahlen (Hitze-/Sommertage, Trockenheitsindex) als Raster
+  # oder Stationsdaten. Open Data via https://opendata.dwd.de/
+  #
+  # - name: DWD — Hitzetage & Trockenheitsindex
+  #   source_type: dwd_climate
+  #   layer_kind: drought_risk
+  #   license: "GeoNutzV / DWD Open Data"
+  #   attribution: "Deutscher Wetterdienst (DWD)"
+  #   source_url: https://opendata.dwd.de/
+  #   config:
+  #     url: <DWD Open Data CSV / grid URL>
 
 measures:
   - slug: promenadenring-protected-lane

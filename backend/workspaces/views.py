@@ -71,6 +71,21 @@ def workspace_map(request, workspace_slug: str):
     has_traffic_safety_data = "accidents" in kind_values and any(
         k in kind_values for k in ("streets_with_speed", "streets")
     )
+    # "Urban heat & shade" contrasts sealed (heat-trapping) surfaces with the
+    # green cover that offsets them — it needs the sealed layer plus at least
+    # one cooling/heat layer.
+    has_urban_heat_data = "sealed_surfaces" in kind_values and any(
+        k in kind_values for k in ("green_areas", "trees", "heat_corridors")
+    )
+    # "Flood & water resilience" needs at least one blue/hazard layer to read.
+    has_flood_water_data = any(
+        k in kind_values for k in ("water_bodies", "flood_risk")
+    )
+    # "Cooling green network" maps the network of cool refuges, so it needs
+    # green areas plus at least one other cooling layer to be worth showing.
+    has_cooling_green_data = "green_areas" in kind_values and any(
+        k in kind_values for k in ("trees", "heat_corridors")
+    )
     has_districts = ws.districts.exists()
 
     response = render(
@@ -84,6 +99,9 @@ def workspace_map(request, workspace_slug: str):
             "has_cycling_gap_data": has_cycling_gap_data,
             "has_safe_school_data": has_safe_school_data,
             "has_traffic_safety_data": has_traffic_safety_data,
+            "has_urban_heat_data": has_urban_heat_data,
+            "has_flood_water_data": has_flood_water_data,
+            "has_cooling_green_data": has_cooling_green_data,
             "has_districts": has_districts,
             "measure_categories": Measure.Category.choices,
             "page_title": _("Map — %(name)s") % {"name": ws.name},
