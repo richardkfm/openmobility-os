@@ -593,6 +593,17 @@ const LAYER_STYLE = {
 };
 const DEFAULT_COLOR = "#64748b";
 
+// The heat_corridors layer carries two semantically opposite feature kinds in
+// one toggle: heat islands (warm — the layer's base colour) and fresh-air /
+// ventilation corridors (cool). They're coloured per-feature off the
+// `corridor_type` property so a reader can tell a problem zone from an asset.
+const FRESH_AIR_COLOR = "#22d3ee";  // cool cyan — ventilation corridors
+const HEAT_CORRIDOR_PAINT = [
+  "match", ["get", "corridor_type"],
+  "fresh_air", FRESH_AIR_COLOR,
+  LAYER_STYLE.heat_corridors.color   // default: heat island (warm)
+];
+
 // Status → color mapping for the Measure Pipeline display mode.
 const MEASURE_STATUS_COLORS = {
   proposed:    "#f59e0b",
@@ -1064,17 +1075,19 @@ function addGeoJsonLayer(id, url, color) {
             // ranked: fatal counts ~3× a minor.
             "heatmap-weight": [
               "match", ["get", "severity"],
-              "fatal",   0.45,
-              "serious", 0.3,
-              0.15
+              "fatal",   0.55,
+              "serious", 0.38,
+              0.2
             ],
-            // Keep intensity modest, especially when zoomed out, so sparse
-            // points don't saturate. It ramps up gently with zoom.
+            // Keep intensity modest when zoomed out so sparse points don't
+            // saturate, but keep ramping up past z14 — otherwise clusters wash
+            // out and the bulbs almost vanish as you zoom into a neighbourhood.
             "heatmap-intensity": [
               "interpolate", ["linear"], ["zoom"],
-              0, 0.5,
-              10, 1,
-              14, 2
+              0, 0.6,
+              10, 1.4,
+              14, 2.6,
+              17, 4
             ],
             // Colour ramp stays fully transparent through the low-density
             // range so a lone point fades out; colour only builds where points
@@ -1089,14 +1102,17 @@ function addGeoJsonLayer(id, url, color) {
             ],
             // Radius is small when zoomed out so isolated points stay compact
             // dots rather than blooming into large balls; it grows with zoom
-            // for smooth blending of genuine clusters.
+            // for smooth blending of genuine clusters. The high-zoom growth is
+            // eased back a touch so the peak density (and colour) holds up
+            // instead of spreading thin when zoomed right in.
             "heatmap-radius": [
               "interpolate", ["linear"], ["zoom"],
               0, 6,
               10, 16,
-              14, 38
+              14, 34,
+              17, 40
             ],
-            "heatmap-opacity": 0.85,
+            "heatmap-opacity": 0.9,
           },
         });
 
@@ -1297,12 +1313,15 @@ function addGeoJsonLayer(id, url, color) {
           }
         }
         if (types.has("Polygon") || types.has("MultiPolygon")) {
+          // heat_corridors mixes heat islands and fresh-air corridors in one
+          // layer, coloured per-feature; every other area layer is flat-coloured.
+          const areaColor = id === "heat_corridors" ? HEAT_CORRIDOR_PAINT : color;
           map.addLayer({ id: id + "-fill", type: "fill", source: id,
             layout: { visibility: startVis },
-            paint: { "fill-color": color, "fill-opacity": 0.25 } });
+            paint: { "fill-color": areaColor, "fill-opacity": 0.25 } });
           map.addLayer({ id: id + "-outline", type: "line", source: id,
             layout: { visibility: startVis },
-            paint: { "line-color": color, "line-width": 1, "line-opacity": 0.6 } });
+            paint: { "line-color": areaColor, "line-width": 1, "line-opacity": 0.6 } });
         }
         if (types.has("Point") || types.has("MultiPoint")) {
           const style = LAYER_STYLE[id] || {};
@@ -2164,6 +2183,8 @@ const DISTRICTS_LABEL = "{% trans "District scores" %}";
 const BIKE_PROTECTED_LABEL = "{% trans "Protected (separated path / track)" %}";
 const BIKE_LANE_LABEL = "{% trans "Painted lane (on-street)" %}";
 const BIKE_NEW_PREFIX = "{% trans "Bike lane added after" %}";
+const HEAT_CORRIDOR_LABEL = "{% trans "Heat island" %}";
+const FRESH_AIR_CORRIDOR_LABEL = "{% trans "Fresh-air corridor" %}";
 const ACCIDENT_DENSITY_LABEL = "{% trans "Accident density (by street)" %}";
 const ACCIDENT_HEATMAP_LABEL = "{% trans "Accident heatmap" %}";
 // Gradients mirror the actual map paint, so the swatch matches the map.
@@ -2204,6 +2225,13 @@ function buildLegendRows() {
       if (bikeEraState.cutoffYear != null) {
         rows.push({ key: "bike-new", label: BIKE_NEW_PREFIX + " " + bikeEraState.cutoffYear, shape: "dash", icon: "" });
       }
+      return;
+    }
+    // heat_corridors carries two opposite kinds in one toggle — surface both
+    // colours (warm heat island vs. cool fresh-air corridor), like the bike layer.
+    if (kind === "heat_corridors") {
+      rows.push({ key: "heat-island", label: HEAT_CORRIDOR_LABEL, color: LAYER_STYLE.heat_corridors.color, shape: "area", icon: "" });
+      rows.push({ key: "fresh-air", label: FRESH_AIR_CORRIDOR_LABEL, color: FRESH_AIR_COLOR, shape: "area", icon: "" });
       return;
     }
     const s = LAYER_STYLE[kind] || { geom: "point" };

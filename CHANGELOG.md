@@ -27,10 +27,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   greening, with a transparent climate score that exposes its inputs, sources
   (OSM, and DWD where available) and confidence.
 - **Leipzig demo** now ships climate data sources out of the box (OSM trees,
-  green, water and sealed surfaces, plus illustrative heat corridors and flood
-  zones), with ready-to-enable configs for official sources (Saxony LfULG
-  flood-zone WFS, the Leipzig tree cadastre on opendata.leipzig.de, and DWD
-  heat indices) and a tree-canopy goal.
+  green, water and sealed surfaces, real Saxony LfULG flood zones, and
+  natural-shaped heat / fresh-air corridors), with ready-to-enable configs for
+  other official sources (the Leipzig tree cadastre on opendata.leipzig.de and
+  DWD heat indices) and a tree-canopy goal.
+- **Flood hazard zones now show real geometry** — the Leipzig demo ships a
+  vendored snapshot of Saxony's official LfULG statutory flood zones (Weiße
+  Elster, Pleiße, Parthe, Luppe/Lober) instead of placeholder rectangles, and
+  it renders fully offline. The live LfULG WFS is wired and documented so an
+  operator can re-sync the authoritative data.
+- **Heat islands and fresh-air corridors are now told apart on the map** — the
+  heat / fresh-air corridor layer draws heat islands in a warm colour and
+  fresh-air / ventilation corridors in a cool colour, both shown in the legend,
+  so a problem zone reads differently from a climate asset.
+- **WFS connector axis-order option** (`bbox_axis_order`) for EPSG:4326 services
+  that expect lat/lon bounding boxes (many ArcGIS / state geoportals, including
+  Saxony's), so their bbox filter returns features instead of nothing.
+- **Workspace configs can load a layer's GeoJSON from a sibling file** via
+  `feature_collection_file`, keeping large vendored datasets out of the YAML.
 - **The involved-mode filter now applies to the accident heatmap** — you can
   render a cyclist-only (or pedestrian-only, etc.) crash heatmap, not just in
   the Circles view. The Involved modes checkboxes are active in every accident
@@ -60,6 +74,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and easier to spot.
 
 ### Fixed
+- **The accident heatmap no longer fades out when you zoom in** — its intensity
+  keeps ramping past street level and the bloom radius is eased back, so crash
+  clusters stay clearly visible (and a touch warmer) instead of washing out at
+  high zoom.
 - **The "Reading the map" story banner now clears when you change the map
   manually** — toggling layers, measures, district scores, or the accident
   view while a story view is active dismisses the banner instead of letting it

@@ -73,6 +73,14 @@ class WFSConnector(BaseConnector):
             "default": True,
             "label": "Restrict to workspace bbox when available",
         },
+        "bbox_axis_order": {
+            "type": "string",
+            "default": "xy",
+            "label": (
+                "BBOX axis order: 'xy' (lon/lat, default, most GeoServer) or "
+                "'yx' (lat/lon, many EPSG:4326 / ArcGIS servers)"
+            ),
+        },
     }
 
     def validate_config(self, config):
@@ -111,7 +119,14 @@ class WFSConnector(BaseConnector):
             and not config.get("cql_filter")
         ):
             b = workspace.bounds.extent  # (minx, miny, maxx, maxy) = (W, S, E, N)
-            params["bbox"] = f"{b[0]},{b[1]},{b[2]},{b[3]},{srsname}"
+            # Some WFS servers (notably ArcGIS with EPSG:4326 / urn CRS) expect
+            # the BBOX in lat/lon (Y,X) order rather than lon/lat — sending the
+            # wrong order silently returns zero features. Allow opting into the
+            # swap without changing the lon/lat default most GeoServers use.
+            if str(config.get("bbox_axis_order", "xy")).lower() == "yx":
+                params["bbox"] = f"{b[1]},{b[0]},{b[3]},{b[2]},{srsname}"
+            else:
+                params["bbox"] = f"{b[0]},{b[1]},{b[2]},{b[3]},{srsname}"
         return params
 
     def _headers(self) -> dict:
