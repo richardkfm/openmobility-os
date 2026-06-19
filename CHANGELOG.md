@@ -52,6 +52,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **The workspace menu bar now highlights the current page** — Dashboard, Map,
   Measures, Data hub, and Methodology show an underline and darker label while
   you are on them (detail pages count toward their section).
+- **Dotted line display mode** for line layers (streets, speed-limit streets,
+  bike networks, transit routes) — pick "Dotted lines" from a layer's display
+  options (the gear icon) alongside Normal and Thick, so two overlapping lines
+  on the map are easier to tell apart. The legend swatch follows the chosen
+  style too.
 
 ### Changed
 - **Story views now show accidents as a heatmap** — all three presets (Cycling

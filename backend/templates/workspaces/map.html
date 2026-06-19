@@ -508,6 +508,7 @@
               <span class="shrink-0 w-5 flex items-center justify-center">
                 <template x-if="row.shape === 'icon'"><span class="w-4 h-4 inline-block" x-html="row.icon"></span></template>
                 <template x-if="row.shape === 'line'"><span class="inline-block w-4 h-1 rounded" :style="`background:${row.color}`"></span></template>
+                <template x-if="row.shape === 'dotted'"><span class="inline-block w-4 h-1.5 rounded" :style="`background:repeating-linear-gradient(90deg,${row.color} 0 2px,transparent 2px 5px)`"></span></template>
                 <template x-if="row.shape === 'area'"><span class="inline-block w-3.5 h-3.5 rounded-sm border" :style="`background:${row.color}55;border-color:${row.color}`"></span></template>
                 <template x-if="row.shape === 'dot'"><span class="inline-block w-2.5 h-2.5 rounded-full" :style="`background:${row.color}`"></span></template>
                 <template x-if="row.shape === 'ramp'"><span class="inline-block w-4 h-2 rounded" :style="`background:${row.gradient}`"></span></template>
@@ -661,6 +662,7 @@ const MODE_LABELS = {
   heatmap: "{% trans "Heatmap" %}",
   normal:  "{% trans "Normal lines" %}",
   thick:   "{% trans "Thick lines" %}",
+  dotted:  "{% trans "Dotted lines" %}",
   filled:  "{% trans "Filled" %}",
   outline: "{% trans "Outline only" %}",
 };
@@ -673,7 +675,7 @@ function defaultModeFor(kind) {
 function buildModeOptions(kind) {
   const s = LAYER_STYLE[kind] || {};
   const opt = v => ({ value: v, label: MODE_LABELS[v] });
-  if (s.geom === "line") return [opt("normal"), opt("thick")];
+  if (s.geom === "line") return [opt("normal"), opt("thick"), opt("dotted")];
   if (s.geom === "area") return [opt("filled"), opt("outline")];
   const out = [];
   if (s.point === "icon" && s.icon) out.push(opt("icons"));
@@ -690,6 +692,17 @@ function getLayerOpacity(kind) {
 }
 function naturalLineWidth(kind) {
   return kind === "dedicated_bike_network" ? 3 : 2.5;
+}
+// Normal / thick / dotted are mutually exclusive looks for the same line
+// layer — width and a round-capped zero-length dasharray (the standard
+// MapLibre recipe for round dots) are both driven off the one select.
+function applyLineModeStyle(kind, mode) {
+  const id = kind + "-line";
+  if (!map.getLayer(id)) return;
+  const w = naturalLineWidth(kind);
+  map.setPaintProperty(id, "line-width", mode === "thick" ? w * 2 : w);
+  map.setPaintProperty(id, "line-dasharray", mode === "dotted" ? [0, 2] : undefined);
+  map.setLayoutProperty(id, "line-cap", mode === "dotted" ? "round" : "butt");
 }
 
 // A heatmap colour ramp derived from a single base colour — used both when a
@@ -775,10 +788,7 @@ function _applyOpacity(kind, mult) {
 function setLayerDisplayMode(kind, mode) {
   layerStyleState.layers[kind] = Object.assign({}, layerStyleState.layers[kind], { mode });
   persistStyleState();
-  if ((LAYER_STYLE[kind] || {}).geom === "line" && map.getLayer(kind + "-line")) {
-    const w = naturalLineWidth(kind);
-    map.setPaintProperty(kind + "-line", "line-width", mode === "thick" ? w * 2 : w);
-  }
+  if ((LAYER_STYLE[kind] || {}).geom === "line") applyLineModeStyle(kind, mode);
   const cb = document.querySelector(`.layer-toggle[data-layer="${kind}"]`);
   if (cb && cb.checked) setLayerVisible(kind, true);
   // Lets every gear row mirror a mode set programmatically (e.g. by a story view).
@@ -796,10 +806,7 @@ function setLayerOpacity(kind, mult) {
 function applyStoredLayerSettings(kind) {
   const st = layerStyleState.layers[kind];
   if (!st) return;
-  if (st.mode && (LAYER_STYLE[kind] || {}).geom === "line" && map.getLayer(kind + "-line")) {
-    const w = naturalLineWidth(kind);
-    map.setPaintProperty(kind + "-line", "line-width", st.mode === "thick" ? w * 2 : w);
-  }
+  if (st.mode && (LAYER_STYLE[kind] || {}).geom === "line") applyLineModeStyle(kind, st.mode);
   if (typeof st.opacity === "number" && st.opacity !== 1) _applyOpacity(kind, st.opacity);
   const cb = document.querySelector(`.layer-toggle[data-layer="${kind}"]`);
   if (cb && cb.checked) setLayerVisible(kind, true);
@@ -2219,8 +2226,9 @@ function buildLegendRows() {
     // The dedicated bike layer is split into its two quality classes, which
     // are the whole point of the layer — surface both, not one teal line.
     if (kind === "dedicated_bike_network") {
-      rows.push({ key: "bike-protected", label: BIKE_PROTECTED_LABEL, color: "#0d9488", shape: "line", icon: "" });
-      rows.push({ key: "bike-lane", label: BIKE_LANE_LABEL, color: "#f59e0b", shape: "line", icon: "" });
+      const bikeShape = getLayerMode(kind) === "dotted" ? "dotted" : "line";
+      rows.push({ key: "bike-protected", label: BIKE_PROTECTED_LABEL, color: "#0d9488", shape: bikeShape, icon: "" });
+      rows.push({ key: "bike-lane", label: BIKE_LANE_LABEL, color: "#f59e0b", shape: bikeShape, icon: "" });
       // Only meaningful once we have an accident reference year to compare against.
       if (bikeEraState.cutoffYear != null) {
         rows.push({ key: "bike-new", label: BIKE_NEW_PREFIX + " " + bikeEraState.cutoffYear, shape: "dash", icon: "" });
@@ -2238,8 +2246,12 @@ function buildLegendRows() {
     const col = layerColor(kind);
     let shape = _legendShapeFor(s);
     let gradient = "";
-    // Point layers follow their active display mode (dots / icons / heatmap).
-    if (s.geom !== "line" && s.geom !== "area") {
+    if (s.geom === "line") {
+      // A dotted line layer gets a dotted swatch, so the legend key matches
+      // what's distinguishing it from an overlapping line on the map.
+      if (getLayerMode(kind) === "dotted") shape = "dotted";
+    } else if (s.geom !== "area") {
+      // Point layers follow their active display mode (dots / icons / heatmap).
       const mode = getLayerMode(kind);
       if (mode === "heatmap") {
         shape = "ramp";
@@ -2310,6 +2322,14 @@ function _drawLegendSwatch(ctx, row, x, cy, w, pr) {
   } else if (row.shape === "line") {
     ctx.fillStyle = color;
     ctx.fillRect(x, cy - 2 * pr, w, 4 * pr);
+  } else if (row.shape === "dotted") {
+    ctx.fillStyle = color;
+    const r = 1.5 * pr;
+    for (let dx = r; dx < w; dx += 5 * pr) {
+      ctx.beginPath();
+      ctx.arc(x + dx, cy, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
   } else if (row.shape === "area") {
     const s = 11 * pr;
     ctx.globalAlpha = 0.35;
