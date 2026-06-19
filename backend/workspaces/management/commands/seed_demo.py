@@ -5,6 +5,7 @@ data sources, and optionally pre-baked measures. Running it twice does not
 duplicate data — it updates existing records.
 """
 
+import json
 from pathlib import Path
 
 import yaml
@@ -50,9 +51,9 @@ class Command(BaseCommand):
             slug = data["slug"]
             if only and slug not in only:
                 continue
-            self._seed_workspace(data, options)
+            self._seed_workspace(data, options, config_dir)
 
-    def _seed_workspace(self, data: dict, options: dict):
+    def _seed_workspace(self, data: dict, options: dict, config_dir: Path):
         slug = data["slug"]
         self.stdout.write(f"→ Seeding workspace: {slug}")
 
@@ -108,13 +109,24 @@ class Command(BaseCommand):
             )
 
         for ds in data.get("data_sources", []):
+            ds_config = ds.get("config", {})
+            # A manual source may keep its FeatureCollection in a sibling GeoJSON
+            # file (resolved relative to the workspace config dir) instead of
+            # inlining it in the YAML — useful for vendored real-data snapshots
+            # that are too large to read inline. The file is baked into the
+            # source config at seed time so the source stays self-contained.
+            fc_file = ds_config.get("feature_collection_file")
+            if fc_file:
+                fc_path = config_dir / fc_file
+                ds_config = {k: v for k, v in ds_config.items() if k != "feature_collection_file"}
+                ds_config["feature_collection"] = json.loads(fc_path.read_text())
             source, _ = DataSource.objects.update_or_create(
                 workspace=ws,
                 name=ds["name"],
                 defaults={
                     "source_type": ds["source_type"],
                     "layer_kind": ds.get("layer_kind", DataSource.LayerKind.CUSTOM),
-                    "config": ds.get("config", {}),
+                    "config": ds_config,
                     "license": ds.get("license", ""),
                     "attribution": ds.get("attribution", ""),
                     "source_url": ds.get("source_url", ""),

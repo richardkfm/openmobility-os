@@ -692,6 +692,30 @@ class WFSConnectorTests(TestCase):
         self.assertIn("bbox", captured["params"])
         self.assertTrue(captured["params"]["bbox"].startswith("12.0,51.0,13.0,52.0,EPSG:4326"))
 
+    def test_bbox_axis_order_yx_swaps_coordinates(self):
+        from connectors.wfs_connector import WFSConnector
+
+        captured = {}
+
+        def fake_get(url, params=None, headers=None, timeout=None):
+            captured["params"] = params
+            return _JsonResponse(WFS_RESPONSE)
+
+        ws = _StubWorkspace(bounds=_StubBounds(extent=(12.0, 51.0, 13.0, 52.0)))
+        with mock.patch("connectors.wfs_connector.requests.get", side_effect=fake_get):
+            WFSConnector().fetch(
+                {
+                    "url": "https://wfs.example/",
+                    "layer_name": "flood",
+                    "bbox_axis_order": "yx",
+                },
+                workspace=ws,
+            )
+        # Y,X order: south,west,north,east instead of west,south,east,north.
+        self.assertTrue(
+            captured["params"]["bbox"].startswith("51.0,12.0,52.0,13.0,EPSG:4326")
+        )
+
     def test_cql_filter_disables_workspace_bbox(self):
         from connectors.wfs_connector import WFSConnector
 

@@ -365,12 +365,13 @@ needs:
   nearby stands out as a candidate for safe crossings and traffic calming.
 - **Traffic safety overview** — a city-wide crash heatmap with speed
   limits and traffic-count points, highlighting the worst areas.
-- **Urban heat & shade** — sealed (heat-trapping) surfaces and heat /
-  fresh-air corridors against the green cover and trees that offset them; a
-  heavily sealed area with little green is a priority for depaving and greening.
-- **Flood & water resilience** — water bodies and mapped flood hazard against
-  the impervious, sealed ground where rain cannot soak away, surfacing where
-  runoff concentrates.
+- **Urban heat & shade** — sealed (heat-trapping) surfaces and the heat /
+  fresh-air corridor layer (heat islands in a warm colour, fresh-air corridors
+  in a cool one) against the green cover and trees that offset them; a heavily
+  sealed area with little green is a priority for depaving and greening.
+- **Flood & water resilience** — water bodies and statutory flood-hazard zones
+  (the Leipzig demo ships real Saxony LfULG flood zones) against the impervious,
+  sealed ground where rain cannot soak away, surfacing where runoff concentrates.
 - **Cooling green network** — parks, trees and fresh-air corridors against the
   population grid, showing which densely populated areas lack a cool refuge
   within easy reach.
@@ -549,7 +550,7 @@ badge derived from the source's status, record count, and last-sync time.
    | **Mobilithek (German NAP)** | `distribution_url`, `format_hint` (`gtfs`/`geojson`/`csv`/`json`), `mode` (`open`/`subscriber`) — see [Mobilithek catalog browser](#mobilithek-catalog-browser) |
    | **BikeMaps.org** | Workspace bbox is used automatically; no config required |
    | **CKAN portal** | `portal_url` + `resource_id` (or `package_id`); works with GovData, opendata.leipzig.de, daten.berlin.de, and any other CKAN instance |
-   | **OGC WFS** | `url`, `type_name`; workspace bbox applied automatically |
+   | **OGC WFS** | `url`, `layer_name`; workspace bbox applied automatically (set `bbox_axis_order: yx` for EPSG:4326 servers that expect lat/lon, e.g. ArcGIS / state geoportals) |
    | **Generic REST/JSON** | `url`, `list_path` (dot-notation into the JSON), `lat_field`/`lon_field` |
    | **German federal presets** | `BNetzA EV charging`, `UBA air quality`, `DWD climate`, `BASt traffic` — no config; URL and column mapping are built in |
    | **Zensus 2022 grid** | `url` to the Destatis 100 m CSV; clips to workspace bbox |

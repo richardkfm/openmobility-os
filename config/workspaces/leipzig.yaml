@@ -456,8 +456,14 @@ data_sources:
       template: sealed_surfaces
 
   # Illustrative heat / fresh-air corridors so the climate story views render
-  # even fully offline. Replace with the municipality's Klimaanalyse /
-  # Frischluftbahnen dataset (often a WFS) for production use.
+  # even fully offline. Each feature carries `corridor_type` ("fresh_air" or
+  # "heat") so the map can colour ventilation corridors and heat islands
+  # differently within the single layer. The shapes trace Leipzig's real
+  # geography (the Auwald floodplain ventilation band along the Weiße Elster /
+  # Pleiße / Luppe, and the dense, highly sealed inner city) but remain
+  # approximate — replace with the municipality's Klimaanalyse / Frischluft-
+  # bahnen dataset (often a WFS) for production use; Leipzig's updated
+  # Stadtklimaanalyse is expected to publish in 2026.
   - name: Beispiel — Frischluft-/Hitzekorridore (Demo-Daten)
     source_type: manual
     layer_kind: heat_corridors
@@ -468,37 +474,31 @@ data_sources:
         type: FeatureCollection
         features:
           - type: Feature
-            properties: {name: "Frischluftbahn Auwald", note: "illustrative"}
+            properties: {name: "Frischluftbahn Auwald (Elster-/Pleißeaue)", corridor_type: "fresh_air", note: "illustrative"}
             geometry:
               type: Polygon
-              coordinates: [[[12.330, 51.330], [12.360, 51.330], [12.360, 51.360], [12.330, 51.360], [12.330, 51.330]]]
+              coordinates: [[[12.305, 51.399], [12.312, 51.387], [12.326, 51.372], [12.339, 51.356], [12.347, 51.340], [12.353, 51.323], [12.362, 51.303], [12.372, 51.293], [12.384, 51.299], [12.374, 51.320], [12.366, 51.339], [12.358, 51.357], [12.345, 51.374], [12.330, 51.389], [12.318, 51.401], [12.305, 51.399]]]
           - type: Feature
-            properties: {name: "Hitzekorridor Zentrum-Ost", note: "illustrative"}
+            properties: {name: "Hitzeinsel Zentrum / Leipzig-Ost", corridor_type: "heat", note: "illustrative"}
             geometry:
               type: Polygon
-              coordinates: [[[12.395, 51.335], [12.420, 51.335], [12.420, 51.352], [12.395, 51.352], [12.395, 51.335]]]
+              coordinates: [[[12.372, 51.343], [12.382, 51.335], [12.397, 51.332], [12.412, 51.334], [12.424, 51.341], [12.428, 51.351], [12.421, 51.360], [12.408, 51.364], [12.393, 51.362], [12.382, 51.356], [12.374, 51.350], [12.372, 51.343]]]
 
-  # Illustrative flood-hazard zones near the Weiße Elster / Pleiße floodplain.
-  # Replace with the Saxony LfULG Überschwemmungsgebiete WFS (see below).
-  - name: Beispiel — Überschwemmungsgebiete (Demo-Daten)
+  # Statutory flood zones (festgesetzte Überschwemmungsgebiete, HQ100) for
+  # Leipzig's rivers — Weiße Elster, Pleiße, Parthe, Luppe/Lober. This is a
+  # vendored snapshot of the official Saxony LfULG WFS (clipped to the
+  # workspace and line-simplified for the web map), so a fresh
+  # `docker compose up` shows real flood geometry fully offline. Enable the
+  # live WFS further down to re-sync the authoritative data. The snapshot lives
+  # in leipzig_flood_hq100.geojson next to this file.
+  - name: LfULG Sachsen — Überschwemmungsgebiete (HQ100, Snapshot)
     source_type: manual
     layer_kind: flood_risk
-    license: "CC0 (example data — not official flood zones)"
-    attribution: "Illustrative demo data only"
+    license: "DL-DE BY 2.0"
+    attribution: "© Freistaat Sachsen, LfULG"
+    source_url: https://luis.sachsen.de/wasser/hw/ueberschwemmungsgebiete.html
     config:
-      feature_collection:
-        type: FeatureCollection
-        features:
-          - type: Feature
-            properties: {name: "HQ100 Weiße Elster", return_period: "100a", note: "illustrative"}
-            geometry:
-              type: Polygon
-              coordinates: [[[12.335, 51.300], [12.355, 51.300], [12.358, 51.345], [12.338, 51.345], [12.335, 51.300]]]
-          - type: Feature
-            properties: {name: "HQ100 Pleiße", return_period: "100a", note: "illustrative"}
-            geometry:
-              type: Polygon
-              coordinates: [[[12.375, 51.305], [12.390, 51.305], [12.392, 51.335], [12.377, 51.335], [12.375, 51.305]]]
+      feature_collection_file: leipzig_flood_hq100.geojson
 
   # ---- Optional German federal & municipal portals -----------------------
   # The following commented-out examples are ready to enable once a
@@ -588,19 +588,25 @@ data_sources:
   # Left commented so a fresh `docker compose up` never depends on third-party
   # uptime; an operator enables them once the live URLs are confirmed.
   #
-  # Sachsen LfULG — Überschwemmungsgebiete (statutory flood zones, WFS).
-  # Browse layers at https://www.umwelt.sachsen.de/umwelt/infosysteme/ida/
+  # Sachsen LfULG — Überschwemmungsgebiete (statutory flood zones, WFS). This
+  # is the live source the snapshot above was generated from; enable it to
+  # re-sync. NOTE: this ArcGIS WFS serves EPSG:4326 in lat/lon (Y,X) axis
+  # order, so `bbox_axis_order: yx` is required or the bbox filter returns
+  # nothing. Use `festgesetzte_Ueberschwemmungsgebiete` for designated zones
+  # or `ueberschwemmungsgefaehrdete_Gebiete` for flood-prone areas.
   #
   # - name: LfULG Sachsen — Überschwemmungsgebiete (HQ100)
   #   source_type: wfs
   #   layer_kind: flood_risk
   #   license: "DL-DE BY 2.0"
   #   attribution: "© Freistaat Sachsen, LfULG"
-  #   source_url: https://www.umwelt.sachsen.de/
+  #   source_url: https://luis.sachsen.de/wasser/hw/ueberschwemmungsgebiete.html
   #   config:
-  #     url: <LfULG WFS GetCapabilities URL>
-  #     type_name: <ueberschwemmungsgebiete-layer>
-  #     srs: EPSG:4326
+  #     url: https://luis.sachsen.de/arcgis/services/wasser/ueg_uegef/MapServer/WFSServer
+  #     layer_name: ueg_uegef:festgesetzte_Ueberschwemmungsgebiete
+  #     srsname: EPSG:4326
+  #     output_format: GEOJSON
+  #     bbox_axis_order: yx
   #
   # opendata.leipzig.de (CKAN) — Straßenbaumkataster (full municipal tree
   # cadastre, far richer than OSM). Drop in the package_id from the portal:
