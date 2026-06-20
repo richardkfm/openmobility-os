@@ -154,9 +154,9 @@ four demo workspaces: **Leipzig**, **Utrecht**, **Musterstadt**, and **Muster-La
   layers (schools, parking, transit stops, EV chargers, public buildings) use
   recognisable glyph icons instead of identical dots
 - **Per-layer display controls** — each layer has a display-mode switch (dots /
-  icons / heatmap for points, normal / thick lines, filled / outline areas), an
-  opacity slider, and a "focus" toggle that dims every other layer so one stands
-  out. All choices are remembered in the browser
+  icons / heatmap for points, normal / thick / dotted lines, filled / outline
+  areas), an opacity slider, and a "focus" toggle that dims every other layer so
+  one stands out. All choices are remembered in the browser
 - **Base map switcher** — pick a Light, Dark, or Satellite base map from a
   control on the map, independent of the UI theme; the choice is remembered
 - **Full-screen map mode** — expand the map, its on-map controls, and the

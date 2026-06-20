@@ -1208,6 +1208,10 @@ msgid "Thick lines"
 msgstr "Dicke Linien"
 
 #: backend/templates/workspaces/map.html
+msgid "Dotted lines"
+msgstr "Gepunktete Linien"
+
+#: backend/templates/workspaces/map.html
 msgid "Filled"
 msgstr "Gefüllt"
 
