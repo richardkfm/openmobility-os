@@ -113,6 +113,13 @@ It must stay current with:
   `multi-city`) and how to switch between them
 - A link to `CHANGELOG.md` and a current version badge
 
+**Keep the README concise.** It is an entry point, not a manual. Longer,
+in-depth content (detailed user guides, deployment runbooks, connector
+references) belongs in separate Markdown files under `docs/`. When a README
+section grows long, move it into a `docs/*.md` file and leave a short summary
+plus a link in the README. Keep the version badge in sync with the `VERSION`
+file.
+
 **Every pull request that adds or removes a user-facing feature must update
 the README in the same commit.**
 

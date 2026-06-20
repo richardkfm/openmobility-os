@@ -72,6 +72,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   style too.
 
 ### Changed
+- **Slimmed-down README** — the long "Using the Platform" and "Production
+  Deployment" sections moved into dedicated guides (`docs/USER_GUIDE.md`,
+  `docs/DEPLOYMENT.md`), leaving a scannable README with summaries and links.
+  The stale version badge was also corrected. Longer documentation now lives in
+  external `docs/*.md` files by convention.
 - **Demo accident and heat-corridor layers are now clearly marked as
   illustrative**, and Leipzig's official flood snapshot is marked as a snapshot,
   so visitors are never shown placeholder data without knowing it.
