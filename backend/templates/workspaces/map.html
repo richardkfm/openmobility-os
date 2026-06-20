@@ -587,6 +587,8 @@ const LAYER_STYLE = {
   transit_routes:         { color: "#1d4ed8", geom: "line" },
   transit_stops:          { color: "#2563eb", geom: "point", point: "icon", icon: "bus" },
   transit_coverage:       { color: "#60a5fa", geom: "area" },
+  shared_vehicles:        { color: "#e11d48", geom: "point", point: "icon", icon: "bike" },
+  shared_stations:        { color: "#7e22ce", geom: "point", point: "icon", icon: "bikedock" },
   schools:                { color: "#d97706", geom: "point", point: "icon", icon: "school" },
   parking:                { color: "#7c3aed", geom: "point", point: "icon", icon: "parking" },
   ev_charging:            { color: "#0891b2", geom: "point", point: "icon", icon: "charger" },
@@ -1011,6 +1013,15 @@ const ICON_GLYPHS = {
     + '<circle cx="17" cy="29" r="2" fill="#fff"/><circle cx="27" cy="29" r="2" fill="#fff"/>',
   // A charging lightning bolt.
   charger: '<path d="M24 11 L15 24 L21 24 L19 33 L29 19 L23 19 Z" fill="#fff"/>',
+  // A bicycle silhouette — shared free-floating vehicles.
+  bike: '<circle cx="16" cy="27" r="4.5" fill="none" stroke="#fff" stroke-width="2"/>'
+    + '<circle cx="28" cy="27" r="4.5" fill="none" stroke="#fff" stroke-width="2"/>'
+    + '<path d="M16 27 L21 17 L28 27 M21 17 L25 17" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>',
+  // A bicycle on a dock platform — shared-mobility stations.
+  bikedock: '<circle cx="16" cy="24" r="3.8" fill="none" stroke="#fff" stroke-width="2"/>'
+    + '<circle cx="27" cy="24" r="3.8" fill="none" stroke="#fff" stroke-width="2"/>'
+    + '<path d="M16 24 L21 15 L27 24 M21 15 L24 15" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>'
+    + '<rect x="11" y="31" width="22" height="3" rx="1.5" fill="#fff"/>',
 };
 
 function iconSvg(name, color, size) {

@@ -180,6 +180,34 @@ data_sources:
       layer: transit_coverage
       coverage_buffer_m: 400
 
+  # GBFS shared-mobility feed: nextbike Leipzig ("nextbike_le"). The
+  # standards-based auto-discovery feed advertises station_information,
+  # station_status and free_bike_status, so OMOS integrates without scraping
+  # or app reverse-engineering. The same discovery URL feeds both derived
+  # layers — only the `layer` field differs. `default_form_factor: bicycle`
+  # labels vehicles the v2 feed leaves untyped. These are live point layers:
+  # switch the map to Heatmap mode to see where shared bikes cluster and
+  # where the coverage gaps are.
+  - name: GBFS — Shared bikes (nextbike Leipzig)
+    source_type: gbfs
+    layer_kind: shared_vehicles
+    license: "CC BY 4.0"
+    attribution: "nextbike GmbH"
+    source_url: https://gbfs.nextbike.net/maps/gbfs/v2/nextbike_le/gbfs.json
+    config:
+      discovery_url: https://gbfs.nextbike.net/maps/gbfs/v2/nextbike_le/gbfs.json
+      layer: shared_vehicles
+      default_form_factor: bicycle
+  - name: GBFS — Shared-bike stations (nextbike Leipzig)
+    source_type: gbfs
+    layer_kind: shared_stations
+    license: "CC BY 4.0"
+    attribution: "nextbike GmbH"
+    source_url: https://gbfs.nextbike.net/maps/gbfs/v2/nextbike_le/gbfs.json
+    config:
+      discovery_url: https://gbfs.nextbike.net/maps/gbfs/v2/nextbike_le/gbfs.json
+      layer: shared_stations
+
   - name: OSM — Schulen
     source_type: osm_overpass
     layer_kind: schools
