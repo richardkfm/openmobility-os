@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Shared-mobility data via GBFS** — a new connector reads any operator's
+  GBFS auto-discovery feed (the open standard published by nextbike, e-scooter
+  and car-sharing fleets) and maps it as two new layer kinds: **shared
+  mobility — available vehicles** (free-floating bikes, scooters or cars, with
+  form factor and propulsion type) and **shared mobility — stations** (docking
+  hubs with capacity, available vehicles, free docks and an availability
+  ratio). Built for planners, not riders: switch a layer to Heatmap mode to
+  see where shared vehicles cluster and where the coverage gaps are — the
+  places that may need more vehicles or rebalancing. Supports GBFS v2 and v3.
+- **Leipzig demo ships a live shared-bike feed** — the nextbike Leipzig GBFS
+  feed is wired in (synced on demand in the data hub) as both a vehicles layer
+  and a stations layer, so the bike-share network is visible on the map.
 - **Data-provenance labels everywhere** — every data source now declares whether
   it is a **live source**, an **official snapshot**, or **illustrative demo**
   data. The signal is shown to the public, not just operators: the workspace

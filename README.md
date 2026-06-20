@@ -3,7 +3,7 @@
 
 # OpenMobility OS
 
-**Version:** 0.42.1 (pre-release) — see [CHANGELOG.md](CHANGELOG.md)
+**Version:** 0.44.0 (pre-release) — see [CHANGELOG.md](CHANGELOG.md)
 **License:** See [LICENSE](LICENSE)
 
 > The open, free, self-hostable operating system between open mobility data
@@ -173,6 +173,12 @@ four demo workspaces: **Leipzig**, **Utrecht**, **Musterstadt**, and **Muster-La
     custom-query escape hatch
   - Static GTFS zip (transit stops, routes, coverage) — enriches stops with
     average headway, night service, and barrier-free status from the schedule
+  - **GBFS shared mobility** — reads any operator's GBFS auto-discovery feed
+    (bike share, e-scooters, mopeds, car sharing) and emits either available
+    vehicles (free-floating, with form factor and propulsion) or stations
+    (capacity, available vehicles, free docks, availability ratio). A
+    planner's tool, not a rider app: pair with the map's heatmap mode to spot
+    where shared vehicles cluster and where the pick-up gaps are. GBFS v2/v3
   - Accident CSV — Destatis Unfallatlas (Germany) and generic international,
     both with optional bounding-box clipping to the workspace
   - **BikeMaps.org** — global crowdsourced cycling collisions, near-misses,

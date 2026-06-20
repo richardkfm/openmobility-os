@@ -2268,3 +2268,258 @@ class DedicatedBikeFetchTests(TestCase):
         feats = result.feature_collection["features"]
         self.assertEqual(feats[0]["properties"]["year"], 2024)
         self.assertNotIn("year", feats[1]["properties"])
+
+
+# --------------------------------------------------------------------------- #
+# GBFS shared-mobility connector
+# --------------------------------------------------------------------------- #
+
+
+GBFS_DISCOVERY_V2 = {
+    "version": "2.3",
+    "data": {
+        "en": {
+            "feeds": [
+                {"name": "system_information", "url": "https://x/system_information.json"},
+                {"name": "station_information", "url": "https://x/station_information.json"},
+                {"name": "station_status", "url": "https://x/station_status.json"},
+                {"name": "free_bike_status", "url": "https://x/free_bike_status.json"},
+                {"name": "vehicle_types", "url": "https://x/vehicle_types.json"},
+            ]
+        }
+    },
+}
+
+GBFS_DISCOVERY_V3 = {
+    "version": "3.0",
+    "data": {
+        "feeds": [
+            {"name": "station_information", "url": "https://x/station_information.json"},
+            {"name": "station_status", "url": "https://x/station_status.json"},
+            {"name": "vehicle_status", "url": "https://x/vehicle_status.json"},
+        ]
+    },
+}
+
+GBFS_FREE_BIKES = {
+    "data": {
+        "name": "nextbike Leipzig",
+        "bikes": [
+            {"bike_id": "b1", "lat": 51.34, "lon": 12.37, "is_reserved": 0, "is_disabled": 0},
+            {"bike_id": "b2", "lat": 51.35, "lon": 12.38, "is_reserved": 0,
+             "is_disabled": 0, "vehicle_type_id": "scoot1"},
+            # Out of Leipzig bounds — clipped when a workspace is supplied.
+            {"bike_id": "b3", "lat": 48.10, "lon": 11.50, "is_reserved": 0, "is_disabled": 0},
+            # No coordinates — dropped.
+            {"bike_id": "b4", "is_reserved": 0, "is_disabled": 0},
+        ],
+    }
+}
+
+GBFS_VEHICLE_TYPES = {
+    "data": {
+        "vehicle_types": [
+            {"vehicle_type_id": "scoot1", "form_factor": "scooter",
+             "propulsion_type": "electric", "name": "E-Scooter"},
+        ]
+    }
+}
+
+GBFS_STATION_INFO = {
+    "data": {
+        "name": "nextbike Leipzig",
+        "stations": [
+            {"station_id": "s1", "name": "Augustusplatz", "lat": 51.34,
+             "lon": 12.38, "capacity": 10, "address": "Augustusplatz 1"},
+            {"station_id": "s2", "name": "Hauptbahnhof", "lat": 51.345,
+             "lon": 12.382, "capacity": 20},
+        ],
+    }
+}
+
+GBFS_STATION_STATUS = {
+    "data": {
+        "stations": [
+            {"station_id": "s1", "num_bikes_available": 2, "num_docks_available": 8,
+             "is_renting": 1, "is_returning": 1},
+            {"station_id": "s2", "num_bikes_available": 0, "num_docks_available": 20,
+             "is_renting": 1, "is_returning": 1},
+        ]
+    }
+}
+
+
+def _gbfs_dispatch(extra=None):
+    """Return a requests.get stand-in dispatching GBFS URLs to fixtures."""
+    routes = {
+        "gbfs.json": GBFS_DISCOVERY_V2,
+        "station_information.json": GBFS_STATION_INFO,
+        "station_status.json": GBFS_STATION_STATUS,
+        "free_bike_status.json": GBFS_FREE_BIKES,
+        "vehicle_types.json": GBFS_VEHICLE_TYPES,
+    }
+    if extra:
+        routes.update(extra)
+
+    def dispatch(url, params=None, timeout=None, headers=None, **kwargs):
+        for suffix, payload in routes.items():
+            if url.endswith(suffix):
+                return _JsonResponse(payload)
+        raise AssertionError(f"Unexpected URL {url}")
+
+    return mock.patch("connectors.gbfs_connector.requests.get", side_effect=dispatch)
+
+
+class _FakeBounds:
+    """Stand-in for a GEOS polygon exposing only `.extent` (W,S,E,N)."""
+
+    def __init__(self, extent):
+        self.extent = extent
+
+
+class _FakeWorkspace:
+    def __init__(self, extent):
+        self.bounds = _FakeBounds(extent)
+
+
+class GBFSVehiclesTests(TestCase):
+    def _config(self, **over):
+        cfg = {
+            "discovery_url": "https://gbfs.nextbike.net/.../gbfs.json",
+            "layer": "shared_vehicles",
+        }
+        cfg.update(over)
+        return cfg
+
+    def test_free_bikes_normalize_to_points(self):
+        from connectors.gbfs_connector import GBFSConnector
+
+        with _gbfs_dispatch():
+            result = GBFSConnector().fetch(self._config(default_form_factor="bicycle"))
+        feats = result.feature_collection["features"]
+        # b4 has no coordinates → dropped; b1/b2/b3 kept (no workspace clip).
+        self.assertEqual(len(feats), 3)
+        ids = {f["properties"]["vehicle_id"] for f in feats}
+        self.assertEqual(ids, {"b1", "b2", "b3"})
+        b1 = next(f for f in feats if f["properties"]["vehicle_id"] == "b1")
+        self.assertEqual(b1["geometry"]["type"], "Point")
+        self.assertEqual(b1["properties"]["form_factor"], "bicycle")
+        self.assertFalse(b1["properties"]["is_disabled"])
+        self.assertEqual(b1["properties"]["provider"], "nextbike Leipzig")
+
+    def test_vehicle_types_enrich_form_factor(self):
+        from connectors.gbfs_connector import GBFSConnector
+
+        with _gbfs_dispatch():
+            result = GBFSConnector().fetch(self._config())
+        b2 = next(
+            f for f in result.feature_collection["features"]
+            if f["properties"]["vehicle_id"] == "b2"
+        )
+        self.assertEqual(b2["properties"]["form_factor"], "scooter")
+        self.assertEqual(b2["properties"]["propulsion_type"], "electric")
+        self.assertEqual(b2["properties"]["vehicle_type"], "E-Scooter")
+
+    def test_workspace_bounds_clip_vehicles(self):
+        from connectors.gbfs_connector import GBFSConnector
+
+        ws = _FakeWorkspace((12.295, 51.236, 12.549, 51.443))  # Leipzig bbox
+        with _gbfs_dispatch():
+            result = GBFSConnector().fetch(self._config(), workspace=ws)
+        ids = {f["properties"]["vehicle_id"] for f in result.feature_collection["features"]}
+        # b3 (Munich) is dropped; b1/b2 remain.
+        self.assertEqual(ids, {"b1", "b2"})
+
+    def test_missing_vehicle_feed_raises_helpful_message(self):
+        from connectors.gbfs_connector import GBFSConnector
+
+        # A station-only system: discovery without free_bike_status/vehicle_status.
+        station_only = {
+            "data": {"en": {"feeds": [
+                {"name": "station_information", "url": "https://x/station_information.json"},
+            ]}}
+        }
+        with _gbfs_dispatch({"gbfs.json": station_only}):
+            res = GBFSConnector().test_connection(self._config())
+        self.assertFalse(res.success)
+        self.assertIn("free_bike_status", res.message)
+
+
+class GBFSStationsTests(TestCase):
+    def _config(self, **over):
+        cfg = {
+            "discovery_url": "https://gbfs.nextbike.net/.../gbfs.json",
+            "layer": "shared_stations",
+        }
+        cfg.update(over)
+        return cfg
+
+    def test_stations_merge_info_and_status(self):
+        from connectors.gbfs_connector import GBFSConnector
+
+        with _gbfs_dispatch():
+            result = GBFSConnector().fetch(self._config())
+        feats = result.feature_collection["features"]
+        self.assertEqual(len(feats), 2)
+        s1 = next(f for f in feats if f["properties"]["station_id"] == "s1")
+        self.assertEqual(s1["properties"]["name"], "Augustusplatz")
+        self.assertEqual(s1["properties"]["capacity"], 10)
+        self.assertEqual(s1["properties"]["num_vehicles_available"], 2)
+        self.assertEqual(s1["properties"]["num_docks_available"], 8)
+        # availability_ratio = available / capacity (planner rebalancing signal).
+        self.assertEqual(s1["properties"]["availability_ratio"], 0.2)
+        self.assertTrue(s1["properties"]["is_renting"])
+
+    def test_empty_station_has_zero_ratio(self):
+        from connectors.gbfs_connector import GBFSConnector
+
+        with _gbfs_dispatch():
+            result = GBFSConnector().fetch(self._config())
+        s2 = next(
+            f for f in result.feature_collection["features"]
+            if f["properties"]["station_id"] == "s2"
+        )
+        self.assertEqual(s2["properties"]["availability_ratio"], 0.0)
+        self.assertEqual(s2["properties"]["num_vehicles_available"], 0)
+
+    def test_test_connection_reports_advertised_feeds(self):
+        from connectors.gbfs_connector import GBFSConnector
+
+        with _gbfs_dispatch():
+            res = GBFSConnector().test_connection(self._config())
+        self.assertTrue(res.success)
+        self.assertIn("station_information", res.diagnostics["advertised_feeds"])
+        self.assertEqual(res.diagnostics["feature_count"], 2)
+
+
+class GBFSDiscoveryTests(TestCase):
+    def test_v3_flat_discovery_and_vehicle_status_feed(self):
+        from connectors.gbfs_connector import GBFSConnector
+
+        vehicle_status = {
+            "data": {"vehicles": [
+                {"vehicle_id": "v1", "lat": 51.34, "lon": 12.37,
+                 "is_reserved": False, "is_disabled": False},
+            ]}
+        }
+        extra = {
+            "gbfs.json": GBFS_DISCOVERY_V3,
+            "vehicle_status.json": vehicle_status,
+        }
+        cfg = {
+            "discovery_url": "https://x/gbfs.json",
+            "layer": "shared_vehicles",
+            "default_form_factor": "bicycle",
+        }
+        with _gbfs_dispatch(extra):
+            result = GBFSConnector().fetch(cfg)
+        feats = result.feature_collection["features"]
+        self.assertEqual(len(feats), 1)
+        self.assertEqual(feats[0]["properties"]["vehicle_id"], "v1")
+
+    def test_validate_config_flags_missing_and_bad_layer(self):
+        from connectors.gbfs_connector import GBFSConnector
+
+        errors = GBFSConnector().validate_config({"discovery_url": "", "layer": "nope"})
+        self.assertTrue(any("discovery URL" in e for e in errors))
+        self.assertTrue(any("layer" in e for e in errors))

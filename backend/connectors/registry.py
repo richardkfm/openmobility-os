@@ -5,6 +5,7 @@ from .base import BaseConnector
 from .bikemaps_connector import BikeMapsConnector
 from .ckan_connector import CKANConnector
 from .csv_connector import CSVConnector
+from .gbfs_connector import GBFSConnector
 from .geojson_connector import GeoJSONConnector
 from .gtfs_connector import GTFSConnector
 from .manual_connector import ManualConnector
@@ -45,6 +46,7 @@ for _connector in [
     UnfallatlasConnector(),
     BikeMapsConnector(),
     GTFSConnector(),
+    GBFSConnector(),
     CKANConnector(),
     WFSConnector(),
     RESTConnector(),

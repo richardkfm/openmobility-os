@@ -18,6 +18,7 @@ class DataSource(models.Model):
         OSM_OVERPASS = "osm_overpass", _("OpenStreetMap (Overpass API)")
         MANUAL = "manual", _("Manual KPI entry")
         GTFS = "gtfs", _("GTFS static (transit schedule)")
+        GBFS = "gbfs", _("GBFS shared mobility (bikes/scooters/cars)")
         CKAN = "ckan", _("CKAN open-data portal")
         WFS = "wfs", _("WFS geo-service")
         REST = "rest", _("Generic REST JSON")
@@ -38,6 +39,10 @@ class DataSource(models.Model):
         TRANSIT_STOPS = "transit_stops", _("Transit stops")
         TRANSIT_ROUTES = "transit_routes", _("Transit routes")
         TRANSIT_COVERAGE = "transit_coverage", _("Transit coverage (buffer)")
+        SHARED_VEHICLES = "shared_vehicles", _(
+            "Shared mobility — available vehicles"
+        )
+        SHARED_STATIONS = "shared_stations", _("Shared mobility — stations")
         ACCIDENTS = "accidents", _("Accidents")
         PARKING = "parking", _("Parking")
         DISTRICTS = "districts", _("Districts / neighborhoods")
