@@ -39,6 +39,16 @@
     </div>
   </div>
 
+  {# Data basis — provenance mix across enabled sources. #}
+  {% if data_basis.total %}
+  <div class="rounded-lg border bg-white p-4 flex flex-wrap items-center gap-x-3 gap-y-2">
+    <span class="text-xs font-semibold text-slate-500 uppercase tracking-wide">{% trans "Data basis" %}</span>
+    {% if data_basis.live %}<span class="text-xs rounded-full px-2 py-0.5 bg-emerald-100 text-emerald-800">{{ data_basis.live }} {% trans "live" %}</span>{% endif %}
+    {% if data_basis.snapshot %}<span class="text-xs rounded-full px-2 py-0.5 bg-sky-100 text-sky-800">{{ data_basis.snapshot }} {% trans "official snapshot" %}</span>{% endif %}
+    {% if data_basis.demo %}<span class="text-xs rounded-full px-2 py-0.5 bg-amber-100 text-amber-900">⚠ {{ data_basis.demo }} {% trans "illustrative demo" %}</span>{% endif %}
+  </div>
+  {% endif %}
+
   {# Connector status cards #}
   <section>
     <h2 class="text-lg font-semibold mb-4">{% trans "Data sources" %}</h2>
@@ -50,6 +60,12 @@
           <div class="flex-1">
             <h3 class="font-semibold text-slate-900">{{ source.name }}</h3>
             <p class="text-xs text-slate-600 mt-0.5">{{ source.get_source_type_display }}</p>
+            <span class="inline-block mt-1 text-xs rounded-full px-2 py-0.5
+              {% if source.provenance == 'live' %}bg-emerald-100 text-emerald-800
+              {% elif source.provenance == 'official_snapshot' %}bg-sky-100 text-sky-800
+              {% else %}bg-amber-100 text-amber-900{% endif %}">
+              {% if source.provenance == 'illustrative_demo' %}⚠ {% endif %}{{ source.get_provenance_display }}
+            </span>
           </div>
           <span class="px-2 py-1 rounded text-xs font-medium shrink-0
             {% if source.status == 'active' %}bg-green-100 text-green-800{% elif source.status == 'error' %}bg-red-100 text-red-800{% elif source.status == 'pending' %}bg-amber-100 text-amber-800{% else %}bg-slate-100 text-slate-800{% endif %}">

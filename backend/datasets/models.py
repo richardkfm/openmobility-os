@@ -66,6 +66,15 @@ class DataSource(models.Model):
         ACTIVE = "active", _("Active")
         ERROR = "error", _("Error")
 
+    class Provenance(models.TextChoices):
+        # A connector that pulls from a live, authoritative feed.
+        LIVE = "live", _("Live source")
+        # A stored copy of official data, vendored so the demo works offline;
+        # may lag behind the live source it was generated from.
+        OFFICIAL_SNAPSHOT = "official_snapshot", _("Official snapshot")
+        # Hand-authored placeholder data that is not a real measurement.
+        ILLUSTRATIVE_DEMO = "illustrative_demo", _("Illustrative demo")
+
     workspace = models.ForeignKey(
         "workspaces.Workspace", on_delete=models.CASCADE, related_name="data_sources"
     )
@@ -83,6 +92,20 @@ class DataSource(models.Model):
     license = models.CharField(max_length=200, blank=True)
     attribution = models.CharField(max_length=500, blank=True)
     source_url = models.URLField(blank=True)
+
+    # Honest "is this real?" signal, surfaced to the public so visitors can
+    # calibrate trust. Defaults to LIVE; demo configs mark placeholder layers
+    # as ILLUSTRATIVE_DEMO and vendored official copies as OFFICIAL_SNAPSHOT.
+    provenance = models.CharField(
+        max_length=20,
+        choices=Provenance.choices,
+        default=Provenance.LIVE,
+        verbose_name=_("Data provenance"),
+        help_text=_(
+            "Whether this source is a live feed, a stored snapshot of official "
+            "data, or illustrative demo data that is not a real measurement."
+        ),
+    )
 
     error_message = models.TextField(blank=True)
 

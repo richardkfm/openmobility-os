@@ -128,37 +128,40 @@ data_sources:
 
   # GTFS feed: Netherlands-wide public transit (OVapi). Covers U-OV (bus/tram),
   # NS (rail), and all other Dutch operators. CC0. The file is large (~1 GB);
-  # the connector clips to the workspace bounds automatically. Uncomment when
-  # ready to sync Dutch transit data.
-  #
-  # - name: GTFS — Stops (OVapi NL)
-  #   source_type: gtfs
-  #   layer_kind: transit_stops
-  #   license: "CC0"
-  #   attribution: "OVapi.nl — Netherlands public transit"
-  #   source_url: https://gtfs.ovapi.nl/
-  #   config:
-  #     url: https://gtfs.ovapi.nl/nl/gtfs-nl.zip
-  #     layer: transit_stops
-  # - name: GTFS — Routes (OVapi NL)
-  #   source_type: gtfs
-  #   layer_kind: transit_routes
-  #   license: "CC0"
-  #   attribution: "OVapi.nl — Netherlands public transit"
-  #   source_url: https://gtfs.ovapi.nl/
-  #   config:
-  #     url: https://gtfs.ovapi.nl/nl/gtfs-nl.zip
-  #     layer: transit_routes
-  # - name: GTFS — Coverage 400 m (OVapi NL)
-  #   source_type: gtfs
-  #   layer_kind: transit_coverage
-  #   license: "CC0"
-  #   attribution: "OVapi.nl — Netherlands public transit"
-  #   source_url: https://gtfs.ovapi.nl/
-  #   config:
-  #     url: https://gtfs.ovapi.nl/nl/gtfs-nl.zip
-  #     layer: transit_coverage
-  #     coverage_buffer_m: 400
+  # the connector clips to the workspace bounds automatically. Not auto-synced
+  # on seed (so a fresh `docker compose up` never depends on third-party
+  # uptime) — an operator hits "Sync" in the data hub to pull real transit.
+  - name: GTFS — Stops (OVapi NL)
+    source_type: gtfs
+    layer_kind: transit_stops
+    license: "CC0"
+    attribution: "OVapi.nl — Netherlands public transit"
+    source_url: https://gtfs.ovapi.nl/
+    provenance: live
+    config:
+      url: https://gtfs.ovapi.nl/nl/gtfs-nl.zip
+      layer: transit_stops
+  - name: GTFS — Routes (OVapi NL)
+    source_type: gtfs
+    layer_kind: transit_routes
+    license: "CC0"
+    attribution: "OVapi.nl — Netherlands public transit"
+    source_url: https://gtfs.ovapi.nl/
+    provenance: live
+    config:
+      url: https://gtfs.ovapi.nl/nl/gtfs-nl.zip
+      layer: transit_routes
+  - name: GTFS — Coverage 400 m (OVapi NL)
+    source_type: gtfs
+    layer_kind: transit_coverage
+    license: "CC0"
+    attribution: "OVapi.nl — Netherlands public transit"
+    source_url: https://gtfs.ovapi.nl/
+    provenance: live
+    config:
+      url: https://gtfs.ovapi.nl/nl/gtfs-nl.zip
+      layer: transit_coverage
+      coverage_buffer_m: 400
 
   - name: OSM — Schools
     source_type: osm_overpass
@@ -175,6 +178,7 @@ data_sources:
     layer_kind: accidents
     license: "CC0 (example data — not real accident records)"
     attribution: "Illustrative demo data only"
+    provenance: illustrative_demo
     config:
       feature_collection:
         type: FeatureCollection

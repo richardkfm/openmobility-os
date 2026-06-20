@@ -9,7 +9,12 @@ from django.urls import reverse
 from django.utils import timezone
 
 from datasets.models import DataSource
-from datasets.readiness import source_readiness
+from datasets.readiness import (
+    layer_provenance_map,
+    source_provenance,
+    source_readiness,
+    workspace_data_basis,
+)
 from datasets.views import _run_sync
 from workspaces.models import ConnectorAuditLog, Workspace
 
@@ -187,6 +192,84 @@ class SourceReadinessTests(TestCase):
             record_count=500,
         )
         self.assertEqual(source_readiness(src)["level"], "good")
+
+
+class SourceProvenanceTests(TestCase):
+    """`source_provenance`, `layer_provenance_map`, and `workspace_data_basis`
+    expose how real each source is — the public-facing trust signal."""
+
+    def setUp(self):
+        self.workspace = Workspace.objects.create(
+            slug="provenance-test",
+            name="Provenance Test",
+            country_code="DE",
+            bounds=Polygon(((0, 0), (1, 0), (1, 1), (0, 1), (0, 0))),
+        )
+
+    def _make(self, **overrides):
+        defaults = {
+            "workspace": self.workspace,
+            "name": "S",
+            "source_type": DataSource.SourceType.GEOJSON_URL,
+            "layer_kind": DataSource.LayerKind.STREETS,
+            "config": {"url": "https://example.com/x.geojson"},
+        }
+        defaults.update(overrides)
+        return DataSource.objects.create(**defaults)
+
+    def test_default_provenance_is_live(self):
+        src = self._make()
+        self.assertEqual(src.provenance, DataSource.Provenance.LIVE)
+        self.assertEqual(source_provenance(src)["level"], "live")
+
+    def test_snapshot_and_demo_levels(self):
+        snap = self._make(name="Snap", provenance=DataSource.Provenance.OFFICIAL_SNAPSHOT)
+        demo = self._make(name="Demo", provenance=DataSource.Provenance.ILLUSTRATIVE_DEMO)
+        self.assertEqual(source_provenance(snap)["level"], "snapshot")
+        self.assertEqual(source_provenance(demo)["level"], "demo")
+
+    def test_layer_provenance_reports_weakest_source(self):
+        # A live and a demo source on the same layer → the layer reads as demo.
+        self._make(name="Live streets", provenance=DataSource.Provenance.LIVE)
+        self._make(name="Demo streets", provenance=DataSource.Provenance.ILLUSTRATIVE_DEMO)
+        result = layer_provenance_map(self.workspace)
+        self.assertEqual(result[DataSource.LayerKind.STREETS]["level"], "demo")
+
+    def test_layer_provenance_skips_disabled_sources(self):
+        self._make(name="Live streets", provenance=DataSource.Provenance.LIVE)
+        self._make(
+            name="Demo streets",
+            provenance=DataSource.Provenance.ILLUSTRATIVE_DEMO,
+            is_enabled=False,
+        )
+        result = layer_provenance_map(self.workspace)
+        self.assertEqual(result[DataSource.LayerKind.STREETS]["level"], "live")
+
+    def test_data_basis_counts_and_flags_demo(self):
+        self._make(name="A", provenance=DataSource.Provenance.LIVE)
+        self._make(name="B", provenance=DataSource.Provenance.OFFICIAL_SNAPSHOT)
+        self._make(name="C", provenance=DataSource.Provenance.ILLUSTRATIVE_DEMO)
+        basis = workspace_data_basis(self.workspace)
+        self.assertEqual(basis["total"], 3)
+        self.assertEqual(basis["live"], 1)
+        self.assertEqual(basis["snapshot"], 1)
+        self.assertEqual(basis["demo"], 1)
+        self.assertTrue(basis["has_demo"])
+        # worst badge across the mix is the demo tier
+        self.assertEqual(basis["worst"]["level"], "demo")
+
+    def test_methodology_page_warns_about_demo_data(self):
+        self._make(
+            name="Beispiel — Unfälle",
+            layer_kind=DataSource.LayerKind.ACCIDENTS,
+            provenance=DataSource.Provenance.ILLUSTRATIVE_DEMO,
+        )
+        response = Client().get(
+            reverse("workspace_methodology", kwargs={"workspace_slug": self.workspace.slug})
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Illustrative demo")
+        self.assertContains(response, "not real measurements")
 
 
 @override_settings(ADMIN_TOKEN="test-token")

@@ -76,7 +76,12 @@
                 style="width: {{ score.display_value }}%"></div>
             </div>
             <span class="text-sm font-semibold w-8 text-right">{{ score.display_value|floatformat:0 }}</span>
-            <span class="text-xs text-slate-400">{{ score.get_confidence_display }}</span>
+            <span title="{% trans 'How confident this score is, given the underlying data.' %}"
+              class="text-xs rounded-full px-2 py-0.5 whitespace-nowrap
+              {% if score.confidence == 'high' %}bg-emerald-100 text-emerald-800
+              {% elif score.confidence == 'low' %}bg-amber-100 text-amber-900
+              {% else %}bg-slate-100 text-slate-600{% endif %}">
+              {% trans "Confidence:" %} {{ score.get_confidence_display }}</span>
           </div>
         </div>
         {% if score.rationale_de %}

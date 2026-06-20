@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Data-provenance labels everywhere** — every data source now declares whether
+  it is a **live source**, an **official snapshot**, or **illustrative demo**
+  data. The signal is shown to the public, not just operators: the workspace
+  dashboard carries a "Data basis" summary, the map layer list flags any layer
+  that is demo or snapshot, and the methodology page labels each source and warns
+  when a workspace still leans on placeholder data. This makes it obvious at a
+  glance when a number is real versus when it is an example.
+- **Leipzig demo ships a live air-quality source** — the Umweltbundesamt (UBA)
+  air-quality station feed is now wired in (synced on demand in the data hub),
+  replacing the previous gap with a real, authoritative source.
+- **Utrecht demo ships real public-transit data** — the Netherlands-wide OVapi
+  GTFS feed is now configured (stops, routes, and coverage), so Utrecht's transit
+  layers come from real schedules rather than OpenStreetMap stops alone.
 - **Climate-readiness data and story views for cities** — OpenMobility OS can
   now map the layers that matter for extreme heat, drought and flooding:
   street trees, green areas and parks, water bodies and retention, sealed
@@ -59,6 +72,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   style too.
 
 ### Changed
+- **Demo accident and heat-corridor layers are now clearly marked as
+  illustrative**, and Leipzig's official flood snapshot is marked as a snapshot,
+  so visitors are never shown placeholder data without knowing it.
+- **Measure scores show a styled confidence badge** (low / medium / high) on the
+  measure detail page instead of plain grey text.
 - **Story views now show accidents as a heatmap** — all three presets (Cycling
   gap analysis, Safe routes to school, Traffic safety overview) display crashes
   as a density heatmap over the last three years. "Cycling gap analysis" in

@@ -20,7 +20,7 @@ from measures.transit_kpis import compute_transit_kpis
 from workspaces.models import ConnectorAuditLog
 
 from .models import DataSource, NormalizedFeatureSet
-from .readiness import source_readiness
+from .readiness import source_provenance, source_readiness
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +28,9 @@ logger = logging.getLogger(__name__)
 def data_hub(request, workspace_slug):
     ws = get_active_workspace(workspace_slug)
     sources = list(ws.data_sources.all().order_by("layer_kind", "name"))
-    sources_with_readiness = [(s, source_readiness(s)) for s in sources]
+    sources_with_readiness = [
+        (s, source_readiness(s), source_provenance(s)) for s in sources
+    ]
     feature_sets = NormalizedFeatureSet.objects.filter(workspace=ws)
     return render(
         request,

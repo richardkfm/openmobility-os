@@ -5,6 +5,11 @@ from django.utils.translation import gettext as _
 
 from core.utils import get_active_workspace
 from datasets.models import DataSource, NormalizedFeatureSet
+from datasets.readiness import (
+    layer_provenance_map,
+    source_provenance,
+    workspace_data_basis,
+)
 from measures.accident_kpis import compute_accident_kpis
 from measures.models import Measure, MeasureScore
 from measures.scoring import compute_priority_score
@@ -32,6 +37,7 @@ def dashboard(request, workspace_slug: str):
             "measure_count": len(measures),
             "data_source_count": sources.count(),
             "data_sources_active": sources.filter(status=DataSource.Status.ACTIVE).count(),
+            "data_basis": workspace_data_basis(ws),
             "transit_kpis": transit_kpis,
             "accident_kpis": accident_kpis,
             "page_title": ws.name,
@@ -50,8 +56,13 @@ def workspace_map(request, workspace_slug: str):
     # value (with underscores replaced) for connector-defined kinds that aren't
     # in the enum.
     label_map = dict(DataSource.LayerKind.choices)
+    provenance_by_kind = layer_provenance_map(ws)
     layers = [
-        {"value": v, "label": str(label_map.get(v, v.replace("_", " ").capitalize()))}
+        {
+            "value": v,
+            "label": str(label_map.get(v, v.replace("_", " ").capitalize())),
+            "provenance": provenance_by_kind.get(v),
+        }
         for v in sorted(kind_values)
     ]
 
@@ -178,12 +189,16 @@ def measure_detail(request, workspace_slug: str, measure_slug: str):
 
 def workspace_methodology(request, workspace_slug: str):
     ws = get_active_workspace(workspace_slug)
+    sources = ws.data_sources.all()
+    data_sources_with_meta = [(s, source_provenance(s)) for s in sources]
     return render(
         request,
         "workspaces/methodology.html",
         {
             "workspace": ws,
-            "data_sources": ws.data_sources.all(),
+            "data_sources": sources,
+            "data_sources_with_meta": data_sources_with_meta,
+            "data_basis": workspace_data_basis(ws),
             "scoring_weights": ws.scoring_weights or {},
             "page_title": _("Methodology — %(name)s") % {"name": ws.name},
         },
