@@ -102,6 +102,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and easier to spot.
 
 ### Fixed
+- **Accident data-sufficiency coverage is no longer inflated by gap years** — a
+  workspace with accident records in, say, 2020 and 2023 but none in
+  2021–2022 now has its expected-record baseline computed over the full
+  4-year span instead of just the 2 years that have data, so the "good /
+  thin / placeholder" rating on the dashboard reflects real coverage.
 - **The accident heatmap no longer fades out when you zoom in** — its intensity
   keeps ramping past street level and the bloom radius is eased back, so crash
   clusters stay clearly visible (and a touch warmer) instead of washing out at
