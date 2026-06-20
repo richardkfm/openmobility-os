@@ -3,6 +3,7 @@
 from dataclasses import dataclass, field
 from unittest import TestCase
 
+from measures.accident_kpis import compute_accident_kpis
 from measures.rules.climate import rule_heat_vulnerability
 from measures.rules.electrification import rule_ev_charging_gap
 from measures.rules.equity import rule_population_equity_gap
@@ -431,3 +432,27 @@ class HeatVulnerabilityRuleTests(TestCase):
         sealed = self._sealed(n=3)
         green = _FakeFS("green_areas", {"features": [_square(0.01)]})
         self.assertEqual(rule_heat_vulnerability(_FakeWorkspace(), [sealed, green]), [])
+
+
+def _accident(severity="minor", year=None):
+    return {
+        "type": "Feature",
+        "geometry": {"type": "Point", "coordinates": [10.0, 50.0]},
+        "properties": {"severity": severity, "year": year},
+    }
+
+
+class AccidentKPIsTests(TestCase):
+    def test_years_spanned_accounts_for_gap_years(self):
+        # Records only in 2020 and 2023 (no 2021/2022 records) span 4 years,
+        # not 2 — a gap year must not be treated as if it didn't exist.
+        features = [_accident(year=2020)] * 60 + [_accident(year=2023)] * 60
+        accidents = _FakeFS("accidents", {"features": features})
+        ws = _FakeWorkspace(population=10_000)
+
+        kpis = compute_accident_kpis(ws, [accidents])
+
+        expected_per_year = 10_000 * 3.0 / 1000  # 30
+        expected_ratio = min(120 / (expected_per_year * 4), 1.0)
+        self.assertEqual(kpis["year_range"], [2020, 2023])
+        self.assertEqual(kpis["coverage_ratio"], round(expected_ratio, 2))

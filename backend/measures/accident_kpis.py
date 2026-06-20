@@ -86,7 +86,7 @@ def compute_accident_kpis(workspace, feature_sets) -> dict[str, Any]:
         expected_per_year = population * ACCIDENTS_PER_1000_RESIDENTS / 1000
         kpis["expected_per_year"] = round(expected_per_year)
 
-        years_spanned = max(len(years_seen), 1)
+        years_spanned = max(max(years_seen) - min(years_seen) + 1, 1)
         expected_total = expected_per_year * years_spanned
         ratio = min(n / expected_total, 1.0) if expected_total > 0 else 0.0
         kpis["coverage_ratio"] = round(ratio, 2)
