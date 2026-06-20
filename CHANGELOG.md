@@ -70,6 +70,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   options (the gear icon) alongside Normal and Thick, so two overlapping lines
   on the map are easier to tell apart. The legend swatch follows the chosen
   style too.
+- **The map now shows a loading indicator while layer data downloads** — a small
+  "Loading map data…" pill appears while the map is still fetching its layers, so
+  it is clear the wait is worth it on large workspaces (and that a Story view you
+  click early will fill in as the data arrives).
 
 ### Changed
 - **Slimmed-down README** — the long "Using the Platform" and "Production
@@ -102,6 +106,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and easier to spot.
 
 ### Fixed
+- **Story views now show the accident heatmap on first sight** — opening "Cycling
+  gap analysis" (or any heatmap preset) immediately renders the crash heatmap
+  instead of accident dots; you no longer have to re-click Heatmap because the
+  accident data was still loading at the moment you opened the view.
+- **Story views now populate even when opened while the map is still loading** —
+  clicking a Story view before its layer data has finished downloading no longer
+  leaves the map empty; the layers now fill in as their data arrives, so the
+  first view you open behaves like every later one.
 - **Accident data-sufficiency coverage is no longer inflated by gap years** — a
   workspace with accident records in, say, 2020 and 2023 but none in
   2021–2022 now has its expected-record baseline computed over the full

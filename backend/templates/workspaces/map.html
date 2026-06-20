@@ -465,6 +465,15 @@
       <div class="relative map-frame">
         <div id="map" class="rounded-lg border"></div>
 
+        {# Loading indicator — visible while map layers are still being fetched. #}
+        <div id="map-loading"
+             class="hidden absolute top-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2
+                    rounded-full border bg-white/95 backdrop-blur shadow-md px-3 py-1.5 text-xs text-slate-700"
+             role="status" aria-live="polite">
+          <span class="inline-block h-3.5 w-3.5 rounded-full border-2 border-slate-300 border-t-slate-700 animate-spin"></span>
+          <span>{% trans "Loading map data…" %}</span>
+        </div>
+
         <div class="absolute top-3 left-3 z-10 flex flex-col gap-2 items-start">
 
           {# Base map switcher — independent of the app dark/light theme; remembered across sessions. #}
@@ -1052,7 +1061,17 @@ function initialVisibility(id) {
   return cb.checked ? "visible" : "none";
 }
 
+// Show a loading pill while layer GeoJSON is in flight. Layer payloads can be
+// large and are fetched asynchronously, so this reassures the viewer that the
+// map is still populating (and that an early story-view click is worth the wait).
+let _pendingLayerLoads = 0;
+function setLayerLoading(delta) {
+  _pendingLayerLoads = Math.max(0, _pendingLayerLoads + delta);
+  document.getElementById("map-loading")?.classList.toggle("hidden", _pendingLayerLoads === 0);
+}
+
 function addGeoJsonLayer(id, url, color) {
+  setLayerLoading(1);
   fetch(url)
     .then(r => r.json())
     .then(fc => {
@@ -1221,6 +1240,12 @@ function addGeoJsonLayer(id, url, color) {
         });
         map.on("mouseenter", "accidents-density-line", () => { map.getCanvas().style.cursor = "pointer"; });
         map.on("mouseleave", "accidents-density-line", () => { map.getCanvas().style.cursor = ""; });
+
+        // Re-apply the accident view state now the sublayers exist, so a story
+        // view (or toggle) chosen before this data finished loading shows the
+        // right sublayer — heatmap / circles / density — instead of defaulting
+        // to dots.
+        syncAccidentLayers();
 
       } else if (id === "measures") {
         // Measure Pipeline: color every geometry by status.
@@ -1395,7 +1420,8 @@ function addGeoJsonLayer(id, url, color) {
         applyStoredLayerSettings(id);
       }
     })
-    .catch(() => console.warn("Layer failed to load:", id));
+    .catch(() => console.warn("Layer failed to load:", id))
+    .finally(() => setLayerLoading(-1));
 }
 
 // Shared state between the layer-toggle checkbox and the accident filter
@@ -1820,11 +1846,13 @@ function activateStoryView(key) {
   cfg.layers.forEach(kind => {
     const cb = document.querySelector(`.layer-toggle[data-layer="${kind}"]`);
     if (!cb) return;
-    if (!ALL_SUBS.some(suf => map.getLayer(kind + suf))) return;
+    // Check the toggle / set the mode even if the data is still loading:
+    // applyStoredLayerSettings() shows the layer (honouring the checkbox) the
+    // moment its sublayers are added, so an early click still populates.
     cb.checked = true;
     const def = defaultModeFor(kind);
     if (getLayerMode(kind) !== def) setLayerDisplayMode(kind, def);
-    setLayerVisible(kind, true);
+    setLayerVisible(kind, true); // no-op until the layer exists
   });
 
   // Accidents view mode, if the workspace has accidents. The accident filter
