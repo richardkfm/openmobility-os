@@ -47,6 +47,23 @@ class ParseYearsTests(TestCase):
         self.assertEqual(_parse_years("2021,abc"), [])
 
 
+class SeedDemoProvenanceTests(TestCase):
+    """`seed_demo` reads the per-source `provenance:` key from the YAML configs
+    so demo placeholder layers are honestly flagged. Run offline (--no-network)
+    so only the manual demo sources are synced."""
+
+    def test_utrecht_demo_accidents_flagged_illustrative(self):
+        out = StringIO()
+        call_command("seed_demo", only="utrecht", no_network=True, stdout=out, stderr=StringIO())
+        ws = Workspace.objects.get(slug="utrecht")
+        accidents = ws.data_sources.get(layer_kind=DataSource.LayerKind.ACCIDENTS, source_type="manual")
+        self.assertEqual(accidents.provenance, DataSource.Provenance.ILLUSTRATIVE_DEMO)
+        # Live OSM sources keep the default live provenance.
+        bike = ws.data_sources.filter(layer_kind=DataSource.LayerKind.BIKE_NETWORK).first()
+        self.assertIsNotNone(bike)
+        self.assertEqual(bike.provenance, DataSource.Provenance.LIVE)
+
+
 class DisableDemoAccidentsTests(TestCase):
     def setUp(self):
         self.ws = Workspace.objects.create(

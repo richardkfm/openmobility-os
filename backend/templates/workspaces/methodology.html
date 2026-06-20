@@ -35,12 +35,24 @@
   {# Data sources #}
   <section>
     <h2 class="text-lg font-semibold mb-3">{% trans "Data sources" %}</h2>
-    {% if data_sources %}
+
+    {# Honest "what is this built on?" summary so readers can calibrate trust. #}
+    {% if data_basis.total %}
+    <p class="text-sm text-slate-600 mb-3">
+      {% blocktrans with live=data_basis.live snapshot=data_basis.snapshot demo=data_basis.demo %}This workspace draws on {{ live }} live source(s), {{ snapshot }} official snapshot(s), and {{ demo }} illustrative demo source(s).{% endblocktrans %}
+      {% if data_basis.has_demo %}
+      <span class="text-amber-800">{% trans "Layers marked “Illustrative demo” use placeholder data and are not real measurements." %}</span>
+      {% endif %}
+    </p>
+    {% endif %}
+
+    {% if data_sources_with_meta %}
     <div class="rounded-lg border bg-white divide-y">
-      {% for source in data_sources %}
+      {% for source, provenance in data_sources_with_meta %}
       <div class="px-4 py-3 flex items-center justify-between gap-3">
         <div>
           <span class="font-medium text-sm">{{ source.name }}</span>
+          {% include "datasets/_provenance_badge.html" with provenance=provenance %}
           <span class="ml-2 text-xs text-slate-500">{{ source.layer_kind }} · {{ source.source_type }}</span>
           {% if source.attribution %}<span class="ml-2 text-xs text-slate-400">{{ source.attribution }}</span>{% endif %}
         </div>

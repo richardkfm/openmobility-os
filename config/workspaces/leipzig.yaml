@@ -195,6 +195,7 @@ data_sources:
     layer_kind: accidents
     license: "CC0 (example data — not real accident records)"
     attribution: "Illustrative demo data only"
+    provenance: illustrative_demo
     config:
       feature_collection:
         type: FeatureCollection
@@ -469,6 +470,7 @@ data_sources:
     layer_kind: heat_corridors
     license: "CC0 (example data — not a real climate analysis)"
     attribution: "Illustrative demo data only"
+    provenance: illustrative_demo
     config:
       feature_collection:
         type: FeatureCollection
@@ -497,6 +499,7 @@ data_sources:
     license: "DL-DE BY 2.0"
     attribution: "© Freistaat Sachsen, LfULG"
     source_url: https://luis.sachsen.de/wasser/hw/ueberschwemmungsgebiete.html
+    provenance: official_snapshot
     config:
       feature_collection_file: leipzig_flood_hq100.geojson
 
@@ -523,20 +526,23 @@ data_sources:
   #     lat_col: Breitengrad
   #     lon_col: Längengrad
   #
-  # Umweltbundesamt Luftqualität — REST endpoint per pollutant. Returns
-  # measurement stations with the latest aggregate values. The exact path
-  # changes per UBA release; check
+  # Umweltbundesamt Luftqualität — live REST feed of measurement stations with
+  # the latest aggregate values. Not auto-synced on seed (so a fresh
+  # `docker compose up` never depends on third-party uptime); an operator hits
+  # "Sync" in the data hub to pull it. The exact path may change per UBA
+  # release — check
   # https://www.umweltbundesamt.de/daten/luft/luftdaten#vorberichteapi
-  #
-  # - name: UBA — Luftqualitätsmessstationen
-  #   source_type: rest
-  #   layer_kind: air_quality
-  #   license: "DL-DE BY 2.0"
-  #   attribution: "Umweltbundesamt"
-  #   config:
-  #     url: https://www.umweltbundesamt.de/api/air_data/v3/stations/json
-  #     json_path: stations
-  #     geometry_mapping: { lat: latitude, lon: longitude }
+  - name: UBA — Luftqualitätsmessstationen
+    source_type: rest
+    layer_kind: air_quality
+    license: "DL-DE BY 2.0"
+    attribution: "Umweltbundesamt"
+    source_url: https://www.umweltbundesamt.de/daten/luft/luftdaten
+    provenance: live
+    config:
+      url: https://www.umweltbundesamt.de/api/air_data/v3/stations/json
+      json_path: stations
+      geometry_mapping: { lat: latitude, lon: longitude }
   #
   # opendata.leipzig.de (CKAN) — Radzählstellen (monthly cycle counters).
   # Drop in the actual package_id from the portal browser:

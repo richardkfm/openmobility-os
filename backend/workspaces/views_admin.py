@@ -6,6 +6,7 @@ from django.views.generic import TemplateView
 from core.decorators import admin_required
 from core.utils import get_active_workspace
 from datasets.models import DataSource
+from datasets.readiness import workspace_data_basis
 from measures.models import Measure
 
 from .models import Workspace, ConnectorAuditLog
@@ -58,6 +59,7 @@ class HealthDashboardView(TemplateView):
             "total_features": total_features,
             "recent_logs": recent_logs,
             "layer_freshness": layer_freshness,
+            "data_basis": workspace_data_basis(workspace),
             "status_choices": dict(DataSource.Status.choices),
             "page_title": f"Health Dashboard — {workspace.name}",
         }

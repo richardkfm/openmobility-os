@@ -27,7 +27,11 @@ It answers questions like:
 
 Leipzig (Germany) and Utrecht (Netherlands) are the two real-city demo
 workspaces — one developing its cycling infrastructure, the other a
-world-leading cycling city. The platform is **city-agnostic** from day one.
+world-leading cycling city. Both ship real data connectors out of the box
+(Leipzig adds a live UBA air-quality feed; Utrecht adds the OVapi
+Netherlands transit GTFS), and any remaining placeholder layer is clearly
+labelled *illustrative demo* so it is never mistaken for real data. The
+platform is **city-agnostic** from day one.
 Any city, small town, municipality, or region worldwide can be added
 through open data, APIs, and configuration — regardless of country,
 language, data source, or administrative structure.
@@ -228,6 +232,10 @@ four demo workspaces: **Leipzig**, **Utrecht**, **Musterstadt**, and **Muster-La
 - **Rule-based measures engine** — generates prioritized interventions
   from available data
 - **Transparent scoring** — nine dimensions, every value traceable to its source
+- **Honest data provenance** — every layer is labelled **live source**,
+  **official snapshot**, or **illustrative demo**, shown publicly on the
+  dashboard ("Data basis"), the map layer list, and the methodology page, so
+  visitors always know when a number is real versus an example
 - **Public shareable URLs** for every measure
 - **Methodology pages** — every formula and data source documented
 - **New-workspace wizard** — add any city in three steps; search for the place

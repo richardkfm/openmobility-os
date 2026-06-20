@@ -50,6 +50,20 @@
     {% endif %}
   </div>
 
+  {# Data basis — honest provenance summary so visitors can calibrate trust. #}
+  {% if data_basis.total %}
+  <a href="{% url 'workspace_methodology' workspace.slug %}"
+     class="rounded-lg border bg-white p-4 flex flex-wrap items-center gap-x-3 gap-y-2 hover:border-slate-400 transition">
+    <span class="text-xs font-semibold text-slate-500 uppercase tracking-wide">{% trans "Data basis" %}</span>
+    {% if data_basis.live %}<span class="text-xs rounded-full px-2 py-0.5 bg-emerald-100 text-emerald-800">{{ data_basis.live }} {% trans "live" %}</span>{% endif %}
+    {% if data_basis.snapshot %}<span class="text-xs rounded-full px-2 py-0.5 bg-sky-100 text-sky-800">{{ data_basis.snapshot }} {% trans "official snapshot" %}</span>{% endif %}
+    {% if data_basis.demo %}<span class="text-xs rounded-full px-2 py-0.5 bg-amber-100 text-amber-900">⚠ {{ data_basis.demo }} {% trans "illustrative demo" %}</span>{% endif %}
+    {% if data_basis.has_demo %}
+    <span class="text-xs text-amber-800 basis-full sm:basis-auto">{% trans "Some layers use placeholder data — see methodology." %}</span>
+    {% endif %}
+  </a>
+  {% endif %}
+
   {% include "workspaces/_transit_kpi_cards.html" %}
 
   {% include "workspaces/_accident_kpi_cards.html" %}

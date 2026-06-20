@@ -1,0 +1,13 @@
+{% load i18n %}
+{# Provenance badge — expects `provenance` = {level, label, hint}. Shows
+   whether a data source is a live feed, an official snapshot, or
+   illustrative demo data. Reused on public and operator surfaces. #}
+{% if provenance %}
+<span title="{{ provenance.hint }}"
+  class="text-xs rounded-full px-2 py-0.5 whitespace-nowrap
+  {% if provenance.level == 'live' %}bg-emerald-100 text-emerald-800
+  {% elif provenance.level == 'snapshot' %}bg-sky-100 text-sky-800
+  {% else %}bg-amber-100 text-amber-900{% endif %}">
+  {% if provenance.level == 'demo' %}⚠ {% endif %}{{ provenance.label }}
+</span>
+{% endif %}

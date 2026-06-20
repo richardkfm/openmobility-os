@@ -149,6 +149,14 @@
               <label class="flex items-center gap-2 cursor-pointer flex-1 min-w-0">
                 <input type="checkbox" class="layer-toggle" data-layer="{{ layer.value }}">
                 <span class="truncate">{{ layer.label }}</span>
+                {# Flag non-live layers so the map never silently shows demo data. #}
+                {% if layer.provenance and layer.provenance.level != 'live' %}
+                <span title="{{ layer.provenance.hint }}"
+                  class="shrink-0 text-[10px] leading-none rounded-full px-1.5 py-0.5
+                  {% if layer.provenance.level == 'snapshot' %}bg-sky-100 text-sky-800{% else %}bg-amber-100 text-amber-900{% endif %}">
+                  {% if layer.provenance.level == 'demo' %}⚠ {% trans "demo" %}{% else %}{% trans "snapshot" %}{% endif %}
+                </span>
+                {% endif %}
               </label>
               {% if layer.value != "accidents" %}
               <button type="button" @click="expanded = !expanded"

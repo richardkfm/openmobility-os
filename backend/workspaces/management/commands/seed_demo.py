@@ -130,6 +130,10 @@ class Command(BaseCommand):
                     "license": ds.get("license", ""),
                     "attribution": ds.get("attribution", ""),
                     "source_url": ds.get("source_url", ""),
+                    # Honest "is this real?" flag, defaulting to a live source.
+                    # Demo configs mark placeholder layers as illustrative_demo
+                    # and vendored official copies as official_snapshot.
+                    "provenance": ds.get("provenance", DataSource.Provenance.LIVE),
                 },
             )
             # Auto-sync offline (manual) sources so their data is immediately
