@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Shared-mobility availability gap analysis over time** — because GBFS feeds
+  only show the live state, OpenMobility OS can now record shared-mobility
+  snapshots on a schedule (a new `collect_mobility_snapshots` command meant for
+  cron — no external service needed) and aggregate them into a map grid that
+  shows where bikes, scooters or cars are *reliably* available versus where the
+  persistent pick-up gaps are. The analysis is filterable by time window, hour
+  of day, weekday, and form factor (e.g. "where do free cars run out on weekday
+  mornings over the last month?"), served at
+  `GET /api/v1/workspaces/<slug>/shared-mobility-gaps/`. Each grid cell reports
+  an availability rate and a `gap_rate` — the headline signal for where more
+  vehicles or rebalancing are needed. See `docs/SHARED_MOBILITY.md`.
 - **Shared-mobility data via GBFS** — a new connector reads any operator's
   GBFS auto-discovery feed (the open standard published by nextbike, e-scooter
   and car-sharing fleets) and maps it as two new layer kinds: **shared

@@ -169,3 +169,47 @@ class NormalizedFeatureSet(models.Model):
 
     def __str__(self):
         return f"{self.workspace.slug}/{self.layer_kind}"
+
+
+class MobilitySnapshot(models.Model):
+    """One time-stamped observation of a shared-mobility source.
+
+    GBFS feeds are real-time only, so to support temporal availability / gap
+    analysis we sample a source on a schedule (see the
+    ``collect_mobility_snapshots`` management command) and store each sample as
+    a compact spatial-grid aggregation rather than raw points. Free-floating
+    vehicle IDs rotate and have no fixed home, so a fixed grid is the stable
+    unit of analysis for both free-floating and station feeds.
+
+    ``cell_counts`` maps a grid-cell key (``"i:j"``) to a per-form-factor
+    count of available vehicles, e.g. ``{"42:88": {"bicycle": 3, "car": 1}}``.
+    ``lon_step`` / ``lat_step`` record the grid resolution used so the cells
+    can be reconstructed as polygons later, even if the default cell size
+    changes.
+    """
+
+    source = models.ForeignKey(
+        DataSource, on_delete=models.CASCADE, related_name="mobility_snapshots"
+    )
+    workspace = models.ForeignKey(
+        "workspaces.Workspace",
+        on_delete=models.CASCADE,
+        related_name="mobility_snapshots",
+    )
+    captured_at = models.DateTimeField(db_index=True)
+    vehicle_count = models.PositiveIntegerField(
+        default=0,
+        help_text=_("Total available vehicles observed in this snapshot."),
+    )
+    cell_counts = models.JSONField(default=dict)
+    cell_size_m = models.PositiveIntegerField(default=400)
+    lon_step = models.FloatField()
+    lat_step = models.FloatField()
+
+    class Meta:
+        indexes = [models.Index(fields=["source", "captured_at"])]
+        ordering = ["-captured_at"]
+
+    def __str__(self):
+        return f"{self.source}/{self.captured_at:%Y-%m-%d %H:%M}"
+

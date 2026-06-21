@@ -616,3 +616,139 @@ class AddDataSourceFormTests(TestCase):
                 workspace=self.workspace, name="Unfallatlas 2024"
             ).exists()
         )
+
+
+class MobilitySnapshotCollectorTests(TestCase):
+    """The collect_mobility_snapshots command stores grid snapshots."""
+
+    def setUp(self):
+        from django.contrib.gis.geos import Point
+
+        self.ws = Workspace.objects.create(
+            slug="snap-city",
+            name="Snap City",
+            country_code="DE",
+            timezone="Europe/Berlin",
+            center=Point(12.37, 51.34, srid=4326),
+            bounds=Polygon(((12.2, 51.2), (12.6, 51.2), (12.6, 51.5), (12.2, 51.5), (12.2, 51.2))),
+        )
+        self.source = DataSource.objects.create(
+            workspace=self.ws,
+            name="GBFS bikes",
+            source_type=DataSource.SourceType.GBFS,
+            layer_kind=DataSource.LayerKind.SHARED_VEHICLES,
+            config={"discovery_url": "https://x/gbfs.json", "layer": "shared_vehicles"},
+        )
+
+    def _fake_features(self):
+        return {
+            "type": "FeatureCollection",
+            "features": [
+                {
+                    "type": "Feature",
+                    "geometry": {"type": "Point", "coordinates": [12.37, 51.34]},
+                    "properties": {"form_factor": "bicycle"},
+                },
+                {
+                    "type": "Feature",
+                    "geometry": {"type": "Point", "coordinates": [12.3702, 51.3402]},
+                    "properties": {"form_factor": "bicycle"},
+                },
+            ],
+        }
+
+    def test_command_creates_snapshot(self):
+        from django.core.management import call_command
+
+        from datasets.models import MobilitySnapshot
+
+        fake = mock.Mock(feature_collection=self._fake_features(), record_count=2)
+        with mock.patch(
+            "datasets.management.commands.collect_mobility_snapshots.get_connector"
+        ) as get_conn:
+            get_conn.return_value.fetch.return_value = fake
+            call_command("collect_mobility_snapshots", "--workspace", "snap-city")
+
+        snaps = MobilitySnapshot.objects.filter(source=self.source)
+        self.assertEqual(snaps.count(), 1)
+        snap = snaps.first()
+        self.assertEqual(snap.vehicle_count, 2)
+        # Both vehicles fall in the same ~400 m cell.
+        self.assertEqual(len(snap.cell_counts), 1)
+
+
+class SharedMobilityGapsViewTests(TestCase):
+    """The public gap-analysis API aggregates snapshots into a cell grid."""
+
+    def setUp(self):
+        from django.contrib.gis.geos import Point
+
+        from datasets.mobility_gaps import bin_features_to_grid, grid_steps
+        from datasets.models import MobilitySnapshot
+
+        self.ws = Workspace.objects.create(
+            slug="gap-city",
+            name="Gap City",
+            country_code="DE",
+            timezone="Europe/Berlin",
+            center=Point(12.37, 51.34, srid=4326),
+            is_active=True,
+        )
+        self.source = DataSource.objects.create(
+            workspace=self.ws,
+            name="GBFS bikes",
+            source_type=DataSource.SourceType.GBFS,
+            layer_kind=DataSource.LayerKind.SHARED_VEHICLES,
+            config={},
+        )
+        self.lon_step, self.lat_step = grid_steps(51.34, 400)
+
+        def grid_for(points):
+            feats = [
+                {
+                    "type": "Feature",
+                    "geometry": {"type": "Point", "coordinates": list(p)},
+                    "properties": {"form_factor": "bicycle"},
+                }
+                for p in points
+            ]
+            return bin_features_to_grid(feats, self.lon_step, self.lat_step)
+
+        now = timezone.now()
+        # Two snapshots: a busy spot present both times, a fringe spot once.
+        for offset, points in enumerate(
+            [[(12.37, 51.34), (12.45, 51.40)], [(12.37, 51.34)]]
+        ):
+            MobilitySnapshot.objects.create(
+                source=self.source,
+                workspace=self.ws,
+                captured_at=now - timedelta(hours=offset),
+                vehicle_count=len(points),
+                cell_counts=grid_for(points),
+                cell_size_m=400,
+                lon_step=self.lon_step,
+                lat_step=self.lat_step,
+            )
+
+    def test_gap_view_returns_cells_with_gap_rate(self):
+        client = Client()
+        url = reverse("api_shared_mobility_gaps", args=["gap-city"])
+        resp = client.get(url, {"days": "7"})
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data["samples"], 2)
+        self.assertEqual(data["type"], "FeatureCollection")
+        gap_rates = sorted(f["properties"]["gap_rate"] for f in data["features"])
+        # One cell always present (gap 0.0), one present half the time (0.5).
+        self.assertIn(0.0, gap_rates)
+        self.assertIn(0.5, gap_rates)
+
+    def test_gap_view_without_snapshots_is_empty(self):
+        client = Client()
+        Workspace.objects.create(
+            slug="bare-city", name="Bare", country_code="DE", is_active=True
+        )
+        url = reverse("api_shared_mobility_gaps", args=["bare-city"])
+        resp = client.get(url)
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()["samples"], 0)
