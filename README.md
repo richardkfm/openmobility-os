@@ -3,7 +3,7 @@
 
 # OpenMobility OS
 
-**Version:** 0.44.0 (pre-release) — see [CHANGELOG.md](CHANGELOG.md)
+**Version:** 0.45.0 (pre-release) — see [CHANGELOG.md](CHANGELOG.md)
 **License:** See [LICENSE](LICENSE)
 
 > The open, free, self-hostable operating system between open mobility data
@@ -178,7 +178,11 @@ four demo workspaces: **Leipzig**, **Utrecht**, **Musterstadt**, and **Muster-La
     vehicles (free-floating, with form factor and propulsion) or stations
     (capacity, available vehicles, free docks, availability ratio). A
     planner's tool, not a rider app: pair with the map's heatmap mode to spot
-    where shared vehicles cluster and where the pick-up gaps are. GBFS v2/v3
+    where shared vehicles cluster and where the pick-up gaps are. GBFS v2/v3.
+    Optional **availability gap analysis over time** records snapshots on a
+    schedule and aggregates them into a grid showing where vehicles are
+    reliably available versus persistently empty, filterable by hour of day,
+    weekday and form factor (see [docs/SHARED_MOBILITY.md](docs/SHARED_MOBILITY.md))
   - Accident CSV — Destatis Unfallatlas (Germany) and generic international,
     both with optional bounding-box clipping to the workspace
   - **BikeMaps.org** — global crowdsourced cycling collisions, near-misses,
@@ -295,6 +299,8 @@ back here.
 
 - [docs/USER_GUIDE.md](docs/USER_GUIDE.md) — full walkthrough of every page and
   admin task (dashboard, map, measures, data hub, connectors, generating measures)
+- [docs/SHARED_MOBILITY.md](docs/SHARED_MOBILITY.md) — connecting GBFS feeds
+  (bikes/scooters/cars) and running availability gap analysis over time
 - [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — production hosting: reverse proxy,
   TLS, backups, tile servers, environment variables
 - [CLAUDE.md](CLAUDE.md) — project philosophy, architecture, contributor guide
