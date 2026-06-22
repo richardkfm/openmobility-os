@@ -116,6 +116,35 @@
     </dl>
   </div>
 
+  {# ── Shared-mobility availability snapshots ── #}
+  {% if is_shared_source %}
+  <div class="rounded-lg border bg-white p-5">
+    <h2 class="font-semibold mb-1">{% trans "Availability snapshots" %}</h2>
+    <p class="text-sm text-slate-500 mb-3">
+      {% trans "GBFS feeds are real-time only. Capture snapshots over time to unlock the map's availability gap analysis — where vehicles are reliably available versus persistently empty." %}
+    </p>
+    <dl class="grid grid-cols-2 gap-y-1.5 text-sm mb-3">
+      <dt class="text-slate-500">{% trans "Snapshots stored" %}</dt>
+      <dd>{{ snapshot_count }}</dd>
+      <dt class="text-slate-500">{% trans "Last captured" %}</dt>
+      <dd>{{ latest_snapshot.captured_at|date:"Y-m-d H:i"|default:"—" }}</dd>
+    </dl>
+    {% if is_admin %}
+    <form method="post" action="{% url 'data_source_snapshot' workspace.slug source.pk %}">
+      {% csrf_token %}
+      <button type="submit"
+        class="rounded bg-slate-900 text-white px-3 py-1.5 text-sm hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-400">
+        {% trans "Collect snapshot now" %}</button>
+    </form>
+    {% endif %}
+    <p class="text-xs text-slate-400 mt-3">
+      {% blocktrans %}Tip: for meaningful gaps, collect on a schedule with
+      <code>python manage.py collect_mobility_snapshots</code> (e.g. every 15 min via cron).
+      The map's “Availability gaps” overlay appears once snapshots exist.{% endblocktrans %}
+    </p>
+  </div>
+  {% endif %}
+
   {# ── File upload (admin) ── #}
   {% if is_admin %}
   <div class="rounded-lg border bg-white p-5">

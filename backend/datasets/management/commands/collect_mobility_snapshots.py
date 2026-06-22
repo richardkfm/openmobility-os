@@ -21,19 +21,10 @@ from __future__ import annotations
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-from connectors.registry import get_connector
-from datasets.mobility_gaps import (
-    DEFAULT_CELL_SIZE_M,
-    bin_features_to_grid,
-    grid_steps,
-)
-from datasets.models import DataSource, MobilitySnapshot
+from datasets.mobility_gaps import DEFAULT_CELL_SIZE_M
+from datasets.models import MobilitySnapshot
+from datasets.snapshots import SHARED_LAYER_KINDS, capture_snapshot
 from workspaces.models import Workspace
-
-SHARED_LAYER_KINDS = (
-    DataSource.LayerKind.SHARED_VEHICLES,
-    DataSource.LayerKind.SHARED_STATIONS,
-)
 
 
 class Command(BaseCommand):
@@ -76,22 +67,20 @@ class Command(BaseCommand):
         total_snapshots = 0
 
         for ws in workspaces:
-            center = ws.center
-            if center is None:
+            if ws.center is None:
                 self.stdout.write(
                     self.style.WARNING(
                         f"  skip {ws.slug}: no centre set, cannot build grid."
                     )
                 )
                 continue
-            lon_step, lat_step = grid_steps(center.y, cell_size)
 
             sources = ws.data_sources.filter(
                 is_enabled=True, layer_kind__in=SHARED_LAYER_KINDS
             )
             for source in sources:
                 try:
-                    connector = get_connector(source.source_type)
+                    snap = capture_snapshot(source, cell_size=cell_size)
                 except KeyError:
                     self.stdout.write(
                         self.style.WARNING(
@@ -100,35 +89,17 @@ class Command(BaseCommand):
                         )
                     )
                     continue
-                try:
-                    result = connector.fetch(source.config, workspace=ws)
                 except Exception as exc:  # noqa: BLE001 — one feed failing is not fatal
                     self.stdout.write(
                         self.style.WARNING(f"  fetch failed {source}: {exc}")
                     )
                     continue
 
-                features = (result.feature_collection or {}).get("features") or []
-                grid = bin_features_to_grid(features, lon_step, lat_step)
-                vehicle_count = sum(
-                    sum(cell.values()) for cell in grid.values()
-                )
-
-                MobilitySnapshot.objects.create(
-                    source=source,
-                    workspace=ws,
-                    captured_at=now,
-                    vehicle_count=int(vehicle_count),
-                    cell_counts=grid,
-                    cell_size_m=cell_size,
-                    lon_step=lon_step,
-                    lat_step=lat_step,
-                )
                 total_snapshots += 1
                 self.stdout.write(
                     self.style.SUCCESS(
-                        f"  ✓ {source}: {int(vehicle_count)} vehicles in "
-                        f"{len(grid)} cells."
+                        f"  ✓ {source}: {snap.vehicle_count} vehicles in "
+                        f"{len(snap.cell_counts)} cells."
                     )
                 )
 
