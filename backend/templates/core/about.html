@@ -2,7 +2,6 @@
 {% load i18n %}
 
 {% block content %}
-<div class="max-w-5xl mx-auto">
 
   {# ── Hero ─────────────────────────────────────────────────────────────── #}
   <section class="mb-14">
@@ -10,7 +9,7 @@
       <span class="h-1.5 w-1.5 rounded-full bg-brand-500"></span>
       {% trans "Open · Free · Self-hostable" %}
     </span>
-    <h1 class="mt-5 text-4xl sm:text-5xl font-extrabold tracking-tight text-slate-900 leading-tight">
+    <h1 class="mt-5 max-w-4xl text-4xl sm:text-5xl font-extrabold tracking-tight text-slate-900 leading-tight">
       {% trans "The missing operating system between mobility data and political decisions." %}
     </h1>
     <p class="mt-5 text-lg text-slate-600 leading-relaxed max-w-3xl">
@@ -187,5 +186,4 @@ docker compose up --build</pre>
     </a>
   </section>
 
-</div>
 {% endblock %}
