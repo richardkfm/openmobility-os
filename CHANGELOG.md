@@ -151,6 +151,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and easier to spot.
 
 ### Fixed
+- **The About page now lines up with the rest of the site** — it was rendered in
+  a narrower column than the home page and every workspace page, so its content
+  visibly stepped in from the edges. It now uses the same page width as the home
+  page, so navigating between pages no longer shifts the content sideways.
 - **Story views now show the accident heatmap on first sight** — opening "Cycling
   gap analysis" (or any heatmap preset) immediately renders the crash heatmap
   instead of accident dots; you no longer have to re-click Heatmap because the
