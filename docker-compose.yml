@@ -27,6 +27,33 @@ services:
       - static_volume:/app/staticfiles
       - media_volume:/app/mediafiles
 
+  # Optional scheduled shared-mobility snapshot collector. GBFS feeds are
+  # real-time only, so the map's availability gap analysis needs snapshots
+  # recorded over time. This sidecar reuses the web image and re-runs the
+  # collector every SNAPSHOT_INTERVAL_SECONDS (default 900 = 15 min). It is
+  # opt-in via a compose profile, so plain `docker compose up` is unchanged;
+  # enable it with:  docker compose --profile snapshots up -d
+  snapshots:
+    build: .
+    restart: unless-stopped
+    profiles: ["snapshots"]
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: .env
+    working_dir: /app
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.production
+      PYTHONPATH: /app/backend
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        while true; do
+          python manage.py collect_mobility_snapshots \
+            --prune-days "${SNAPSHOT_PRUNE_DAYS:-35}" || true
+          sleep "${SNAPSHOT_INTERVAL_SECONDS:-900}"
+        done
+
 volumes:
   postgres_data:
   static_volume:

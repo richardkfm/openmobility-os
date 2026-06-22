@@ -69,12 +69,14 @@ and when the last one was taken. This is the fastest way to start a history and
 try the overlay, but a single snapshot only captures one instant — gaps become
 meaningful once you have many across different times of day.
 
-**On a schedule (recommended):** run the collector via cron — no external
-service required:
+**On a schedule (recommended for real signal).** A single snapshot is one
+instant; meaningful gaps need many over time. Pick whichever fits your setup —
+no external service is required either way.
+
+The command itself is:
 
 ```bash
-# Every 15 minutes; keep ~5 weeks of history.
-*/15 * * * * python manage.py collect_mobility_snapshots --prune-days 35
+python manage.py collect_mobility_snapshots --prune-days 35
 ```
 
 Options:
@@ -86,6 +88,34 @@ Options:
 Each run fetches every enabled `shared_vehicles` / `shared_stations` source,
 bins the vehicles into a fixed spatial grid, and stores one compact snapshot
 per source.
+
+#### Option A — Docker Compose sidecar (easiest)
+
+A ready-made, opt-in `snapshots` service ships in `docker-compose.yml`. It
+reuses the web image and re-runs the collector on a loop. Plain
+`docker compose up` is unchanged; start the collector alongside your stack with:
+
+```bash
+docker compose --profile snapshots up -d
+```
+
+Tune it in `.env` (see `.env.example`):
+
+- `SNAPSHOT_INTERVAL_SECONDS` — how often to collect (default `900` = 15 min)
+- `SNAPSHOT_PRUNE_DAYS` — history to keep (default `35`)
+
+#### Option B — host cron
+
+If you'd rather schedule it yourself, add a line to the host crontab
+(`crontab -e`). For a Docker Compose deployment, call into the running web
+container:
+
+```cron
+*/15 * * * * cd /path/to/openmobility-os && docker compose exec -T web python manage.py collect_mobility_snapshots --prune-days 35
+```
+
+For a non-Docker install, run `manage.py` from the `backend/` directory in your
+virtualenv instead.
 
 ### 3.2 Viewing the gap overlay (map)
 

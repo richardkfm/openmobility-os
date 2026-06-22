@@ -3,7 +3,7 @@
 
 # OpenMobility OS
 
-**Version:** 0.46.0 (pre-release) — see [CHANGELOG.md](CHANGELOG.md)
+**Version:** 0.47.0 (pre-release) — see [CHANGELOG.md](CHANGELOG.md)
 **License:** See [LICENSE](LICENSE)
 
 > The open, free, self-hostable operating system between open mobility data
@@ -285,6 +285,11 @@ an Nginx or Caddy reverse proxy with TLS (the web container listens on 8000;
 keep the `db` port private), persist the `postgres_data` volume with regular
 `pg_dump` backups, and optionally point the map at self-hosted tile and Overpass
 servers.
+
+To collect shared-mobility availability history automatically, start the opt-in
+collector sidecar alongside your stack with
+`docker compose --profile snapshots up -d` (see
+[docs/SHARED_MOBILITY.md](docs/SHARED_MOBILITY.md)).
 
 🚀 **The full step-by-step guide — including reverse-proxy snippets, backups,
 and all map-tile / Overpass environment variables — lives in
