@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Built-in scheduled snapshot collector** — an opt-in `snapshots` service in
+  `docker-compose.yml` collects shared-mobility availability history
+  automatically. Start it with `docker compose --profile snapshots up -d`
+  (plain `docker compose up` is unchanged); tune the cadence and retention with
+  the new `SNAPSHOT_INTERVAL_SECONDS` and `SNAPSHOT_PRUNE_DAYS` settings. The
+  docs also show a host-cron alternative.
 - **Availability gaps as a map overlay** — the shared-mobility gap analysis is
   now visible directly on the map: a new "Availability gaps" toggle colours the
   area from green ("always available") to red ("usually empty"), with controls
