@@ -21,6 +21,7 @@ from workspaces.models import ConnectorAuditLog
 
 from .models import DataSource, NormalizedFeatureSet
 from .readiness import source_provenance, source_readiness
+from .snapshots import SHARED_LAYER_KINDS, capture_snapshot
 
 logger = logging.getLogger(__name__)
 
@@ -394,6 +395,8 @@ def data_source_detail(request, workspace_slug, pk):
         pass
 
     normalized = getattr(source, "normalized", None)
+    is_shared = source.layer_kind in SHARED_LAYER_KINDS
+    snapshots = source.mobility_snapshots.all() if is_shared else None
     return render(
         request,
         "datasets/data_source_detail.html",
@@ -402,9 +405,49 @@ def data_source_detail(request, workspace_slug, pk):
             "source": source,
             "normalized": normalized,
             "connector": connector,
+            "is_shared_source": is_shared,
+            "snapshot_count": snapshots.count() if is_shared else 0,
+            "latest_snapshot": snapshots.first() if is_shared else None,
             "page_title": source.name,
         },
     )
+
+
+@admin_required
+@require_POST
+def collect_snapshot(request, workspace_slug, pk):
+    """Capture one shared-mobility snapshot on demand (manual collection).
+
+    The same observation the scheduled ``collect_mobility_snapshots`` command
+    records, triggered from the data hub so operators can start (and grow) a
+    history without first setting up cron. Gap analysis needs several snapshots
+    over time to be meaningful, so the UI nudges towards scheduling too.
+    """
+    ws = get_active_workspace(workspace_slug)
+    source = get_object_or_404(DataSource, workspace=ws, pk=pk)
+    detail = reverse(
+        "data_source_detail", kwargs={"workspace_slug": ws.slug, "pk": source.pk}
+    )
+    if source.layer_kind not in SHARED_LAYER_KINDS:
+        messages.error(
+            request, _("Snapshots are only available for shared-mobility sources.")
+        )
+        return redirect(detail)
+    try:
+        snap = capture_snapshot(source)
+    except Exception as exc:  # noqa: BLE001 — surface the failure to the operator
+        logger.exception("Snapshot failed for source %s", source.pk)
+        messages.error(
+            request,
+            _("Snapshot failed: %(err)s") % {"err": f"{type(exc).__name__}: {exc}"},
+        )
+        return redirect(detail)
+    messages.success(
+        request,
+        _("Snapshot captured: %(n)d vehicles across %(c)d grid cells.")
+        % {"n": snap.vehicle_count, "c": len(snap.cell_counts)},
+    )
+    return redirect(detail)
 
 
 @admin_required

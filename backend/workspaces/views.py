@@ -4,7 +4,7 @@ from django.shortcuts import get_object_or_404, render
 from django.utils.translation import gettext as _
 
 from core.utils import get_active_workspace
-from datasets.models import DataSource, NormalizedFeatureSet
+from datasets.models import DataSource, MobilitySnapshot, NormalizedFeatureSet
 from datasets.readiness import (
     layer_provenance_map,
     source_provenance,
@@ -99,6 +99,19 @@ def workspace_map(request, workspace_slug: str):
     )
     has_districts = ws.districts.exists()
 
+    # Shared-mobility availability gap overlay — only offered when snapshots
+    # have actually been collected (otherwise the grid is empty). Lists the
+    # sources that have a history so the operator can pick which fleet to view.
+    gap_source_ids = (
+        MobilitySnapshot.objects.filter(workspace=ws)
+        .values_list("source_id", flat=True)
+        .distinct()
+    )
+    mobility_gap_sources = [
+        {"id": s.pk, "name": s.name}
+        for s in DataSource.objects.filter(pk__in=list(gap_source_ids)).order_by("name")
+    ]
+
     response = render(
         request,
         "workspaces/map.html",
@@ -106,6 +119,7 @@ def workspace_map(request, workspace_slug: str):
             "workspace": ws,
             "layers": layers,
             "layer_kinds": kind_values,
+            "mobility_gap_sources": mobility_gap_sources,
             "has_streets": has_streets,
             "has_cycling_gap_data": has_cycling_gap_data,
             "has_safe_school_data": has_safe_school_data,

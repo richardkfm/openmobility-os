@@ -663,9 +663,7 @@ class MobilitySnapshotCollectorTests(TestCase):
         from datasets.models import MobilitySnapshot
 
         fake = mock.Mock(feature_collection=self._fake_features(), record_count=2)
-        with mock.patch(
-            "datasets.management.commands.collect_mobility_snapshots.get_connector"
-        ) as get_conn:
+        with mock.patch("datasets.snapshots.get_connector") as get_conn:
             get_conn.return_value.fetch.return_value = fake
             call_command("collect_mobility_snapshots", "--workspace", "snap-city")
 
@@ -752,3 +750,132 @@ class SharedMobilityGapsViewTests(TestCase):
         resp = client.get(url)
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json()["samples"], 0)
+
+
+class CollectSnapshotViewTests(TestCase):
+    """The data-hub 'Collect snapshot now' admin action."""
+
+    def setUp(self):
+        from django.contrib.gis.geos import Point
+
+        self.ws = Workspace.objects.create(
+            slug="collect-city",
+            name="Collect City",
+            country_code="DE",
+            center=Point(12.37, 51.34, srid=4326),
+            is_active=True,
+        )
+        self.shared = DataSource.objects.create(
+            workspace=self.ws,
+            name="GBFS bikes",
+            source_type=DataSource.SourceType.GBFS,
+            layer_kind=DataSource.LayerKind.SHARED_VEHICLES,
+            config={},
+        )
+        self.other = DataSource.objects.create(
+            workspace=self.ws,
+            name="Streets",
+            source_type=DataSource.SourceType.GEOJSON_URL,
+            layer_kind=DataSource.LayerKind.STREETS,
+            config={"url": "https://example.com/x.geojson"},
+        )
+
+    @override_settings(ADMIN_TOKEN="secret")
+    def test_admin_can_collect_snapshot(self):
+        from datasets.models import MobilitySnapshot
+
+        fc = {
+            "type": "FeatureCollection",
+            "features": [
+                {
+                    "type": "Feature",
+                    "geometry": {"type": "Point", "coordinates": [12.37, 51.34]},
+                    "properties": {"form_factor": "bicycle"},
+                }
+            ],
+        }
+        client = Client()
+        with mock.patch("datasets.snapshots.get_connector") as get_conn:
+            get_conn.return_value.fetch.return_value = mock.Mock(feature_collection=fc)
+            url = reverse(
+                "data_source_snapshot",
+                kwargs={"workspace_slug": "collect-city", "pk": self.shared.pk},
+            )
+            resp = client.post(url, HTTP_AUTHORIZATION="Bearer secret")
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(MobilitySnapshot.objects.filter(source=self.shared).count(), 1)
+
+    @override_settings(ADMIN_TOKEN="secret")
+    def test_non_shared_source_rejected(self):
+        from datasets.models import MobilitySnapshot
+
+        client = Client()
+        url = reverse(
+            "data_source_snapshot",
+            kwargs={"workspace_slug": "collect-city", "pk": self.other.pk},
+        )
+        resp = client.post(url, HTTP_AUTHORIZATION="Bearer secret")
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(MobilitySnapshot.objects.count(), 0)
+
+    def test_non_admin_cannot_collect(self):
+        url = reverse(
+            "data_source_snapshot",
+            kwargs={"workspace_slug": "collect-city", "pk": self.shared.pk},
+        )
+        resp = Client().post(url)
+        self.assertIn(resp.status_code, (302, 403))
+
+
+@override_settings(
+    STORAGES={
+        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"
+        },
+    }
+)
+class MapGapOverlayContextTests(TestCase):
+    """The map page exposes the gap overlay only once snapshots exist."""
+
+    def setUp(self):
+        from django.contrib.gis.geos import Point
+
+        self.ws = Workspace.objects.create(
+            slug="overlay-city",
+            name="Overlay City",
+            country_code="DE",
+            center=Point(12.37, 51.34, srid=4326),
+            is_active=True,
+        )
+        self.source = DataSource.objects.create(
+            workspace=self.ws,
+            name="GBFS bikes",
+            source_type=DataSource.SourceType.GBFS,
+            layer_kind=DataSource.LayerKind.SHARED_VEHICLES,
+            config={},
+        )
+
+    def test_no_overlay_without_snapshots(self):
+        resp = Client().get(reverse("workspace_map", kwargs={"workspace_slug": "overlay-city"}))
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(list(resp.context["mobility_gap_sources"]), [])
+        self.assertNotContains(resp, "toggle-mobility-gaps")
+
+    def test_overlay_appears_with_snapshots(self):
+        from datasets.models import MobilitySnapshot
+
+        MobilitySnapshot.objects.create(
+            source=self.source,
+            workspace=self.ws,
+            captured_at=timezone.now(),
+            vehicle_count=1,
+            cell_counts={"1:1": {"bicycle": 1}},
+            cell_size_m=400,
+            lon_step=0.005,
+            lat_step=0.0036,
+        )
+        resp = Client().get(reverse("workspace_map", kwargs={"workspace_slug": "overlay-city"}))
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.context["mobility_gap_sources"]), 1)
+        self.assertContains(resp, "toggle-mobility-gaps")

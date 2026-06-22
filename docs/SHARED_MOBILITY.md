@@ -63,7 +63,14 @@ them.
 
 ### 3.1 Collecting snapshots
 
-Run the collector on a schedule — no external service required:
+**From the UI (quick start):** open the data source in the **Data hub** and
+click **Collect snapshot now**. The card shows how many snapshots are stored
+and when the last one was taken. This is the fastest way to start a history and
+try the overlay, but a single snapshot only captures one instant — gaps become
+meaningful once you have many across different times of day.
+
+**On a schedule (recommended):** run the collector via cron — no external
+service required:
 
 ```bash
 # Every 15 minutes; keep ~5 weeks of history.
@@ -80,7 +87,27 @@ Each run fetches every enabled `shared_vehicles` / `shared_stations` source,
 bins the vehicles into a fixed spatial grid, and stores one compact snapshot
 per source.
 
-### 3.2 Reading the gap grid (API)
+### 3.2 Viewing the gap overlay (map)
+
+Once a source has snapshots, an **Availability gaps** toggle appears in the
+map's layer panel. Switch it on to colour the city by how reliably vehicles are
+available:
+
+- **green** — a vehicle was almost always there (low gap)
+- **red** — the area was usually empty (high gap; a candidate for more vehicles
+  or rebalancing)
+
+Use the dropdowns to focus the question:
+
+- **time window** — last 24 h / 7 days / 4 weeks / 90 days
+- **time of day** — any / morning peak / evening peak / night
+- **day** — any / weekdays / weekend
+- **vehicle type** — all / bicycles / scooters / cars / …
+
+Hover any cell to see how often it ran empty, plus average and peak
+availability. If multiple shared sources have history, pick which fleet to show.
+
+### 3.3 Reading the gap grid (API)
 
 ```
 GET /api/v1/workspaces/<slug>/shared-mobility-gaps/
