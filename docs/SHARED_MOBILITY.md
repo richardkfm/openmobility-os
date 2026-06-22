@@ -63,11 +63,20 @@ them.
 
 ### 3.1 Collecting snapshots
 
-Run the collector on a schedule — no external service required:
+**From the UI (quick start):** open the data source in the **Data hub** and
+click **Collect snapshot now**. The card shows how many snapshots are stored
+and when the last one was taken. This is the fastest way to start a history and
+try the overlay, but a single snapshot only captures one instant — gaps become
+meaningful once you have many across different times of day.
+
+**On a schedule (recommended for real signal).** A single snapshot is one
+instant; meaningful gaps need many over time. Pick whichever fits your setup —
+no external service is required either way.
+
+The command itself is:
 
 ```bash
-# Every 15 minutes; keep ~5 weeks of history.
-*/15 * * * * python manage.py collect_mobility_snapshots --prune-days 35
+python manage.py collect_mobility_snapshots --prune-days 35
 ```
 
 Options:
@@ -80,7 +89,55 @@ Each run fetches every enabled `shared_vehicles` / `shared_stations` source,
 bins the vehicles into a fixed spatial grid, and stores one compact snapshot
 per source.
 
-### 3.2 Reading the gap grid (API)
+#### Option A — Docker Compose sidecar (easiest)
+
+A ready-made, opt-in `snapshots` service ships in `docker-compose.yml`. It
+reuses the web image and re-runs the collector on a loop. Plain
+`docker compose up` is unchanged; start the collector alongside your stack with:
+
+```bash
+docker compose --profile snapshots up -d
+```
+
+Tune it in `.env` (see `.env.example`):
+
+- `SNAPSHOT_INTERVAL_SECONDS` — how often to collect (default `900` = 15 min)
+- `SNAPSHOT_PRUNE_DAYS` — history to keep (default `35`)
+
+#### Option B — host cron
+
+If you'd rather schedule it yourself, add a line to the host crontab
+(`crontab -e`). For a Docker Compose deployment, call into the running web
+container:
+
+```cron
+*/15 * * * * cd /path/to/openmobility-os && docker compose exec -T web python manage.py collect_mobility_snapshots --prune-days 35
+```
+
+For a non-Docker install, run `manage.py` from the `backend/` directory in your
+virtualenv instead.
+
+### 3.2 Viewing the gap overlay (map)
+
+Once a source has snapshots, an **Availability gaps** toggle appears in the
+map's layer panel. Switch it on to colour the city by how reliably vehicles are
+available:
+
+- **green** — a vehicle was almost always there (low gap)
+- **red** — the area was usually empty (high gap; a candidate for more vehicles
+  or rebalancing)
+
+Use the dropdowns to focus the question:
+
+- **time window** — last 24 h / 7 days / 4 weeks / 90 days
+- **time of day** — any / morning peak / evening peak / night
+- **day** — any / weekdays / weekend
+- **vehicle type** — all / bicycles / scooters / cars / …
+
+Hover any cell to see how often it ran empty, plus average and peak
+availability. If multiple shared sources have history, pick which fleet to show.
+
+### 3.3 Reading the gap grid (API)
 
 ```
 GET /api/v1/workspaces/<slug>/shared-mobility-gaps/

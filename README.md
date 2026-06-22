@@ -3,7 +3,7 @@
 
 # OpenMobility OS
 
-**Version:** 0.45.1 (pre-release) — see [CHANGELOG.md](CHANGELOG.md)
+**Version:** 0.47.0 (pre-release) — see [CHANGELOG.md](CHANGELOG.md)
 **License:** See [LICENSE](LICENSE)
 
 > The open, free, self-hostable operating system between open mobility data
@@ -187,10 +187,11 @@ four demo workspaces: **Leipzig**, **Utrecht**, **Musterstadt**, and **Muster-La
     (capacity, available vehicles, free docks, availability ratio). A
     planner's tool, not a rider app: pair with the map's heatmap mode to spot
     where shared vehicles cluster and where the pick-up gaps are. GBFS v2/v3.
-    Optional **availability gap analysis over time** records snapshots on a
-    schedule and aggregates them into a grid showing where vehicles are
-    reliably available versus persistently empty, filterable by hour of day,
-    weekday and form factor (see [docs/SHARED_MOBILITY.md](docs/SHARED_MOBILITY.md))
+    Optional **availability gap analysis over time** records snapshots (one
+    click in the data hub, or on a schedule) and shows them as a **map overlay**
+    colouring areas from "always available" to "usually empty", filterable by
+    time window, hour of day, weekday and form factor — e.g. where do free cars
+    run out on weekday mornings (see [docs/SHARED_MOBILITY.md](docs/SHARED_MOBILITY.md))
   - Accident CSV — Destatis Unfallatlas (Germany) and generic international,
     both with optional bounding-box clipping to the workspace
   - **BikeMaps.org** — global crowdsourced cycling collisions, near-misses,
@@ -292,6 +293,11 @@ an Nginx or Caddy reverse proxy with TLS (the web container listens on 8000;
 keep the `db` port private), persist the `postgres_data` volume with regular
 `pg_dump` backups, and optionally point the map at self-hosted tile and Overpass
 servers.
+
+To collect shared-mobility availability history automatically, start the opt-in
+collector sidecar alongside your stack with
+`docker compose --profile snapshots up -d` (see
+[docs/SHARED_MOBILITY.md](docs/SHARED_MOBILITY.md)).
 
 🚀 **The full step-by-step guide — including reverse-proxy snippets, backups,
 and all map-tile / Overpass environment variables — lives in

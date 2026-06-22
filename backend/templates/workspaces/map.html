@@ -224,6 +224,65 @@
             </div>
           </div>
           {% endif %}
+
+          {# Shared-mobility availability gap overlay — only when snapshots exist #}
+          {% if mobility_gap_sources %}
+          <div class="pt-2 border-t mt-2" x-data="mobilityGaps()" x-init="init()">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="toggle-mobility-gaps" @change="toggle($event.target.checked)">
+              <span>{% trans "Availability gaps" %}</span>
+            </label>
+            <div x-show="enabled" x-cloak class="mt-2 ml-5 flex flex-col gap-1.5">
+              {% if mobility_gap_sources|length > 1 %}
+              <select x-model="sourceId" @change="refresh()"
+                      class="text-xs w-full border rounded px-1.5 py-1 text-slate-700">
+                {% for s in mobility_gap_sources %}
+                <option value="{{ s.id }}">{{ s.name }}</option>
+                {% endfor %}
+              </select>
+              {% endif %}
+              <select x-model="days" @change="refresh()"
+                      class="text-xs w-full border rounded px-1.5 py-1 text-slate-700">
+                <option value="1">{% trans "Last 24 hours" %}</option>
+                <option value="7">{% trans "Last 7 days" %}</option>
+                <option value="28">{% trans "Last 4 weeks" %}</option>
+                <option value="90">{% trans "Last 90 days" %}</option>
+              </select>
+              <select x-model="hours" @change="refresh()"
+                      class="text-xs w-full border rounded px-1.5 py-1 text-slate-700">
+                <option value="">{% trans "Any time of day" %}</option>
+                <option value="7-9">{% trans "Morning peak (7–9)" %}</option>
+                <option value="16-19">{% trans "Evening peak (16–19)" %}</option>
+                <option value="22-23,0-5">{% trans "Night (22–5)" %}</option>
+              </select>
+              <select x-model="weekdays" @change="refresh()"
+                      class="text-xs w-full border rounded px-1.5 py-1 text-slate-700">
+                <option value="">{% trans "Any day" %}</option>
+                <option value="1-5">{% trans "Weekdays" %}</option>
+                <option value="6-7">{% trans "Weekend" %}</option>
+              </select>
+              <select x-model="formFactor" @change="refresh()"
+                      class="text-xs w-full border rounded px-1.5 py-1 text-slate-700">
+                <option value="">{% trans "All vehicle types" %}</option>
+                <option value="bicycle">{% trans "Bicycles" %}</option>
+                <option value="cargo_bicycle">{% trans "Cargo bikes" %}</option>
+                <option value="scooter">{% trans "Scooters" %}</option>
+                <option value="moped">{% trans "Mopeds" %}</option>
+                <option value="car">{% trans "Cars" %}</option>
+              </select>
+              <div class="h-1.5 rounded" style="background:linear-gradient(90deg,#16a34a,#eab308,#dc2626)"></div>
+              <div class="flex justify-between text-xs text-slate-500">
+                <span>{% trans "Always available" %}</span><span>{% trans "Usually empty" %}</span>
+              </div>
+              <p class="text-xs text-slate-400" x-show="samples > 0">
+                <span x-text="samples"></span> {% trans "snapshots in window" %}
+              </p>
+              <p class="text-xs text-amber-600" x-show="enabled && samples === 0">
+                {% trans "No snapshots in this window yet — collect more or widen it." %}
+              </p>
+            </div>
+          </div>
+          {% endif %}
         </div>
       </div>
 
@@ -1589,6 +1648,57 @@ map.on("load", () => {
     districtPopup.remove();
   });
 
+  // ── Shared-mobility availability gap grid ──
+  map.addSource("mobility-gaps", {
+    type: "geojson",
+    data: { type: "FeatureCollection", features: [] },
+  });
+  map.addLayer({
+    id: "mobility-gaps-fill",
+    type: "fill",
+    source: "mobility-gaps",
+    layout: { visibility: "none" },
+    paint: {
+      // gap_rate 0 = always available (green) … 1 = usually empty (red).
+      "fill-color": [
+        "interpolate", ["linear"], ["coalesce", ["get", "gap_rate"], 0],
+        0,   "#16a34a",
+        0.5, "#eab308",
+        1,   "#dc2626"
+      ],
+      "fill-opacity": 0.5,
+    },
+  });
+  map.addLayer({
+    id: "mobility-gaps-outline",
+    type: "line",
+    source: "mobility-gaps",
+    layout: { visibility: "none" },
+    paint: { "line-color": "#475569", "line-width": 0.5, "line-opacity": 0.3 },
+  });
+
+  const gapPopup = new maplibregl.Popup({ closeButton: false, closeOnClick: false });
+  map.on("mousemove", "mobility-gaps-fill", (e) => {
+    if (!e.features.length) return;
+    const p = e.features[0].properties;
+    map.getCanvas().style.cursor = "pointer";
+    const gapPct = Math.round((p.gap_rate ?? 0) * 100);
+    gapPopup
+      .setLngLat(e.lngLat)
+      .setHTML(
+        `<div class="text-xs grid gap-0.5">` +
+        `<div class="font-semibold">{% trans "Empty" %} ${gapPct}% {% trans "of the time" %}</div>` +
+        `<div>{% trans "Avg available" %}: ${escHtml(p.mean_count)}</div>` +
+        `<div class="text-slate-500">{% trans "Peak" %} ${escHtml(p.max_count)} · ${escHtml(p.samples)} {% trans "samples" %}</div>` +
+        `</div>`
+      )
+      .addTo(map);
+  });
+  map.on("mouseleave", "mobility-gaps-fill", () => {
+    map.getCanvas().style.cursor = "";
+    gapPopup.remove();
+  });
+
   document.querySelectorAll(".layer-toggle").forEach(checkbox => {
     checkbox.addEventListener("change", (e) => {
       dismissStoryView(); // change events only fire on user interaction
@@ -2029,6 +2139,58 @@ function districtScores() {
         fetch(`/api/v1/workspaces/${WORKSPACE_SLUG}/district-scores/?${params.toString()}`)
           .then(r => r.json())
           .then(fc => src.setData(fc))
+          .catch(() => {});
+      }, 200);
+    },
+  };
+}
+
+// ─── Shared-mobility availability gap grid ────────────────────────────────────
+
+function mobilityGaps() {
+  return {
+    enabled: false,
+    sourceId: "{{ mobility_gap_sources.0.id }}",
+    days: "7",
+    hours: "",
+    weekdays: "",
+    formFactor: "",
+    samples: 0,
+    _fetchTimer: null,
+
+    init() {},
+
+    toggle(checked) {
+      dismissStoryView();
+      this.enabled = checked;
+      const vis = checked ? "visible" : "none";
+      if (map.getLayer("mobility-gaps-fill")) map.setLayoutProperty("mobility-gaps-fill", "visibility", vis);
+      if (map.getLayer("mobility-gaps-outline")) map.setLayoutProperty("mobility-gaps-outline", "visibility", vis);
+      if (checked) this._fetch();
+      document.dispatchEvent(new CustomEvent("omos:layerschanged"));
+    },
+
+    refresh() {
+      if (this.enabled) this._fetch();
+    },
+
+    _fetch() {
+      if (this._fetchTimer) clearTimeout(this._fetchTimer);
+      this._fetchTimer = setTimeout(() => {
+        const src = map.getSource("mobility-gaps");
+        if (!src) return;
+        const params = new URLSearchParams();
+        if (this.sourceId) params.set("source", this.sourceId);
+        if (this.days) params.set("days", this.days);
+        if (this.hours) params.set("hours", this.hours);
+        if (this.weekdays) params.set("weekdays", this.weekdays);
+        if (this.formFactor) params.set("form_factors", this.formFactor);
+        fetch(`/api/v1/workspaces/${WORKSPACE_SLUG}/shared-mobility-gaps/?${params.toString()}`)
+          .then(r => r.json())
+          .then(fc => {
+            this.samples = fc.samples || 0;
+            src.setData(fc);
+          })
           .catch(() => {});
       }, 200);
     },

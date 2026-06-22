@@ -8,6 +8,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Built-in scheduled snapshot collector** — an opt-in `snapshots` service in
+  `docker-compose.yml` collects shared-mobility availability history
+  automatically. Start it with `docker compose --profile snapshots up -d`
+  (plain `docker compose up` is unchanged); tune the cadence and retention with
+  the new `SNAPSHOT_INTERVAL_SECONDS` and `SNAPSHOT_PRUNE_DAYS` settings. The
+  docs also show a host-cron alternative.
+- **Availability gaps as a map overlay** — the shared-mobility gap analysis is
+  now visible directly on the map: a new "Availability gaps" toggle colours the
+  area from green ("always available") to red ("usually empty"), with controls
+  for the time window, time of day (e.g. morning peak), weekday (e.g. weekdays
+  only), and vehicle type (bikes / scooters / cars). Hovering a cell shows how
+  often it runs empty plus average and peak availability.
+- **One-click snapshot collection** — each shared-mobility data source now has
+  a "Collect snapshot now" button (and a running snapshot count) in the data
+  hub, so you can start building availability history without first setting up
+  the scheduled `collect_mobility_snapshots` command.
+
 - **Shared-mobility availability gap analysis over time** — because GBFS feeds
   only show the live state, OpenMobility OS can now record shared-mobility
   snapshots on a schedule (a new `collect_mobility_snapshots` command meant for
