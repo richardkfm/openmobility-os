@@ -137,6 +137,14 @@ four demo workspaces: **Leipzig**, **Utrecht**, **Musterstadt**, and **Muster-La
 7. **To stop**, press `Ctrl+C` in the terminal. Data persists in the
    `postgres_data` volume until you run `docker compose down -v`.
 
+> **Deploying to a remote server (not `localhost`)?** The steps above are tuned
+> for local use. Before you open the site by its domain or IP, add that host to
+> `ALLOWED_HOSTS` in `.env` — otherwise Django answers every request with a bare
+> **`400 Bad Request`** (`DisallowedHost`). If you terminate TLS at a reverse
+> proxy, also set `CSRF_TRUSTED_ORIGINS`. See
+> [Production Deployment](#production-deployment) and
+> [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for the full hardening checklist.
+
 ## Core Features (MVP)
 
 - **Multi-workspace** — arbitrary number of cities per installation

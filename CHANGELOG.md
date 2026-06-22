@@ -116,6 +116,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   click early will fill in as the data arrives).
 
 ### Changed
+- **Clearer remote-deployment guidance** — the quickstart and `.env.example`
+  now warn that the default `ALLOWED_HOSTS` works for `localhost` only; when you
+  deploy to a real server you must add its domain or IP, otherwise Django
+  returns a bare **`400 Bad Request`** (`DisallowedHost`). The note also points
+  HTTPS deployers at `CSRF_TRUSTED_ORIGINS`.
 - **Slimmed-down README** — the long "Using the Platform" and "Production
   Deployment" sections moved into dedicated guides (`docs/USER_GUIDE.md`,
   `docs/DEPLOYMENT.md`), leaving a scannable README with summaries and links.
