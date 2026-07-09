@@ -23,7 +23,9 @@ It answers questions like:
   data-backed?
 - How can these decisions be explained to the public?
 
-<img width="240" height="240" alt="omos2_heaptmap" src="https://github.com/user-attachments/assets/5c9ebc1c-b87b-484d-a5fe-6e1dfe1411ac" />
+
+<img width="800" height="779" alt="omos_v047de_t2-shorter2" src="https://github.com/user-attachments/assets/0419a7df-9a9e-4d63-8a4b-43a8b79d43f8" />
+
 
 Leipzig (Germany) and Utrecht (Netherlands) are the two real-city demo
 workspaces — one developing its cycling infrastructure, the other a
