@@ -107,7 +107,11 @@ class EffectCombinationTests(TestCase):
         ws = Workspace(
             slug="x",
             name="X",
-            settings={"effect_factors": {"protected_bike_lane": {"low": 0.5, "central": 0.6, "high": 0.7}}},
+            settings={
+                "effect_factors": {
+                    "protected_bike_lane": {"low": 0.5, "central": 0.6, "high": 0.7}
+                }
+            },
         )
         factor = effects.factors_for(ws)["protected_bike_lane"]
         self.assertEqual(factor["central"], 0.6)

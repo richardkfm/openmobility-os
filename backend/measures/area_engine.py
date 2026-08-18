@@ -24,6 +24,8 @@ it would quietly turn "this is difficult" into "this is not a problem".
 import json
 from dataclasses import dataclass, field
 
+from django.contrib.gis.geos import GEOSGeometry
+
 from datasets.models import NormalizedFeatureSet
 from goals.indicators import compute_baseline, get_indicator
 
@@ -211,8 +213,10 @@ def build_area_plan(area_target) -> AreaPlan:
     for finder in INTERVENTION_FINDERS:
         try:
             candidates.extend(finder(context) or [])
-        except Exception as exc:  # noqa: BLE001 — one broken finder must not
-            baseline_meta.setdefault("finder_errors", []).append(  # sink the plan
+        # A finder is third-party-ish extension code; one that raises must not
+        # take the whole plan down with it, so the failure is recorded instead.
+        except Exception as exc:
+            baseline_meta.setdefault("finder_errors", []).append(
                 {"finder": finder.__name__, "error": str(exc)}
             )
 
@@ -464,8 +468,6 @@ def _persist_items(plan, items, area_target):
 
 
 def _upsert_measure(ws, area, slug, cand, budget, factor, item):
-    from django.contrib.gis.geos import GEOSGeometry
-
     geometry = None
     if cand.geometry:
         try:
@@ -647,8 +649,7 @@ def _describe(cand, budget, factor, lang) -> str:
             "Zielindikators.\n\n"
             "## Flächenbilanz\n"
             f"- Benötigte Breite: {budget.required_width_m or 0} m\n"
-            f"- Verfügbare Breite: "
-            f"{budget.available_width_m if budget.available_width_m is not None else 'unbekannt'} m "
+            f"- Verfügbare Breite: {_width_text(budget, 'unbekannt')} m "
             f"({budget.width_confidence})\n"
             f"- {space_de}\n"
             f"- Erfasste Zwangspunkte: {obstacles}\n\n"
@@ -668,8 +669,7 @@ def _describe(cand, budget, factor, lang) -> str:
         "indicator.\n\n"
         "## Space budget\n"
         f"- Width required: {budget.required_width_m or 0} m\n"
-        f"- Width available: "
-        f"{budget.available_width_m if budget.available_width_m is not None else 'unknown'} m "
+        f"- Width available: {_width_text(budget, 'unknown')} m "
         f"({budget.width_confidence})\n"
         f"- {space_en}\n"
         f"- Recorded obstacles: {obstacles}\n\n"
@@ -683,6 +683,13 @@ def _describe(cand, budget, factor, lang) -> str:
             else ""
         )
     )
+
+
+def _width_text(budget, unknown_label):
+    """Width as text, saying plainly when the data does not state one."""
+    if budget.available_width_m is None:
+        return unknown_label
+    return str(budget.available_width_m)
 
 
 def _effect_line(factor, *, de):

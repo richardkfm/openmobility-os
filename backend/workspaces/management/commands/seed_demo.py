@@ -206,15 +206,18 @@ class Command(BaseCommand):
             # AreaTarget.clean() refuses a non-zero target on an indicator that
             # counts people killed or seriously injured, so a seed config cannot
             # smuggle in a "90 % fewer deaths" goal either.
-            target = AreaTarget.objects.filter(focus_area=area, code=target_cfg.get("code", "primary")).first()
+            code = target_cfg.get("code", "primary")
+            target = AreaTarget.objects.filter(focus_area=area, code=code).first()
             if target is None:
-                target = AreaTarget(focus_area=area, code=target_cfg.get("code", "primary"))
+                target = AreaTarget(focus_area=area, code=code)
             target.workspace = ws
             target.indicator = indicator
-            target.target_mode = target_cfg.get(
-                "target_mode",
-                AreaTarget.TargetMode.ZERO if is_vision_zero(indicator) else AreaTarget.TargetMode.ABSOLUTE,
+            default_mode = (
+                AreaTarget.TargetMode.ZERO
+                if is_vision_zero(indicator)
+                else AreaTarget.TargetMode.ABSOLUTE
             )
+            target.target_mode = target_cfg.get("target_mode", default_mode)
             target.target_value = 0 if is_vision_zero(indicator) else target_cfg.get("target_value")
             target.unit = target_cfg.get("unit", "")
             target.deadline_year = target_cfg.get("deadline_year")
