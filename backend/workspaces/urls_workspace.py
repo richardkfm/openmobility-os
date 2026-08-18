@@ -7,6 +7,7 @@ from measures import views as measure_views
 
 from . import views
 from . import views_admin
+from . import views_areas
 from . import views_export
 
 urlpatterns = [
@@ -46,6 +47,17 @@ urlpatterns = [
     path("data/<int:pk>/test/", dataset_views.test_data_source, name="data_source_test"),
     path("data/<int:pk>/toggle/", dataset_views.toggle_data_source, name="data_source_toggle"),
     path("data/<int:pk>/delete/", dataset_views.delete_data_source, name="data_source_delete"),
+    # NOTE: as with measures/ above, the static areas/ sub-paths must stay above
+    # the <slug:area_slug> pattern or that catch-all swallows them.
+    path("areas/", views_areas.areas_list, name="areas_list"),
+    path("areas/create/", views_areas.area_create, name="area_create"),
+    path("areas/<slug:area_slug>/", views_areas.area_detail, name="area_detail"),
+    path(
+        "areas/<slug:area_slug>/generate/",
+        views_areas.area_generate_plan,
+        name="area_generate_plan",
+    ),
+    path("areas/<slug:area_slug>/delete/", views_areas.area_delete, name="area_delete"),
     path("methodology/", views.workspace_methodology, name="workspace_methodology"),
     path("admin/health/", views_admin.HealthDashboardView.as_view(), name="workspace_health"),
     path("admin/export/", views_export.ExportView.as_view(), name="workspace_export"),

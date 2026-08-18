@@ -49,7 +49,7 @@ local politics, NGOs, journalists, researchers, and citizens.
 | `datasets`    | Data sources and normalized feature sets                     |
 | `connectors`  | Pluggable adapters (CSV, GeoJSON, OSM Overpass, stubs, ...)  |
 | `measures`    | Rule-based engine + transparent scoring                      |
-| `goals`       | Workspace-level policy goals and KPI targets                 |
+| `goals`       | Workspace- and area-level policy goals and KPI targets       |
 | `maps`        | GeoJSON API endpoints consumed by MapLibre                   |
 | `api`         | Public read-only REST API                                    |
 

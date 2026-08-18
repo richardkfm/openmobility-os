@@ -1153,3 +1153,551 @@ msgstr ""
 #: backend/templates/workspaces/map.html
 msgid "Green areas, tree dots and rose fresh-air corridors are the city's network of cool refuges; the population grid underneath shows where people actually live. Densely populated cells with no green space or corridor within easy reach are the gaps to close with new parks, street trees and protected ventilation paths."
 msgstr ""
+
+#: backend/datasets/models.py:48
+msgid "Kerbside / on-street parking"
+msgstr ""
+
+#: backend/datasets/models.py:49
+msgid "Motor-traffic lanes and widths"
+msgstr ""
+
+#: backend/datasets/models.py:50
+msgid "Physical obstacles in the street profile"
+msgstr ""
+
+#: backend/goals/models.py:63
+msgid "Zero — no one killed or seriously injured"
+msgstr ""
+
+#: backend/goals/models.py:64
+msgid "Absolute value"
+msgstr ""
+
+#: backend/goals/models.py:65
+msgid "Percentage change"
+msgstr ""
+
+#: backend/goals/models.py:68
+msgid "Lower is better"
+msgstr ""
+
+#: backend/goals/models.py:69
+msgid "Higher is better"
+msgstr ""
+
+#: backend/goals/models.py:81
+msgid "Key from the indicator catalogue (goals/indicators.py)."
+msgstr ""
+
+#: backend/goals/models.py:94
+msgid "How the baseline was computed — years, counts, filters."
+msgstr ""
+
+#: backend/goals/models.py:107
+msgid "City-wide goal this area target contributes to."
+msgstr ""
+
+#: backend/goals/models.py:131
+msgid ""
+"Targets for people killed or seriously injured must be zero. A percentage or "
+"residual target would declare a number of deaths acceptable."
+msgstr ""
+
+#: backend/goals/models.py:139
+msgid "This target can only be zero."
+msgstr ""
+
+#: backend/measures/models.py:71
+msgid "Set when this measure belongs to an area plan."
+msgstr ""
+
+#: backend/measures/models.py:217
+msgid "Protected cycle lane"
+msgstr ""
+
+#: backend/measures/models.py:218
+msgid "Safe crossing"
+msgstr ""
+
+#: backend/measures/models.py:219
+msgid "30 km/h speed limit"
+msgstr ""
+
+#: backend/measures/models.py:220
+msgid "Junction redesign"
+msgstr ""
+
+#: backend/measures/models.py:221
+msgid "Traffic calming"
+msgstr ""
+
+#: backend/measures/models.py:224
+msgid "No extra width needed"
+msgstr ""
+
+#: backend/measures/models.py:225
+msgid "Removing kerbside parking"
+msgstr ""
+
+#: backend/measures/models.py:226
+msgid "Reallocating a motor-traffic lane"
+msgstr ""
+
+#: backend/measures/models.py:227
+msgid "Narrowing the carriageway"
+msgstr ""
+
+#: backend/measures/models.py:228
+msgid "Width unknown — check on site"
+msgstr ""
+
+#: backend/measures/models.py:229
+msgid "Does not fit — needs a larger rebuild"
+msgstr ""
+
+#: backend/measures/models.py:232
+msgid "Stated in the source data"
+msgstr ""
+
+#: backend/measures/models.py:233
+msgid "Estimated from lane count"
+msgstr ""
+
+#: backend/measures/models.py:234
+msgid "Not available"
+msgstr ""
+
+#: backend/measures/models.py:237
+msgid "Includes people killed or seriously injured"
+msgstr ""
+
+#: backend/measures/models.py:238
+msgid "Slight injuries only"
+msgstr ""
+
+#: backend/measures/models.py:265
+msgid "Share of the area's baseline harm on this segment."
+msgstr ""
+
+#: backend/templates/workspaces/area_detail.html:12
+#: backend/templates/workspaces/areas.html:4
+#: backend/templates/workspaces/areas.html:10
+#: backend/templates/workspaces/base_workspace.html:26
+#: backend/templates/workspaces/map.html:155
+msgid "Target areas"
+msgstr ""
+
+#: backend/templates/workspaces/area_detail.html:16
+msgid "by"
+msgstr ""
+
+#: backend/templates/workspaces/area_detail.html:25
+msgid "Rebuild plan"
+msgstr ""
+
+#: backend/templates/workspaces/area_detail.html:29
+msgid "Delete this target area and its plan?"
+msgstr ""
+
+#: backend/templates/workspaces/area_detail.html:32
+msgid "Delete area"
+msgstr ""
+
+#: backend/templates/workspaces/area_detail.html:41
+msgid "No plan has been generated for this area yet."
+msgstr ""
+
+#: backend/templates/workspaces/area_detail.html:48
+msgid "Expected outcome"
+msgstr ""
+
+#: backend/templates/workspaces/area_detail.html:52
+msgid "Today (baseline)"
+msgstr ""
+
+#: backend/templates/workspaces/area_detail.html:57
+#: backend/templates/workspaces/areas.html:56
+msgid "After the plan"
+msgstr ""
+
+#: backend/templates/workspaces/area_detail.html:60
+#, python-format
+msgid "range %(hi)s–%(lo)s"
+msgstr ""
+
+#: backend/templates/workspaces/area_detail.html:66
+#: backend/templates/workspaces/areas.html:60
+msgid "Target"
+msgstr ""
+
+#: backend/templates/workspaces/area_detail.html:69
+msgid "Vision Zero — nothing else is a target"
+msgstr ""
+
+#: backend/templates/workspaces/area_detail.html:77
+msgid "Still open:"
+msgstr ""
+
+#: backend/templates/workspaces/area_detail.html:78
+#, python-format
+msgid ""
+"even with every segment below rebuilt, about %(n)s %(unit)s are still "
+"expected in this area each year."
+msgstr ""
+
+#: backend/templates/workspaces/area_detail.html:83
+msgid ""
+"For a target of zero people killed or seriously injured, that is not a "
+"partial success — it is the part of the problem this plan does not yet solve."
+msgstr ""
+
+#: backend/templates/workspaces/area_detail.html:91
+#: backend/templates/workspaces/areas.html:75
+msgid "The plan is projected to reach the target."
+msgstr ""
+
+#: backend/templates/workspaces/area_detail.html:97
+#, python-format
+msgid ""
+"Note: only %(n)s recorded cases in this area over the counting window (below "
+"%(min)s). Rates on small numbers move a lot by chance — treat the projection "
+"as indicative."
+msgstr ""
+
+#: backend/templates/workspaces/area_detail.html:108
+msgid "What the rebuild costs"
+msgstr ""
+
+#: backend/templates/workspaces/area_detail.html:110
+msgid ""
+"The space for new cycling infrastructure has to come from somewhere. This is "
+"where, so the trade-off is on the table before the debate starts."
+msgstr ""
+
+#: backend/templates/workspaces/area_detail.html:118
+msgid "Parking spaces removed"
+msgstr ""
+
+#: backend/templates/workspaces/area_detail.html:122
+msgid "Motor-traffic lanes reallocated"
+msgstr ""
+
+#: backend/templates/workspaces/area_detail.html:126
+msgid "Segments needing a site check"
+msgstr ""
+
+#: backend/templates/workspaces/area_detail.html:130
+msgid "Segments that do not fit"
+msgstr ""
+
+#: backend/templates/workspaces/area_detail.html:140
+msgid "Proposed segments"
+msgstr ""
+
+#: backend/templates/workspaces/area_detail.html:142
+msgid ""
+"Ordered so that segments where someone was killed or seriously injured come "
+"first, whatever the case counts elsewhere. The order sequences the work — it "
+"is not a reason to leave anything out."
+msgstr ""
+
+#: backend/templates/workspaces/area_detail.html:154
+msgid "Measure"
+msgstr ""
+
+#: backend/templates/workspaces/area_detail.html:155
+msgid "Length"
+msgstr ""
+
+#: backend/templates/workspaces/area_detail.html:156
+msgid "Width needed / available"
+msgstr ""
+
+#: backend/templates/workspaces/area_detail.html:157
+msgid "Space from"
+msgstr ""
+
+#: backend/templates/workspaces/area_detail.html:158
+msgid "Share of harm"
+msgstr ""
+
+#: backend/templates/workspaces/area_detail.html:159
+msgid "Expected effect"
+msgstr ""
+
+#: backend/templates/workspaces/area_detail.html:160
+#: backend/templates/workspaces/methodology.html:106
+msgid "Source"
+msgstr ""
+
+#: backend/templates/workspaces/area_detail.html:172
+msgid "killed / seriously injured"
+msgstr ""
+
+#: backend/templates/workspaces/area_detail.html:183
+msgid "check on site"
+msgstr ""
+
+#: backend/templates/workspaces/area_detail.html:190
+msgid "parking spaces"
+msgstr ""
+
+#: backend/templates/workspaces/area_detail.html:195
+msgid "lane(s)"
+msgstr ""
+
+#: backend/templates/workspaces/area_detail.html:200
+msgid "obstacles:"
+msgstr ""
+
+#: backend/templates/workspaces/area_detail.html:210
+#: backend/templates/workspaces/area_detail.html:277
+msgid "confidence"
+msgstr ""
+
+#: backend/templates/workspaces/area_detail.html:221
+msgid ""
+"No segments proposed — this area has no recorded harm of the kind this "
+"target measures."
+msgstr ""
+
+#: backend/templates/workspaces/area_detail.html:232
+msgid "How far each step gets you"
+msgstr ""
+
+#: backend/templates/workspaces/area_detail.html:241
+msgid "left"
+msgstr ""
+
+#: backend/templates/workspaces/area_detail.html:251
+msgid "Assumptions behind these numbers"
+msgstr ""
+
+#: backend/templates/workspaces/area_detail.html:254
+msgid "Baseline"
+msgstr ""
+
+#: backend/templates/workspaces/area_detail.html:256
+#, python-format
+msgid "%(n)s recorded cases across %(years)s."
+msgstr ""
+
+#: backend/templates/workspaces/area_detail.html:262
+msgid "Rules applied"
+msgstr ""
+
+#: backend/templates/workspaces/area_detail.html:269
+msgid "Effect factors used"
+msgstr ""
+
+#: backend/templates/workspaces/area_detail.html:276
+msgid "planning figure"
+msgstr ""
+
+#: backend/templates/workspaces/area_detail.html:284
+msgid "placeholder — not yet checked against the source"
+msgstr ""
+
+#: backend/templates/workspaces/area_detail.html:292
+msgid ""
+"This is a projection built from published evidence applied to this area's "
+"own data — not a simulation of traffic and not a promise about any "
+"individual crash. Regression to the mean is not corrected for. The space "
+"budget shows the scale of the conflict; it does not replace detailed design."
+msgstr ""
+
+#: backend/templates/workspaces/areas.html:12
+msgid ""
+"A target area is a part of the city with a goal attached to it. OpenMobility "
+"OS works out which streets to rebuild to get there, what the rebuild costs "
+"in parking and carriageway, and how much harm is still expected afterwards."
+msgstr ""
+
+#: backend/templates/workspaces/areas.html:22
+msgid ""
+"This workspace has no accident data yet, so there is nothing to set a target "
+"against. Add an accidents source in the data hub first."
+msgstr ""
+
+#: backend/templates/workspaces/areas.html:52
+msgid "Today"
+msgstr ""
+
+#: backend/templates/workspaces/areas.html:68
+#, python-format
+msgid ""
+"Still expected after the whole plan is built: %(n)s %(unit)s. The target is "
+"not reached — this is an open task, not a result."
+msgstr ""
+
+#: backend/templates/workspaces/areas.html:80
+#, python-format
+msgid "Costs approx. %(n)s parking spaces and %(lanes)s motor-traffic lane(s)."
+msgstr ""
+
+#: backend/templates/workspaces/areas.html:86
+msgid "No plan generated yet."
+msgstr ""
+
+#: backend/templates/workspaces/areas.html:91
+msgid "Open the plan"
+msgstr ""
+
+#: backend/templates/workspaces/areas.html:98
+msgid ""
+"No target areas yet. Open the map, pick a story view, and use “Define target "
+"area” to draw one."
+msgstr ""
+
+#: backend/templates/workspaces/areas.html:103
+msgid "Go to the map"
+msgstr ""
+
+#: backend/templates/workspaces/areas.html:108
+msgid ""
+"Projections estimate the effect of published road-safety evidence on this "
+"area's own data. They are planning figures with an uncertainty range, not a "
+"forecast of individual events. Every factor and its source is listed on the "
+"methodology page."
+msgstr ""
+
+#: backend/templates/workspaces/map.html:162
+msgid "Show target areas"
+msgstr ""
+
+#: backend/templates/workspaces/map.html:169
+msgid "Define target area"
+msgstr ""
+
+#: backend/templates/workspaces/map.html:176
+msgid ""
+"Click on the map to place corners, double-click to close the area. Or click "
+"an existing area on a visible polygon layer to adopt its shape."
+msgstr ""
+
+#: backend/templates/workspaces/map.html:191
+msgid "Area name"
+msgstr ""
+
+#: backend/templates/workspaces/map.html:209
+msgid ""
+"Target: zero people killed or seriously injured. No percentage target is "
+"offered here — a share of deaths is not something to plan for."
+msgstr ""
+
+#: backend/templates/workspaces/map.html:214
+msgid "Target value (per year)"
+msgstr ""
+
+#: backend/templates/workspaces/map.html:219
+msgid "Target year"
+msgstr ""
+
+#: backend/templates/workspaces/map.html:225
+msgid "Create and plan"
+msgstr ""
+
+#: backend/templates/workspaces/map.html:235
+msgid "All target areas"
+msgstr ""
+
+#: backend/templates/workspaces/methodology.html:75
+msgid "Area targets and impact projection"
+msgstr ""
+
+#: backend/templates/workspaces/methodology.html:78
+msgid ""
+"A target area combines a polygon with a goal. The baseline is counted from "
+"this workspace's own accident records inside that polygon; the projection "
+"applies published effect factors to the segments proposed for rebuilding. It "
+"is a planning estimate with a stated range, not a forecast of individual "
+"events, and regression to the mean is not corrected for."
+msgstr ""
+
+#: backend/templates/workspaces/methodology.html:88
+msgid "Targets for people killed or seriously injured are always zero."
+msgstr ""
+
+#: backend/templates/workspaces/methodology.html:99
+msgid "Effect factors in use"
+msgstr ""
+
+#: backend/templates/workspaces/methodology.html:103
+msgid "Intervention"
+msgstr ""
+
+#: backend/templates/workspaces/methodology.html:104
+msgid "Range"
+msgstr ""
+
+#: backend/templates/workspaces/methodology.html:105
+msgid "Confidence"
+msgstr ""
+
+#: backend/templates/workspaces/methodology.html:120
+msgid "placeholder, unchecked"
+msgstr ""
+
+#: backend/templates/workspaces/methodology.html:123
+msgid "overridden locally"
+msgstr ""
+
+#: backend/templates/workspaces/methodology.html:139
+msgid "Street-space assumptions"
+msgstr ""
+
+#: backend/templates/workspaces/methodology.html:141
+#, python-format
+msgid ""
+"One motor-traffic lane is assumed to be %(lane)s m wide, and at least "
+"%(rest)s m of carriageway must remain after any reallocation. Parking-space "
+"counts are derived from segment length and bay length. Where the source data "
+"states no width, the plan says “check on site” instead of estimating. Design "
+"standards differ by country — override these per workspace."
+msgstr ""
+
+#: backend/workspaces/models.py:135
+msgid "Drawn on the map"
+msgstr ""
+
+#: backend/workspaces/models.py:136
+msgid "Adopted from an existing area"
+msgstr ""
+
+#: backend/workspaces/models.py:137
+msgid "Map viewport"
+msgstr ""
+
+#: backend/workspaces/models.py:152
+msgid "Where an adopted geometry came from (layer and feature name)."
+msgstr ""
+
+#: backend/workspaces/views_areas.py:150
+msgid "Name, area geometry, and indicator are required."
+msgstr ""
+
+#: backend/workspaces/views_areas.py:156
+msgid "The area geometry could not be read."
+msgstr ""
+
+#: backend/workspaces/views_areas.py:162
+msgid "A focus area must be a polygon."
+msgstr ""
+
+#: backend/workspaces/views_areas.py:202
+msgid "Focus area created and plan generated."
+msgstr ""
+
+#: backend/workspaces/views_areas.py:215
+msgid "This area has no target to plan against."
+msgstr ""
+
+#: backend/workspaces/views_areas.py:220
+#, python-format
+msgid "Plan rebuilt: %(n)d segments."
+msgstr ""
+
+#: backend/workspaces/views_areas.py:233
+msgid "Focus area deleted."
+msgstr ""

@@ -5,10 +5,11 @@ Covers the `seed_unfallatlas` command end-to-end without hitting the network.
 
 from __future__ import annotations
 
+import json
 from io import StringIO
 from unittest import mock
 
-from django.contrib.gis.geos import Polygon
+from django.contrib.gis.geos import Point, Polygon
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.test import TestCase, override_settings
@@ -19,7 +20,7 @@ from workspaces.management.commands.seed_unfallatlas import (
     _disable_demo_accidents,
     _parse_years,
 )
-from workspaces.models import Workspace
+from workspaces.models import FocusArea, Workspace
 
 
 class ParseYearsTests(TestCase):
@@ -405,3 +406,113 @@ class WizardGeocodeViewTests(TestCase):
 
         self.assertEqual(resp.status_code, 502)
         self.assertIn("error", resp.json())
+
+
+class FocusAreaViewTests(TestCase):
+    """Write actions are token-protected; reads are public; workspaces isolate."""
+
+    def setUp(self):
+        from django.contrib.gis.geos import MultiPolygon, Polygon
+
+        self.ws = Workspace.objects.create(
+            slug="alpha", name="Alpha", center=Point(0.01, 0.01, srid=4326)
+        )
+        self.other = Workspace.objects.create(slug="beta", name="Beta")
+        self.area = FocusArea.objects.create(
+            workspace=self.ws,
+            slug="core",
+            name="Core",
+            geometry=MultiPolygon(Polygon.from_bbox((0, 0, 0.02, 0.02)), srid=4326),
+        )
+
+    def test_area_list_is_public(self):
+        response = self.client.get(f"/{self.ws.slug}/areas/")
+        self.assertEqual(response.status_code, 200)
+
+    def test_area_detail_is_public(self):
+        response = self.client.get(f"/{self.ws.slug}/areas/{self.area.slug}/")
+        self.assertEqual(response.status_code, 200)
+
+    def test_area_of_another_workspace_is_not_reachable(self):
+        """Cross-workspace leakage is a bug, not a convenience."""
+        response = self.client.get(f"/{self.other.slug}/areas/{self.area.slug}/")
+        self.assertEqual(response.status_code, 404)
+
+    @override_settings(ADMIN_TOKEN="test-token")
+    def test_create_requires_the_admin_token(self):
+        response = self.client.post(f"/{self.ws.slug}/areas/create/", {})
+        self.assertEqual(response.status_code, 403)
+
+    @override_settings(ADMIN_TOKEN="test-token")
+    def test_generate_requires_the_admin_token(self):
+        response = self.client.post(
+            f"/{self.ws.slug}/areas/{self.area.slug}/generate/"
+        )
+        self.assertEqual(response.status_code, 403)
+
+    @override_settings(ADMIN_TOKEN="test-token")
+    def test_delete_requires_the_admin_token(self):
+        response = self.client.post(f"/{self.ws.slug}/areas/{self.area.slug}/delete/")
+        self.assertEqual(response.status_code, 403)
+        self.assertTrue(FocusArea.objects.filter(pk=self.area.pk).exists())
+
+    @override_settings(ADMIN_TOKEN="test-token")
+    def test_admin_can_create_an_area_with_a_vision_zero_target(self):
+        polygon = json.dumps(
+            {
+                "type": "Polygon",
+                "coordinates": [
+                    [[0, 0], [0.02, 0], [0.02, 0.02], [0, 0.02], [0, 0]]
+                ],
+            }
+        )
+        response = self.client.post(
+            f"/{self.ws.slug}/areas/create/",
+            {
+                "name": "Ring Road",
+                "geometry": polygon,
+                "indicator": "cyclist_fatal_serious",
+                "deadline_year": "2030",
+            },
+            HTTP_AUTHORIZATION="Bearer test-token",
+        )
+        self.assertEqual(response.status_code, 302)
+        area = FocusArea.objects.get(workspace=self.ws, slug="ring-road")
+        target = area.current_target
+        self.assertEqual(target.target_value, 0)
+        self.assertEqual(target.target_mode, "zero")
+
+
+class FocusAreaApiTests(TestCase):
+    def setUp(self):
+        from django.contrib.gis.geos import MultiPolygon, Polygon
+
+        self.ws = Workspace.objects.create(slug="alpha", name="Alpha")
+        self.area = FocusArea.objects.create(
+            workspace=self.ws,
+            slug="core",
+            name="Core",
+            geometry=MultiPolygon(Polygon.from_bbox((0, 0, 0.02, 0.02)), srid=4326),
+        )
+
+    def test_focus_areas_endpoint_returns_geojson(self):
+        response = self.client.get(f"/api/v1/workspaces/{self.ws.slug}/focus-areas/")
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["type"], "FeatureCollection")
+        self.assertEqual(payload["features"][0]["properties"]["slug"], "core")
+
+    def test_plan_endpoint_without_a_plan_explains_itself(self):
+        response = self.client.get(
+            f"/api/v1/workspaces/{self.ws.slug}/focus-areas/{self.area.slug}/plan/"
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertIsNone(payload["plan"])
+        self.assertIn("message", payload)
+
+    def test_plan_endpoint_404s_for_an_unknown_area(self):
+        response = self.client.get(
+            f"/api/v1/workspaces/{self.ws.slug}/focus-areas/nope/plan/"
+        )
+        self.assertEqual(response.status_code, 404)

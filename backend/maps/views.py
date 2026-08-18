@@ -4,12 +4,13 @@ import json
 from datetime import timedelta
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from django.http import JsonResponse
+from django.http import Http404, JsonResponse
 from django.utils import timezone
 from django.views.decorators.cache import cache_page
 from django.views.decorators.http import require_GET
 
 from core.utils import get_active_workspace
+from goals.indicators import label_for as indicator_label
 from datasets.mobility_gaps import compute_gap_grid
 from datasets.models import DataSource, MobilitySnapshot, NormalizedFeatureSet
 from measures.accident_density import compute_density_lines
@@ -292,3 +293,125 @@ def district_scores_view(request, workspace_slug: str):
         )
 
     return JsonResponse({"type": "FeatureCollection", "features": features})
+
+
+@require_GET
+@cache_page(60)
+def focus_areas_view(request, workspace_slug: str):
+    """Focus areas of a workspace as GeoJSON, with their target status.
+
+    Public, like every read endpoint. ``residual_absolute`` is exposed next to
+    the percentage so a consumer of this API cannot render progress without the
+    number of people still expected to be harmed.
+    """
+    ws = get_active_workspace(workspace_slug)
+    lang = getattr(request, "LANGUAGE_CODE", "de")
+
+    features = []
+    for area in ws.focus_areas.prefetch_related("targets__plans"):
+        target = area.current_target
+        plan = target.plans.first() if target else None
+        projection = (plan.projection or {}) if plan else {}
+        features.append(
+            {
+                "type": "Feature",
+                "geometry": json.loads(area.geometry.geojson),
+                "properties": {
+                    "slug": area.slug,
+                    "name": area.name,
+                    "origin": area.origin,
+                    "indicator": target.indicator if target else None,
+                    "indicator_label": (
+                        indicator_label(target.indicator, lang) if target else None
+                    ),
+                    "baseline": projection.get("baseline"),
+                    "target_value": target.target_value if target else None,
+                    "is_vision_zero": target.is_vision_zero if target else False,
+                    "residual_absolute": projection.get("residual_absolute"),
+                    "goal_attainment_pct": projection.get("goal_attainment_pct"),
+                    "meets_target": projection.get("meets_target", False),
+                    "item_count": plan.items.count() if plan else 0,
+                },
+            }
+        )
+    return JsonResponse({"type": "FeatureCollection", "features": features})
+
+
+@require_GET
+@cache_page(60)
+def area_plan_view(request, workspace_slug: str, area_slug: str):
+    """One area's plan: the proposed segments plus the numbers behind them.
+
+    The ``plan`` block carries the baseline, the projection band, the space
+    budget and every source used, so the whole argument travels with the data
+    instead of only living in the HTML page.
+    """
+    ws = get_active_workspace(workspace_slug)
+    area = ws.focus_areas.filter(slug=area_slug).first()
+    if area is None:
+        raise Http404("No such focus area in this workspace")
+
+    target = area.current_target
+    plan = target.plans.first() if target else None
+    if plan is None:
+        return JsonResponse(
+            {
+                "type": "FeatureCollection",
+                "features": [],
+                "plan": None,
+                "message": "No plan generated for this area yet.",
+            }
+        )
+
+    features = []
+    for item in plan.items.select_related("measure").order_by("rank"):
+        measure = item.measure
+        features.append(
+            {
+                "type": "Feature",
+                "geometry": (
+                    json.loads(measure.geometry.geojson) if measure.geometry else None
+                ),
+                "properties": {
+                    "rank": item.rank,
+                    "measure_slug": measure.slug,
+                    "intervention": item.intervention,
+                    "quantity": item.quantity,
+                    "unit": item.unit,
+                    "width_required_m": item.width_required_m,
+                    "width_available_m": item.width_available_m,
+                    "width_confidence": item.width_confidence,
+                    "space_source": item.space_source,
+                    "parking_spaces_removed": item.parking_spaces_removed,
+                    "car_lanes_reallocated": item.car_lanes_reallocated,
+                    "obstacles": item.obstacles,
+                    "share_of_baseline": item.affected_baseline,
+                    "affected_severity": item.affected_severity,
+                    "effect_low": item.effect_low,
+                    "effect_central": item.effect_central,
+                    "effect_high": item.effect_high,
+                    "confidence": item.confidence,
+                    "sources": item.sources,
+                },
+            }
+        )
+
+    return JsonResponse(
+        {
+            "type": "FeatureCollection",
+            "features": features,
+            "plan": {
+                "area": area.slug,
+                "indicator": target.indicator,
+                "is_vision_zero": target.is_vision_zero,
+                "target_value": target.target_value,
+                "deadline_year": target.deadline_year,
+                "baseline": plan.baseline,
+                "projection": plan.projection,
+                "space_budget": plan.space_budget,
+                "assumptions": plan.assumptions,
+                "sources": plan.sources,
+                "generated_at": plan.generated_at.isoformat(),
+            },
+        }
+    )

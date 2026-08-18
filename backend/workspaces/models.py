@@ -121,6 +121,68 @@ class District(models.Model):
         return f"{self.workspace.slug}/{self.name}"
 
 
+class FocusArea(models.Model):
+    """A named area of the workspace that a target is set for.
+
+    Districts are administrative and often the wrong shape for a transport
+    problem — a crash cluster follows a corridor, not a borough boundary. A
+    focus area is therefore drawn by the user or adopted from any polygon
+    already on the map, and carries no assumption about the administrative
+    system of the country it is in.
+    """
+
+    class Origin(models.TextChoices):
+        DRAWN = "drawn", _("Drawn on the map")
+        ADOPTED = "adopted", _("Adopted from an existing area")
+        BBOX = "bbox", _("Map viewport")
+
+    workspace = models.ForeignKey(
+        Workspace, on_delete=models.CASCADE, related_name="focus_areas"
+    )
+    slug = models.SlugField(max_length=100)
+    name = models.CharField(max_length=200)
+    geometry = gis_models.MultiPolygonField(srid=4326)
+
+    origin = models.CharField(
+        max_length=20, choices=Origin.choices, default=Origin.DRAWN
+    )
+    origin_ref = models.CharField(
+        max_length=300,
+        blank=True,
+        help_text=_("Where an adopted geometry came from (layer and feature name)."),
+    )
+    district = models.ForeignKey(
+        "workspaces.District",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="focus_areas",
+    )
+
+    description_de = models.TextField(blank=True)
+    description_en = models.TextField(blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = [("workspace", "slug")]
+        ordering = ["name"]
+
+    def __str__(self):
+        return f"{self.workspace.slug}/{self.slug}"
+
+    def description_for(self, language_code: str) -> str:
+        if str(language_code).startswith("en") and self.description_en:
+            return self.description_en
+        return self.description_de
+
+    @property
+    def current_target(self):
+        """The target this area is currently being planned against."""
+        return self.targets.order_by("-created_at").first()
+
+
 class ConnectorAuditLog(models.Model):
     """Audit log of connector sync attempts — timestamp, status, duration, record count."""
 

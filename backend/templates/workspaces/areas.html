@@ -1,0 +1,116 @@
+{% extends "workspaces/base_workspace.html" %}
+{% load i18n l10n %}
+
+{% block title %}{% trans "Target areas" %} — {{ workspace.name }}{% endblock %}
+
+{% block content %}
+<div class="flex flex-col gap-6">
+
+  <div>
+    <h1 class="text-2xl font-semibold">{% trans "Target areas" %}</h1>
+    <p class="text-slate-500 mt-1 max-w-3xl">
+      {% blocktrans trimmed %}
+        A target area is a part of the city with a goal attached to it. OpenMobility OS
+        works out which streets to rebuild to get there, what the rebuild costs in
+        parking and carriageway, and how much harm is still expected afterwards.
+      {% endblocktrans %}
+    </p>
+  </div>
+
+  {% if not indicators %}
+  <div class="rounded-lg border border-dashed p-6 text-sm text-slate-500">
+    {% blocktrans trimmed %}
+      This workspace has no accident data yet, so there is nothing to set a target
+      against. Add an accidents source in the data hub first.
+    {% endblocktrans %}
+  </div>
+  {% endif %}
+
+  {% if rows %}
+  <div class="grid gap-4 md:grid-cols-2">
+    {% for row in rows %}
+    <div class="rounded-lg border bg-white p-5 flex flex-col gap-3">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <a href="{% url 'area_detail' workspace.slug row.area.slug %}"
+             class="font-semibold hover:underline">{{ row.area.name }}</a>
+          {% if row.indicator_label %}
+          <p class="text-xs text-slate-500 mt-0.5">{{ row.indicator_label }}</p>
+          {% endif %}
+        </div>
+        {% if row.target and row.target.is_vision_zero %}
+        <span class="shrink-0 text-xs px-2 py-0.5 rounded-full bg-slate-900 text-white">
+          {% trans "Vision Zero" %}
+        </span>
+        {% endif %}
+      </div>
+
+      {% if row.plan %}
+        {% with p=row.plan.projection %}
+        <dl class="grid grid-cols-3 gap-2 text-sm">
+          <div>
+            <dt class="text-xs text-slate-500">{% trans "Today" %}</dt>
+            <dd class="font-semibold">{{ p.baseline|floatformat:2|unlocalize }}</dd>
+          </div>
+          <div>
+            <dt class="text-xs text-slate-500">{% trans "After the plan" %}</dt>
+            <dd class="font-semibold">{{ p.residual_absolute|floatformat:2|unlocalize }}</dd>
+          </div>
+          <div>
+            <dt class="text-xs text-slate-500">{% trans "Target" %}</dt>
+            <dd class="font-semibold">{{ row.target.target_value|floatformat:0|unlocalize }}</dd>
+          </div>
+        </dl>
+
+        {# The residual is stated in people, never only as a percentage. #}
+        {% if p.residual_absolute > 0 %}
+        <p class="text-xs rounded-md bg-amber-50 border border-amber-200 text-amber-900 p-2 leading-relaxed">
+          {% blocktrans trimmed with n=p.residual_absolute|floatformat:2|unlocalize unit=row.unit %}
+            Still expected after the whole plan is built: {{ n }} {{ unit }}. The target is
+            not reached — this is an open task, not a result.
+          {% endblocktrans %}
+        </p>
+        {% else %}
+        <p class="text-xs rounded-md bg-emerald-50 border border-emerald-200 text-emerald-900 p-2">
+          {% trans "The plan is projected to reach the target." %}
+        </p>
+        {% endif %}
+
+        <p class="text-xs text-slate-500">
+          {% blocktrans trimmed with n=row.plan.space_budget.parking_spaces_removed lanes=row.plan.space_budget.car_lanes_reallocated %}
+            Costs approx. {{ n }} parking spaces and {{ lanes }} motor-traffic lane(s).
+          {% endblocktrans %}
+        </p>
+        {% endwith %}
+      {% else %}
+        <p class="text-sm text-slate-500">{% trans "No plan generated yet." %}</p>
+      {% endif %}
+
+      <a href="{% url 'area_detail' workspace.slug row.area.slug %}"
+         class="text-sm text-brand-700 hover:underline mt-auto">
+        {% trans "Open the plan" %} →
+      </a>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="rounded-lg border border-dashed p-6 text-sm text-slate-500">
+    {% blocktrans trimmed %}
+      No target areas yet. Open the map, pick a story view, and use
+      “Define target area” to draw one.
+    {% endblocktrans %}
+    <a href="{% url 'workspace_map' workspace.slug %}"
+       class="text-brand-700 hover:underline">{% trans "Go to the map" %} →</a>
+  </div>
+  {% endif %}
+
+  <p class="text-xs text-slate-400 max-w-3xl">
+    {% blocktrans trimmed %}
+      Projections estimate the effect of published road-safety evidence on this
+      area's own data. They are planning figures with an uncertainty range, not a
+      forecast of individual events. Every factor and its source is listed on the
+      methodology page.
+    {% endblocktrans %}
+  </p>
+</div>
+{% endblock %}

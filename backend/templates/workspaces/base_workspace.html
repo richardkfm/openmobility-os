@@ -21,6 +21,9 @@ parent section (a measure detail highlights "Measures", and so on).
     <a href="{% url 'measures_list' workspace.slug %}"
        {% if current == "measures_list" or current == "measure_detail" %}aria-current="page"{% endif %}
        class="nav-link whitespace-nowrap {% if current == 'measures_list' or current == 'measure_detail' %}text-slate-900 font-medium{% else %}text-slate-600 hover:text-slate-900{% endif %}">{% trans "Measures" %}</a>
+    <a href="{% url 'areas_list' workspace.slug %}"
+       {% if current == "areas_list" or current == "area_detail" %}aria-current="page"{% endif %}
+       class="nav-link whitespace-nowrap {% if current == 'areas_list' or current == 'area_detail' %}text-slate-900 font-medium{% else %}text-slate-600 hover:text-slate-900{% endif %}">{% trans "Target areas" %}</a>
     <a href="{% url 'data_hub' workspace.slug %}"
        {% if current == "data_hub" or current == "data_source_add" or current == "data_source_detail" or current == "catalog_index" or current == "catalog_browse" %}aria-current="page"{% endif %}
        class="nav-link whitespace-nowrap {% if current == 'data_hub' or current == 'data_source_add' or current == 'data_source_detail' or current == 'catalog_index' or current == 'catalog_browse' %}text-slate-900 font-medium{% else %}text-slate-600 hover:text-slate-900{% endif %}">{% trans "Data hub" %}</a>

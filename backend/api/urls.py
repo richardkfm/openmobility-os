@@ -4,7 +4,9 @@ from django.urls import path
 
 from maps.views import (
     accident_density_view,
+    area_plan_view,
     district_scores_view,
+    focus_areas_view,
     shared_mobility_gaps_view,
     workspace_layer,
     workspace_measures_geojson,
@@ -45,5 +47,15 @@ urlpatterns = [
         "workspaces/<slug:workspace_slug>/shared-mobility-gaps/",
         shared_mobility_gaps_view,
         name="api_shared_mobility_gaps",
+    ),
+    path(
+        "workspaces/<slug:workspace_slug>/focus-areas/",
+        focus_areas_view,
+        name="api_focus_areas",
+    ),
+    path(
+        "workspaces/<slug:workspace_slug>/focus-areas/<slug:area_slug>/plan/",
+        area_plan_view,
+        name="api_area_plan",
     ),
 ]

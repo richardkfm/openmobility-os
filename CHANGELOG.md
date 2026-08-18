@@ -8,6 +8,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Target areas — set a goal for a part of the city and get a costed plan** —
+  the step after a story view. Draw an area on the map (or adopt the shape of a
+  district or any other polygon already on it), attach a goal such as "no more
+  cyclists killed or seriously injured here", and OpenMobility OS works out which
+  streets to rebuild, in what order, and how much harm is still expected once the
+  whole plan is built. Every segment shows its expected effect as a range with a
+  source link, and the plan states the residual as a number of people rather than
+  as a percentage. Available at `/<workspace>/areas/` and as
+  `GET /api/v1/workspaces/<slug>/focus-areas/` plus
+  `.../focus-areas/<area>/plan/`. See `docs/AREA_TARGETS.md`.
+- **Plans say where the space comes from** — a protected cycle lane costs parking
+  or a traffic lane, and the plan now says which. Each proposed segment reports
+  the width it needs against the width available, the approximate number of
+  parking spaces that would go, how many motor-traffic lanes would be
+  reallocated, and the recorded obstacles (tram rails, bridges, level crossings)
+  in the way. Where the source data states no width, the plan says "check on
+  site" instead of estimating one.
+- **Three new map layers for street space** — kerbside parking (`street_parking`),
+  motor-traffic lanes and carriageway widths (`car_lanes`), and physical
+  obstacles (`obstacles`), each with a new OpenStreetMap connector template, so
+  any workspace can pull them. They switch on automatically while a plan is on
+  screen, so the trade-off is visible on the map and not only in a table.
+- **Targets for people killed or seriously injured are always zero.** A goal of
+  "90 % fewer road deaths" declares the remaining deaths acceptable, so
+  OpenMobility OS does not offer a percentage target for those indicators and
+  cannot store one. Where a plan does not reach zero it reports how many people
+  are still expected to be harmed, marked as an open task rather than a result —
+  and segments where someone was killed or seriously injured are always ranked
+  ahead of higher-volume slight-injury segments, whatever the case counts.
+- **Feasibility and political-viability scores are now computed** for area
+  measures instead of being fixed values, based on how much parking and how many
+  lanes the rebuild would actually cost.
+- **New methodology section** listing every effect factor in use with its range,
+  confidence and source, plus the street-space assumptions behind the parking and
+  width figures — both overridable per workspace without forking the code.
+
+### Added
 - **Built-in scheduled snapshot collector** — an opt-in `snapshots` service in
   `docker-compose.yml` collects shared-mobility availability history
   automatically. Start it with `docker compose --profile snapshots up -d`
