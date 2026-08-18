@@ -111,6 +111,34 @@ data_sources:
     config:
       template: bike_network
 
+  # Street-space layers — what a rebuild would cost in parking and lanes.
+  - name: OSM — Kerbside parking
+    source_type: osm_overpass
+    layer_kind: street_parking
+    license: ODbL
+    attribution: "© OpenStreetMap contributors"
+    source_url: https://www.openstreetmap.org/
+    config:
+      template: street_parking
+
+  - name: OSM — Traffic lanes and carriageway widths
+    source_type: osm_overpass
+    layer_kind: car_lanes
+    license: ODbL
+    attribution: "© OpenStreetMap contributors"
+    source_url: https://www.openstreetmap.org/
+    config:
+      template: car_lanes
+
+  - name: OSM — Physical obstacles
+    source_type: osm_overpass
+    layer_kind: obstacles
+    license: ODbL
+    attribution: "© OpenStreetMap contributors"
+    source_url: https://www.openstreetmap.org/
+    config:
+      template: obstacles
+
   - name: OSM — Streets with speed limits
     source_type: osm_overpass
     layer_kind: streets_with_speed

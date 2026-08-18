@@ -2523,3 +2523,130 @@ class GBFSDiscoveryTests(TestCase):
         errors = GBFSConnector().validate_config({"discovery_url": "", "layer": "nope"})
         self.assertTrue(any("discovery URL" in e for e in errors))
         self.assertTrue(any("layer" in e for e in errors))
+
+
+class StreetSpaceNormalizerTests(TestCase):
+    """The street-space layers feed a space budget used to argue for removing
+    people's parking, so normalisation must be exact about what OSM does and
+    does not say."""
+
+    def setUp(self):
+        from connectors import osm_connector
+
+        self.osm = osm_connector
+
+    def _way(self, tags, coords=None):
+        return {
+            "type": "Feature",
+            "geometry": {
+                "type": "LineString",
+                "coordinates": coords or [[0.0, 0.0], [0.0, 0.001]],
+            },
+            "properties": dict(tags),
+        }
+
+    # --- kerbside parking ---
+
+    def test_current_scheme_is_read(self):
+        feat = self._way({"parking:both": "lane", "parking:both:orientation": "parallel"})
+        self.osm._normalize_street_parking(feat)
+        props = feat["properties"]
+        self.assertTrue(props["parking_present"])
+        self.assertEqual(props["side"], "both")
+        self.assertEqual(props["orientation"], "parallel")
+
+    def test_legacy_scheme_is_read(self):
+        feat = self._way({"parking:lane:right": "perpendicular"})
+        self.osm._normalize_street_parking(feat)
+        props = feat["properties"]
+        self.assertTrue(props["parking_present"])
+        self.assertEqual(props["side"], "right")
+        self.assertEqual(props["orientation"], "perpendicular")
+
+    def test_no_parking_is_recorded_as_absent(self):
+        feat = self._way({"parking:both": "no"})
+        self.osm._normalize_street_parking(feat)
+        self.assertFalse(feat["properties"]["parking_present"])
+
+    def test_separate_parking_is_not_counted_as_kerbside(self):
+        feat = self._way({"parking:left": "separate"})
+        self.osm._normalize_street_parking(feat)
+        self.assertFalse(feat["properties"]["parking_present"])
+
+    def test_length_is_measured_in_metres(self):
+        feat = self._way({"parking:right": "lane"})
+        self.osm._normalize_street_parking(feat)
+        # 0.001 degrees of latitude is about 111 m.
+        self.assertAlmostEqual(feat["properties"]["length_m"], 111.1, delta=1.0)
+
+    def test_space_count_is_left_to_the_engine(self):
+        """Bay length is a per-workspace parameter, so the connector must not
+        bake a default into stored data."""
+        feat = self._way({"parking:right": "lane"})
+        self.osm._normalize_street_parking(feat)
+        self.assertNotIn("estimated_spaces", feat["properties"])
+
+    # --- car lanes ---
+
+    def test_tagged_width_is_marked_as_tagged(self):
+        feat = self._way({"lanes": "2", "width": "7.5"})
+        self.osm._normalize_car_lanes(feat)
+        props = feat["properties"]
+        self.assertEqual(props["width_m"], 7.5)
+        self.assertEqual(props["width_source"], "tagged")
+
+    def test_lane_count_without_width_is_marked_estimated_with_no_number(self):
+        feat = self._way({"lanes": "3"})
+        self.osm._normalize_car_lanes(feat)
+        props = feat["properties"]
+        self.assertIsNone(props["width_m"])
+        self.assertEqual(props["width_source"], "estimated")
+        self.assertEqual(props["lanes"], 3)
+
+    def test_neither_width_nor_lanes_is_unknown(self):
+        feat = self._way({"highway": "residential"})
+        self.osm._normalize_car_lanes(feat)
+        self.assertEqual(feat["properties"]["width_source"], "unknown")
+
+    def test_oneway_is_normalised_to_a_boolean(self):
+        feat = self._way({"oneway": "yes", "lanes": "1"})
+        self.osm._normalize_car_lanes(feat)
+        self.assertIs(feat["properties"]["oneway"], True)
+
+    # --- obstacles ---
+
+    def test_tram_track_is_classified_as_a_cycling_obstacle(self):
+        feat = self._way({"railway": "tram"})
+        self.osm._normalize_obstacles(feat)
+        self.assertEqual(feat["properties"]["obstacle_type"], "tram_track")
+        self.assertEqual(feat["properties"]["affects"], "cycling")
+
+    def test_bridge_and_tunnel_are_classified(self):
+        bridge = self._way({"bridge": "yes", "highway": "primary"})
+        self.osm._normalize_obstacles(bridge)
+        self.assertEqual(bridge["properties"]["obstacle_type"], "bridge")
+
+        tunnel = self._way({"tunnel": "yes", "highway": "primary"})
+        self.osm._normalize_obstacles(tunnel)
+        self.assertEqual(tunnel["properties"]["obstacle_type"], "tunnel")
+
+    def test_unclassifiable_obstacle_still_gets_a_type(self):
+        feat = self._way({"highway": "residential"})
+        self.osm._normalize_obstacles(feat)
+        self.assertEqual(feat["properties"]["obstacle_type"], "narrow_section")
+
+
+class StreetSpaceTemplateTests(TestCase):
+    def test_the_three_templates_exist_and_use_the_bbox_placeholder(self):
+        from connectors.osm_connector import OVERPASS_TEMPLATES
+
+        for name in ("street_parking", "car_lanes", "obstacles"):
+            self.assertIn(name, OVERPASS_TEMPLATES)
+            self.assertIn("{bbox}", OVERPASS_TEMPLATES[name])
+
+    def test_templates_are_offered_in_the_config_schema(self):
+        from connectors.osm_connector import OSMOverpassConnector
+
+        enum = OSMOverpassConnector.config_schema["template"]["enum"]
+        for name in ("street_parking", "car_lanes", "obstacles"):
+            self.assertIn(name, enum)

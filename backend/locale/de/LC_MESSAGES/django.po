@@ -1290,3 +1290,551 @@ msgstr "Blau steht für offenes Wasser und Retention; die helleren blauen Zonen 
 #: backend/templates/workspaces/map.html
 msgid "Green areas, tree dots and rose fresh-air corridors are the city's network of cool refuges; the population grid underneath shows where people actually live. Densely populated cells with no green space or corridor within easy reach are the gaps to close with new parks, street trees and protected ventilation paths."
 msgstr "Grünflächen, Baumpunkte und rosa Frischluftkorridore bilden das Netz kühler Rückzugsorte der Stadt; das Bevölkerungsraster darunter zeigt, wo Menschen tatsächlich wohnen. Dicht besiedelte Zellen ohne Grünraum oder Korridor in erreichbarer Nähe sind die Lücken, die mit neuen Parks, Straßenbäumen und geschützten Belüftungsbahnen zu schließen sind."
+
+#: backend/datasets/models.py:48
+msgid "Kerbside / on-street parking"
+msgstr "Straßenrandparken"
+
+#: backend/datasets/models.py:49
+msgid "Motor-traffic lanes and widths"
+msgstr "Kfz-Fahrspuren und Fahrbahnbreiten"
+
+#: backend/datasets/models.py:50
+msgid "Physical obstacles in the street profile"
+msgstr "Bauliche Zwangspunkte im Straßenquerschnitt"
+
+#: backend/goals/models.py:63
+msgid "Zero — no one killed or seriously injured"
+msgstr "Null — keine Getöteten oder Schwerverletzten"
+
+#: backend/goals/models.py:64
+msgid "Absolute value"
+msgstr "Absoluter Wert"
+
+#: backend/goals/models.py:65
+msgid "Percentage change"
+msgstr "Prozentuale Veränderung"
+
+#: backend/goals/models.py:68
+msgid "Lower is better"
+msgstr "Niedriger ist besser"
+
+#: backend/goals/models.py:69
+msgid "Higher is better"
+msgstr "Höher ist besser"
+
+#: backend/goals/models.py:81
+msgid "Key from the indicator catalogue (goals/indicators.py)."
+msgstr "Schlüssel aus dem Indikator-Katalog (goals/indicators.py)."
+
+#: backend/goals/models.py:94
+msgid "How the baseline was computed — years, counts, filters."
+msgstr "Wie der Basiswert berechnet wurde — Jahre, Fallzahlen, Filter."
+
+#: backend/goals/models.py:107
+msgid "City-wide goal this area target contributes to."
+msgstr "Gesamtstädtisches Ziel, auf das dieses Gebietsziel einzahlt."
+
+#: backend/goals/models.py:131
+msgid ""
+"Targets for people killed or seriously injured must be zero. A percentage or "
+"residual target would declare a number of deaths acceptable."
+msgstr "Ziele für Getötete und Schwerverletzte müssen null sein. Ein Prozent- oder Restwertziel würde eine Zahl von Todesfällen für hinnehmbar erklären."
+
+#: backend/goals/models.py:139
+msgid "This target can only be zero."
+msgstr "Dieses Ziel kann nur null sein."
+
+#: backend/measures/models.py:71
+msgid "Set when this measure belongs to an area plan."
+msgstr "Gesetzt, wenn diese Maßnahme zu einem Gebietsplan gehört."
+
+#: backend/measures/models.py:217
+msgid "Protected cycle lane"
+msgstr "Geschützter Radweg"
+
+#: backend/measures/models.py:218
+msgid "Safe crossing"
+msgstr "Sichere Querung"
+
+#: backend/measures/models.py:219
+msgid "30 km/h speed limit"
+msgstr "Tempo 30"
+
+#: backend/measures/models.py:220
+msgid "Junction redesign"
+msgstr "Knotenpunkt-Umbau"
+
+#: backend/measures/models.py:221
+msgid "Traffic calming"
+msgstr "Verkehrsberuhigung"
+
+#: backend/measures/models.py:224
+msgid "No extra width needed"
+msgstr "Kein zusätzlicher Querschnitt nötig"
+
+#: backend/measures/models.py:225
+msgid "Removing kerbside parking"
+msgstr "Wegfall von Straßenrandparken"
+
+#: backend/measures/models.py:226
+msgid "Reallocating a motor-traffic lane"
+msgstr "Umwidmung einer Kfz-Spur"
+
+#: backend/measures/models.py:227
+msgid "Narrowing the carriageway"
+msgstr "Verschmälerung der Fahrbahn"
+
+#: backend/measures/models.py:228
+msgid "Width unknown — check on site"
+msgstr "Breite unbekannt — vor Ort prüfen"
+
+#: backend/measures/models.py:229
+msgid "Does not fit — needs a larger rebuild"
+msgstr "Passt nicht — größerer Umbau erforderlich"
+
+#: backend/measures/models.py:232
+msgid "Stated in the source data"
+msgstr "In den Quelldaten angegeben"
+
+#: backend/measures/models.py:233
+msgid "Estimated from lane count"
+msgstr "Aus der Spuranzahl geschätzt"
+
+#: backend/measures/models.py:234
+msgid "Not available"
+msgstr "Nicht verfügbar"
+
+#: backend/measures/models.py:237
+msgid "Includes people killed or seriously injured"
+msgstr "Enthält Getötete oder Schwerverletzte"
+
+#: backend/measures/models.py:238
+msgid "Slight injuries only"
+msgstr "Nur Leichtverletzte"
+
+#: backend/measures/models.py:265
+msgid "Share of the area's baseline harm on this segment."
+msgstr "Anteil des Gebiets-Basiswerts auf diesem Abschnitt."
+
+#: backend/templates/workspaces/area_detail.html:12
+#: backend/templates/workspaces/areas.html:4
+#: backend/templates/workspaces/areas.html:10
+#: backend/templates/workspaces/base_workspace.html:26
+#: backend/templates/workspaces/map.html:155
+msgid "Target areas"
+msgstr "Zielgebiete"
+
+#: backend/templates/workspaces/area_detail.html:16
+msgid "by"
+msgstr "bis"
+
+#: backend/templates/workspaces/area_detail.html:25
+msgid "Rebuild plan"
+msgstr "Plan neu berechnen"
+
+#: backend/templates/workspaces/area_detail.html:29
+msgid "Delete this target area and its plan?"
+msgstr "Dieses Zielgebiet und seinen Plan löschen?"
+
+#: backend/templates/workspaces/area_detail.html:32
+msgid "Delete area"
+msgstr "Gebiet löschen"
+
+#: backend/templates/workspaces/area_detail.html:41
+msgid "No plan has been generated for this area yet."
+msgstr "Für dieses Gebiet wurde noch kein Plan erzeugt."
+
+#: backend/templates/workspaces/area_detail.html:48
+msgid "Expected outcome"
+msgstr "Erwartetes Ergebnis"
+
+#: backend/templates/workspaces/area_detail.html:52
+msgid "Today (baseline)"
+msgstr "Heute (Basiswert)"
+
+#: backend/templates/workspaces/area_detail.html:57
+#: backend/templates/workspaces/areas.html:56
+msgid "After the plan"
+msgstr "Nach Umsetzung des Plans"
+
+#: backend/templates/workspaces/area_detail.html:60
+#, python-format
+msgid "range %(hi)s–%(lo)s"
+msgstr "Spanne %(hi)s–%(lo)s"
+
+#: backend/templates/workspaces/area_detail.html:66
+#: backend/templates/workspaces/areas.html:60
+msgid "Target"
+msgstr "Ziel"
+
+#: backend/templates/workspaces/area_detail.html:69
+msgid "Vision Zero — nothing else is a target"
+msgstr "Vision Zero — etwas anderes ist kein Ziel"
+
+#: backend/templates/workspaces/area_detail.html:77
+msgid "Still open:"
+msgstr "Weiterhin offen:"
+
+#: backend/templates/workspaces/area_detail.html:78
+#, python-format
+msgid ""
+"even with every segment below rebuilt, about %(n)s %(unit)s are still "
+"expected in this area each year."
+msgstr "selbst wenn jeder Abschnitt unten umgebaut wird, sind in diesem Gebiet weiterhin rund %(n)s %(unit)s pro Jahr zu erwarten."
+
+#: backend/templates/workspaces/area_detail.html:83
+msgid ""
+"For a target of zero people killed or seriously injured, that is not a "
+"partial success — it is the part of the problem this plan does not yet solve."
+msgstr "Bei einem Ziel von null Getöteten und Schwerverletzten ist das kein Teilerfolg — es ist der Teil des Problems, den dieser Plan noch nicht löst."
+
+#: backend/templates/workspaces/area_detail.html:91
+#: backend/templates/workspaces/areas.html:75
+msgid "The plan is projected to reach the target."
+msgstr "Der Plan erreicht das Ziel voraussichtlich."
+
+#: backend/templates/workspaces/area_detail.html:97
+#, python-format
+msgid ""
+"Note: only %(n)s recorded cases in this area over the counting window (below "
+"%(min)s). Rates on small numbers move a lot by chance — treat the projection "
+"as indicative."
+msgstr "Hinweis: nur %(n)s erfasste Fälle in diesem Gebiet im Auswertungszeitraum (unter %(min)s). Raten auf kleinen Fallzahlen schwanken stark zufällig — die Prognose ist nur als Größenordnung zu lesen."
+
+#: backend/templates/workspaces/area_detail.html:108
+msgid "What the rebuild costs"
+msgstr "Was der Umbau kostet"
+
+#: backend/templates/workspaces/area_detail.html:110
+msgid ""
+"The space for new cycling infrastructure has to come from somewhere. This is "
+"where, so the trade-off is on the table before the debate starts."
+msgstr "Der Platz für neue Radinfrastruktur muss irgendwoher kommen. Hier steht, woher — damit die Abwägung auf dem Tisch liegt, bevor die Debatte beginnt."
+
+#: backend/templates/workspaces/area_detail.html:118
+msgid "Parking spaces removed"
+msgstr "Entfallende Stellplätze"
+
+#: backend/templates/workspaces/area_detail.html:122
+msgid "Motor-traffic lanes reallocated"
+msgstr "Umgewidmete Kfz-Spuren"
+
+#: backend/templates/workspaces/area_detail.html:126
+msgid "Segments needing a site check"
+msgstr "Abschnitte mit Prüfbedarf vor Ort"
+
+#: backend/templates/workspaces/area_detail.html:130
+msgid "Segments that do not fit"
+msgstr "Abschnitte ohne ausreichenden Platz"
+
+#: backend/templates/workspaces/area_detail.html:140
+msgid "Proposed segments"
+msgstr "Vorgeschlagene Abschnitte"
+
+#: backend/templates/workspaces/area_detail.html:142
+msgid ""
+"Ordered so that segments where someone was killed or seriously injured come "
+"first, whatever the case counts elsewhere. The order sequences the work — it "
+"is not a reason to leave anything out."
+msgstr "Sortiert, sodass Abschnitte mit Getöteten oder Schwerverletzten zuerst stehen, unabhängig von Fallzahlen anderswo. Die Reihenfolge ordnet die Umsetzung — sie ist kein Grund, etwas wegzulassen."
+
+#: backend/templates/workspaces/area_detail.html:154
+msgid "Measure"
+msgstr "Maßnahme"
+
+#: backend/templates/workspaces/area_detail.html:155
+msgid "Length"
+msgstr "Länge"
+
+#: backend/templates/workspaces/area_detail.html:156
+msgid "Width needed / available"
+msgstr "Breite benötigt / verfügbar"
+
+#: backend/templates/workspaces/area_detail.html:157
+msgid "Space from"
+msgstr "Platz aus"
+
+#: backend/templates/workspaces/area_detail.html:158
+msgid "Share of harm"
+msgstr "Anteil am Schaden"
+
+#: backend/templates/workspaces/area_detail.html:159
+msgid "Expected effect"
+msgstr "Erwartete Wirkung"
+
+#: backend/templates/workspaces/area_detail.html:160
+#: backend/templates/workspaces/methodology.html:106
+msgid "Source"
+msgstr "Quelle"
+
+#: backend/templates/workspaces/area_detail.html:172
+msgid "killed / seriously injured"
+msgstr "Getötete / Schwerverletzte"
+
+#: backend/templates/workspaces/area_detail.html:183
+msgid "check on site"
+msgstr "vor Ort prüfen"
+
+#: backend/templates/workspaces/area_detail.html:190
+msgid "parking spaces"
+msgstr "Stellplätze"
+
+#: backend/templates/workspaces/area_detail.html:195
+msgid "lane(s)"
+msgstr "Spur(en)"
+
+#: backend/templates/workspaces/area_detail.html:200
+msgid "obstacles:"
+msgstr "Zwangspunkte:"
+
+#: backend/templates/workspaces/area_detail.html:210
+#: backend/templates/workspaces/area_detail.html:277
+msgid "confidence"
+msgstr "Konfidenz"
+
+#: backend/templates/workspaces/area_detail.html:221
+msgid ""
+"No segments proposed — this area has no recorded harm of the kind this "
+"target measures."
+msgstr "Keine Abschnitte vorgeschlagen — in diesem Gebiet ist kein Schaden der Art erfasst, die dieses Ziel misst."
+
+#: backend/templates/workspaces/area_detail.html:232
+msgid "How far each step gets you"
+msgstr "Wie weit jeder Schritt trägt"
+
+#: backend/templates/workspaces/area_detail.html:241
+msgid "left"
+msgstr "verbleibend"
+
+#: backend/templates/workspaces/area_detail.html:251
+msgid "Assumptions behind these numbers"
+msgstr "Annahmen hinter diesen Zahlen"
+
+#: backend/templates/workspaces/area_detail.html:254
+msgid "Baseline"
+msgstr "Basiswert"
+
+#: backend/templates/workspaces/area_detail.html:256
+#, python-format
+msgid "%(n)s recorded cases across %(years)s."
+msgstr "%(n)s erfasste Fälle über %(years)s."
+
+#: backend/templates/workspaces/area_detail.html:262
+msgid "Rules applied"
+msgstr "Angewandte Regeln"
+
+#: backend/templates/workspaces/area_detail.html:269
+msgid "Effect factors used"
+msgstr "Verwendete Wirkungsfaktoren"
+
+#: backend/templates/workspaces/area_detail.html:276
+msgid "planning figure"
+msgstr "Planwert"
+
+#: backend/templates/workspaces/area_detail.html:284
+msgid "placeholder — not yet checked against the source"
+msgstr "Platzhalter — noch nicht gegen die Quelle geprüft"
+
+#: backend/templates/workspaces/area_detail.html:292
+msgid ""
+"This is a projection built from published evidence applied to this area's "
+"own data — not a simulation of traffic and not a promise about any "
+"individual crash. Regression to the mean is not corrected for. The space "
+"budget shows the scale of the conflict; it does not replace detailed design."
+msgstr "Dies ist eine Prognose aus veröffentlichter Evidenz, angewendet auf die Daten dieses Gebiets — keine Verkehrssimulation und keine Zusage zu einzelnen Unfällen. Regression zur Mitte wird nicht herausgerechnet. Die Flächenbilanz zeigt die Größenordnung des Konflikts; sie ersetzt keine Entwurfsplanung."
+
+#: backend/templates/workspaces/areas.html:12
+msgid ""
+"A target area is a part of the city with a goal attached to it. OpenMobility "
+"OS works out which streets to rebuild to get there, what the rebuild costs "
+"in parking and carriageway, and how much harm is still expected afterwards."
+msgstr "Ein Zielgebiet ist ein Teil der Stadt mit einem daran geknüpften Ziel. OpenMobility OS ermittelt, welche Straßen dafür umgebaut werden müssen, was der Umbau an Parkplätzen und Fahrbahn kostet und wie viel Schaden danach noch zu erwarten ist."
+
+#: backend/templates/workspaces/areas.html:22
+msgid ""
+"This workspace has no accident data yet, so there is nothing to set a target "
+"against. Add an accidents source in the data hub first."
+msgstr "Dieser Workspace hat noch keine Unfalldaten, es gibt also nichts, worauf sich ein Ziel beziehen könnte. Zuerst eine Unfall-Datenquelle im Datenhub anlegen."
+
+#: backend/templates/workspaces/areas.html:52
+msgid "Today"
+msgstr "Heute"
+
+#: backend/templates/workspaces/areas.html:68
+#, python-format
+msgid ""
+"Still expected after the whole plan is built: %(n)s %(unit)s. The target is "
+"not reached — this is an open task, not a result."
+msgstr "Nach vollständiger Umsetzung weiterhin zu erwarten: %(n)s %(unit)s. Das Ziel ist nicht erreicht — das ist eine offene Aufgabe, kein Ergebnis."
+
+#: backend/templates/workspaces/areas.html:80
+#, python-format
+msgid "Costs approx. %(n)s parking spaces and %(lanes)s motor-traffic lane(s)."
+msgstr "Kostet ca. %(n)s Stellplätze und %(lanes)s Kfz-Spur(en)."
+
+#: backend/templates/workspaces/areas.html:86
+msgid "No plan generated yet."
+msgstr "Noch kein Plan erzeugt."
+
+#: backend/templates/workspaces/areas.html:91
+msgid "Open the plan"
+msgstr "Plan öffnen"
+
+#: backend/templates/workspaces/areas.html:98
+msgid ""
+"No target areas yet. Open the map, pick a story view, and use “Define target "
+"area” to draw one."
+msgstr "Noch keine Zielgebiete. Karte öffnen, eine Story-Ansicht wählen und über „Zielgebiet festlegen“ eines zeichnen."
+
+#: backend/templates/workspaces/areas.html:103
+msgid "Go to the map"
+msgstr "Zur Karte"
+
+#: backend/templates/workspaces/areas.html:108
+msgid ""
+"Projections estimate the effect of published road-safety evidence on this "
+"area's own data. They are planning figures with an uncertainty range, not a "
+"forecast of individual events. Every factor and its source is listed on the "
+"methodology page."
+msgstr "Prognosen schätzen die Wirkung veröffentlichter Verkehrssicherheits-Evidenz auf die Daten dieses Gebiets. Es sind Planwerte mit Unsicherheitsspanne, keine Vorhersage einzelner Ereignisse. Jeder Faktor und seine Quelle stehen auf der Methodikseite."
+
+#: backend/templates/workspaces/map.html:162
+msgid "Show target areas"
+msgstr "Zielgebiete anzeigen"
+
+#: backend/templates/workspaces/map.html:169
+msgid "Define target area"
+msgstr "Zielgebiet festlegen"
+
+#: backend/templates/workspaces/map.html:176
+msgid ""
+"Click on the map to place corners, double-click to close the area. Or click "
+"an existing area on a visible polygon layer to adopt its shape."
+msgstr "Auf die Karte klicken, um Eckpunkte zu setzen; Doppelklick schließt das Gebiet. Oder eine vorhandene Fläche einer sichtbaren Polygon-Ebene anklicken, um deren Zuschnitt zu übernehmen."
+
+#: backend/templates/workspaces/map.html:191
+msgid "Area name"
+msgstr "Name des Gebiets"
+
+#: backend/templates/workspaces/map.html:209
+msgid ""
+"Target: zero people killed or seriously injured. No percentage target is "
+"offered here — a share of deaths is not something to plan for."
+msgstr "Ziel: null Getötete und Schwerverletzte. Ein Prozentziel wird hier nicht angeboten — ein Anteil an Todesfällen ist nichts, worauf man hinplant."
+
+#: backend/templates/workspaces/map.html:214
+msgid "Target value (per year)"
+msgstr "Zielwert (pro Jahr)"
+
+#: backend/templates/workspaces/map.html:219
+msgid "Target year"
+msgstr "Zieljahr"
+
+#: backend/templates/workspaces/map.html:225
+msgid "Create and plan"
+msgstr "Anlegen und planen"
+
+#: backend/templates/workspaces/map.html:235
+msgid "All target areas"
+msgstr "Alle Zielgebiete"
+
+#: backend/templates/workspaces/methodology.html:75
+msgid "Area targets and impact projection"
+msgstr "Gebietsziele und Wirkungsprognose"
+
+#: backend/templates/workspaces/methodology.html:78
+msgid ""
+"A target area combines a polygon with a goal. The baseline is counted from "
+"this workspace's own accident records inside that polygon; the projection "
+"applies published effect factors to the segments proposed for rebuilding. It "
+"is a planning estimate with a stated range, not a forecast of individual "
+"events, and regression to the mean is not corrected for."
+msgstr "Ein Zielgebiet verbindet ein Polygon mit einem Ziel. Der Basiswert wird aus den Unfalldaten dieses Workspace innerhalb des Polygons gezählt; die Prognose wendet veröffentlichte Wirkungsfaktoren auf die zum Umbau vorgeschlagenen Abschnitte an. Es ist eine Planungsschätzung mit ausgewiesener Spanne, keine Vorhersage einzelner Ereignisse, und Regression zur Mitte wird nicht herausgerechnet."
+
+#: backend/templates/workspaces/methodology.html:88
+msgid "Targets for people killed or seriously injured are always zero."
+msgstr "Ziele für Getötete und Schwerverletzte sind immer null."
+
+#: backend/templates/workspaces/methodology.html:99
+msgid "Effect factors in use"
+msgstr "Verwendete Wirkungsfaktoren"
+
+#: backend/templates/workspaces/methodology.html:103
+msgid "Intervention"
+msgstr "Intervention"
+
+#: backend/templates/workspaces/methodology.html:104
+msgid "Range"
+msgstr "Spanne"
+
+#: backend/templates/workspaces/methodology.html:105
+msgid "Confidence"
+msgstr "Konfidenz"
+
+#: backend/templates/workspaces/methodology.html:120
+msgid "placeholder, unchecked"
+msgstr "Platzhalter, ungeprüft"
+
+#: backend/templates/workspaces/methodology.html:123
+msgid "overridden locally"
+msgstr "lokal überschrieben"
+
+#: backend/templates/workspaces/methodology.html:139
+msgid "Street-space assumptions"
+msgstr "Annahmen zum Straßenraum"
+
+#: backend/templates/workspaces/methodology.html:141
+#, python-format
+msgid ""
+"One motor-traffic lane is assumed to be %(lane)s m wide, and at least "
+"%(rest)s m of carriageway must remain after any reallocation. Parking-space "
+"counts are derived from segment length and bay length. Where the source data "
+"states no width, the plan says “check on site” instead of estimating. Design "
+"standards differ by country — override these per workspace."
+msgstr "Für eine Kfz-Spur werden %(lane)s m angenommen, und nach jeder Umverteilung müssen mindestens %(rest)s m Fahrbahn verbleiben. Stellplatzzahlen werden aus Abschnittslänge und Stellplatzlänge abgeleitet. Wo die Quelldaten keine Breite angeben, sagt der Plan „vor Ort prüfen“ statt zu schätzen. Entwurfsnormen unterscheiden sich je Land — diese Werte sind pro Workspace überschreibbar."
+
+#: backend/workspaces/models.py:135
+msgid "Drawn on the map"
+msgstr "Auf der Karte gezeichnet"
+
+#: backend/workspaces/models.py:136
+msgid "Adopted from an existing area"
+msgstr "Aus einer vorhandenen Fläche übernommen"
+
+#: backend/workspaces/models.py:137
+msgid "Map viewport"
+msgstr "Aktueller Kartenausschnitt"
+
+#: backend/workspaces/models.py:152
+msgid "Where an adopted geometry came from (layer and feature name)."
+msgstr "Herkunft einer übernommenen Geometrie (Ebene und Objektname)."
+
+#: backend/workspaces/views_areas.py:150
+msgid "Name, area geometry, and indicator are required."
+msgstr "Name, Gebietsgeometrie und Indikator sind erforderlich."
+
+#: backend/workspaces/views_areas.py:156
+msgid "The area geometry could not be read."
+msgstr "Die Gebietsgeometrie konnte nicht gelesen werden."
+
+#: backend/workspaces/views_areas.py:162
+msgid "A focus area must be a polygon."
+msgstr "Ein Zielgebiet muss ein Polygon sein."
+
+#: backend/workspaces/views_areas.py:202
+msgid "Focus area created and plan generated."
+msgstr "Zielgebiet angelegt und Plan erzeugt."
+
+#: backend/workspaces/views_areas.py:215
+msgid "This area has no target to plan against."
+msgstr "Für dieses Gebiet ist kein Ziel hinterlegt."
+
+#: backend/workspaces/views_areas.py:220
+#, python-format
+msgid "Plan rebuilt: %(n)d segments."
+msgstr "Plan neu berechnet: %(n)d Abschnitte."
+
+#: backend/workspaces/views_areas.py:233
+msgid "Focus area deleted."
+msgstr "Zielgebiet gelöscht."

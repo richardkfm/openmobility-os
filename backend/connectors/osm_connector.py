@@ -6,6 +6,8 @@ bbox is derived from the workspace bounds.
 """
 
 
+import math
+
 import requests
 from django.conf import settings
 
@@ -194,6 +196,53 @@ OVERPASS_TEMPLATES: dict[str, str] = {
         );
         out tags;
     """,
+    # ── Street-space layers ──────────────────────────────────────────────
+    # A redesign has to take its room from somewhere. These three templates
+    # supply the evidence for that trade-off, so a proposed cycle lane can name
+    # the parking spaces or the motor-traffic lane it costs instead of pretending
+    # the space appears out of nowhere.
+    #
+    # Kerbside parking, tagged on the street way itself. Covers both the current
+    # `parking:<side>` scheme and the legacy `parking:lane:<side>` scheme, since
+    # OSM is mid-migration between them and coverage differs wildly by city.
+    "street_parking": """
+        [out:json][timeout:90];
+        (
+          way["parking:both"]({bbox});
+          way["parking:left"]({bbox});
+          way["parking:right"]({bbox});
+          way["parking:lane:both"]({bbox});
+          way["parking:lane:left"]({bbox});
+          way["parking:lane:right"]({bbox});
+        );
+        out geom tags;
+    """,
+    # Carriageway capacity: how many motor-traffic lanes a street carries and
+    # how wide it is. `width` is missing on most streets in most cities — that
+    # is expected, and the platform reports it as unknown rather than guessing.
+    "car_lanes": """
+        [out:json][timeout:90];
+        way["highway"~"^(motorway|trunk|primary|secondary|tertiary|unclassified|residential|living_street)$"]({bbox});
+        out geom tags;
+    """,
+    # Physical constraints in the street profile: tram rails (a well-known
+    # cause of cyclist falls), level crossings, kerbside bus stops, barriers,
+    # and structures whose cross-section cannot simply be re-striped.
+    "obstacles": """
+        [out:json][timeout:90];
+        (
+          way["railway"="tram"]({bbox});
+          node["railway"="level_crossing"]({bbox});
+          node["railway"="crossing"]({bbox});
+          node["highway"="bus_stop"]({bbox});
+          node["barrier"]({bbox});
+          way["barrier"]({bbox});
+          way["bridge"="yes"]["highway"]({bbox});
+          way["tunnel"="yes"]["highway"]({bbox});
+          way["highway"="construction"]({bbox});
+        );
+        out geom tags;
+    """,
     # EV chargers from OSM. Note: OSM coverage is patchy compared to the
     # official Bundesnetzagentur register — wire BNetzA in parallel for
     # German workspaces.
@@ -319,13 +368,19 @@ class OSMOverpassConnector(BaseConnector):
         # The dedicated-bike layer normalises every feature into a
         # quality class so the map can separate protected infrastructure
         # from mere painted lanes (see _classify_bike_infra).
-        classify = config.get("template") == "dedicated_bike_network"
+        template = config.get("template")
+        classify = template == "dedicated_bike_network"
+        # Street-space layers get a normalised schema so the measures engine can
+        # reason about available room without re-reading raw OSM tags.
+        normalizer = _STREET_SPACE_NORMALIZERS.get(template)
 
         features = []
         for el in elements:
             feat = _osm_element_to_feature(el)
             if not feat:
                 continue
+            if normalizer:
+                normalizer(feat)
             if classify:
                 feat["properties"]["bike_infra_class"] = _classify_bike_infra(
                     feat["properties"]
@@ -390,6 +445,174 @@ def _classify_bike_infra(props: dict) -> str:
     if any(v in ("track", "opposite_track") for v in side_values):
         return "protected"
     return "lane"
+
+
+# ─── Street-space normalisers ────────────────────────────────────────────────
+# These turn raw OSM tagging into the small, stable schema documented in
+# docs/AREA_TARGETS.md. Values that OSM does not state stay absent or None —
+# never substituted with a plausible-looking guess, because the space budget
+# these feed is used to argue for removing people's parking and re-striping
+# their streets.
+
+_PARKING_ORIENTATIONS = {"parallel", "diagonal", "perpendicular"}
+# Values of parking:<side> / parking:lane:<side> that mean "no parking here".
+_PARKING_ABSENT = {"no", "none", "no_parking", "no_stopping", "separate"}
+
+
+def _normalize_street_parking(feat: dict) -> None:
+    """Normalise kerbside-parking tags into side/orientation/type/length."""
+    props = feat["properties"]
+    sides = {}
+    for side in ("both", "left", "right"):
+        value = props.get(f"parking:{side}") or props.get(f"parking:lane:{side}")
+        if value and str(value).lower() not in _PARKING_ABSENT:
+            sides[side] = str(value).lower()
+    if not sides:
+        props["parking_present"] = False
+        return
+
+    side = "both" if "both" in sides else ("both" if len(sides) == 2 else next(iter(sides)))
+    sample = sides.get(side) or next(iter(sides.values()))
+
+    # The orientation may sit either in the parking:<side> value itself (legacy
+    # scheme) or in a dedicated :orientation subkey (current scheme).
+    orientation = None
+    for key in (
+        f"parking:{side}:orientation",
+        "parking:orientation",
+        f"parking:lane:{side}",
+    ):
+        candidate = str(props.get(key) or "").lower()
+        if candidate in _PARKING_ORIENTATIONS:
+            orientation = candidate
+            break
+    if orientation is None and sample in _PARKING_ORIENTATIONS:
+        orientation = sample
+    if orientation is None:
+        orientation = "parallel"  # by far the most common kerbside layout
+
+    length_m = _line_length_m(feat.get("geometry") or {})
+
+    props["parking_present"] = True
+    props["side"] = side
+    props["orientation"] = orientation
+    props["parking_type"] = sample if sample not in _PARKING_ORIENTATIONS else "lane"
+    props["length_m"] = length_m
+    # Note: the number of parking spaces is deliberately NOT computed here.
+    # It depends on the bay length in the workspace's design standard, which
+    # is a measures-engine parameter (see measures/street_space.py) and is
+    # overridable per workspace. Baking a default into stored data would
+    # silently ignore that override.
+    props["restriction"] = (
+        props.get(f"parking:{side}:restriction")
+        or props.get(f"parking:{side}:fee")
+        or props.get("parking:restriction")
+        or None
+    )
+
+
+def _normalize_car_lanes(feat: dict) -> None:
+    """Normalise lane counts and carriageway width.
+
+    ``width_source`` is the honesty flag: "tagged" when OSM states a width,
+    "estimated" when it can only be derived from the lane count, and "unknown"
+    when neither is available.
+    """
+    props = feat["properties"]
+    props["lanes"] = _to_int(props.get("lanes"))
+    props["lanes_forward"] = _to_int(props.get("lanes:forward"))
+    props["lanes_backward"] = _to_int(props.get("lanes:backward"))
+    props["oneway"] = str(props.get("oneway") or "").lower() in ("yes", "1", "true")
+
+    width = _to_float(props.get("width"))
+    if width:
+        props["width_m"] = width
+        props["width_source"] = "tagged"
+    elif props["lanes"]:
+        props["width_m"] = None
+        props["width_source"] = "estimated"
+    else:
+        props["width_m"] = None
+        props["width_source"] = "unknown"
+
+
+_OBSTACLE_RULES = (
+    ("railway", "tram", "tram_track", "cycling"),
+    ("railway", "level_crossing", "level_crossing", "both"),
+    ("railway", "crossing", "level_crossing", "both"),
+    ("highway", "bus_stop", "bus_stop_in_lane", "cycling"),
+    ("highway", "construction", "construction", "both"),
+)
+
+
+def _normalize_obstacles(feat: dict) -> None:
+    """Tag each obstacle with a stable type and who it affects."""
+    props = feat["properties"]
+    obstacle_type = None
+    affects = "both"
+    for key, value, kind, who in _OBSTACLE_RULES:
+        if props.get(key) == value:
+            obstacle_type, affects = kind, who
+            break
+    if obstacle_type is None:
+        if props.get("bridge") == "yes":
+            obstacle_type, affects = "bridge", "both"
+        elif props.get("tunnel") == "yes":
+            obstacle_type, affects = "tunnel", "both"
+        elif props.get("barrier"):
+            obstacle_type, affects = "barrier", "both"
+        else:
+            obstacle_type, affects = "narrow_section", "both"
+    props["obstacle_type"] = obstacle_type
+    props["affects"] = affects
+    props["note"] = props.get("name") or ""
+
+
+_STREET_SPACE_NORMALIZERS = {
+    "street_parking": _normalize_street_parking,
+    "car_lanes": _normalize_car_lanes,
+    "obstacles": _normalize_obstacles,
+}
+
+
+def _to_int(value):
+    try:
+        return int(float(str(value).split(";")[0]))
+    except (TypeError, ValueError):
+        return None
+
+
+def _to_float(value):
+    try:
+        return float(str(value).split()[0].replace(",", "."))
+    except (TypeError, ValueError, IndexError):
+        return None
+
+
+def _line_length_m(geometry: dict):
+    """Approximate the length of a LineString in metres.
+
+    Uses a local equirectangular approximation around the line's own mean
+    latitude — accurate to well under a percent at street scale, and correct
+    anywhere on earth, which a fixed degrees-to-metres constant would not be.
+    """
+    coords = geometry.get("coordinates") or []
+    if geometry.get("type") == "MultiLineString":
+        return sum(_line_length_m({"type": "LineString", "coordinates": c}) for c in coords)
+    if geometry.get("type") != "LineString" or len(coords) < 2:
+        return None
+    lats = [c[1] for c in coords if len(c) >= 2]
+    if not lats:
+        return None
+    mean_lat_rad = math.radians(sum(lats) / len(lats))
+    m_per_deg_lat = 111_132.0
+    m_per_deg_lon = 111_320.0 * math.cos(mean_lat_rad)
+    total = 0.0
+    for (lon1, lat1), (lon2, lat2) in zip(coords, coords[1:]):
+        dx = (lon2 - lon1) * m_per_deg_lon
+        dy = (lat2 - lat1) * m_per_deg_lat
+        total += math.hypot(dx, dy)
+    return round(total, 1)
 
 
 def _osm_element_to_feature(el: dict):

@@ -3,7 +3,7 @@
 
 # OpenMobility OS
 
-**Version:** 0.47.0 (pre-release) — see [CHANGELOG.md](CHANGELOG.md)
+**Version:** 0.48.0 (pre-release) — see [CHANGELOG.md](CHANGELOG.md)
 **License:** See [LICENSE](LICENSE)
 
 > The open, free, self-hostable operating system between open mobility data
@@ -150,6 +150,13 @@ four demo workspaces: **Leipzig**, **Utrecht**, **Musterstadt**, and **Muster-La
 ## Core Features (MVP)
 
 - **Multi-workspace** — arbitrary number of cities per installation
+- **Target areas** — draw an area on the map, attach a goal to it, and get a
+  ranked plan of what to rebuild there: expected effect per segment with a source
+  and an uncertainty range, and an explicit space budget saying how many parking
+  spaces or traffic lanes the rebuild would cost. Targets for people killed or
+  seriously injured are always zero — no percentage target is offered, and the
+  plan reports how many people are still expected to be harmed rather than hiding
+  it behind a percentage. See [docs/AREA_TARGETS.md](docs/AREA_TARGETS.md)
 - **Interactive maps** — MapLibre GL JS with configurable tile sources
 - **Map legend & distinct markers** — an always-on legend below the map lists
   every active layer with a swatch shaped like how it is drawn; place-type point
@@ -315,6 +322,9 @@ back here.
 
 - [docs/USER_GUIDE.md](docs/USER_GUIDE.md) — full walkthrough of every page and
   admin task (dashboard, map, measures, data hub, connectors, generating measures)
+- [docs/AREA_TARGETS.md](docs/AREA_TARGETS.md) — setting a goal for an area of
+  the city, the space budget behind a rebuild proposal, and why targets for
+  road deaths are always zero
 - [docs/SHARED_MOBILITY.md](docs/SHARED_MOBILITY.md) — connecting GBFS feeds
   (bikes/scooters/cars) and running availability gap analysis over time
 - [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — production hosting: reverse proxy,

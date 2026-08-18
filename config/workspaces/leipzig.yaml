@@ -132,6 +132,37 @@ data_sources:
     config:
       template: dedicated_bike_network
 
+  # ── Straßenraum: woher kommt der Platz? ──────────────────────────────────
+  # Diese drei Ebenen machen Umbauvorschläge ehrlich. Ohne sie kann ein Plan
+  # zwar sagen "hier fehlt ein Radweg", aber nicht, welche Parkplätze oder
+  # welche Fahrspur dafür wegfallen müssten.
+  - name: OSM — Straßenrandparken
+    source_type: osm_overpass
+    layer_kind: street_parking
+    license: ODbL
+    attribution: "© OpenStreetMap contributors"
+    source_url: https://www.openstreetmap.org/
+    config:
+      template: street_parking
+
+  - name: OSM — Fahrspuren und Fahrbahnbreiten
+    source_type: osm_overpass
+    layer_kind: car_lanes
+    license: ODbL
+    attribution: "© OpenStreetMap contributors"
+    source_url: https://www.openstreetmap.org/
+    config:
+      template: car_lanes
+
+  - name: OSM — Bauliche Zwangspunkte
+    source_type: osm_overpass
+    layer_kind: obstacles
+    license: ODbL
+    attribution: "© OpenStreetMap contributors"
+    source_url: https://www.openstreetmap.org/
+    config:
+      template: obstacles
+
   - name: OSM — Hauptstraßen mit Tempolimit
     source_type: osm_overpass
     layer_kind: streets_with_speed
@@ -798,3 +829,34 @@ measures:
       visibility: { raw: 0.6 }
       political: { raw: 0.5 }
       goal_alignment: { raw: 0.7 }
+
+# Beispiel-Zielgebiet. Der Loader ist generisch — jede Workspace-Konfiguration
+# kann diesen Block haben oder weglassen. Das Ziel ist bewusst ein Vision-Zero-
+# Ziel: bei Getöteten und Schwerverletzten lässt das Datenmodell gar keinen
+# Prozentwert zu (siehe goals/models.py: AreaTarget.clean).
+focus_areas:
+  - slug: zentrum-sued
+    name: Zentrum-Süd
+    origin: drawn
+    description_de: |
+      Beispielgebiet zur Veranschaulichung der Gebietsziele. Zuschnitt ist
+      illustrativ und entspricht keiner amtlichen Abgrenzung.
+    description_en: |
+      Example area illustrating the area-target workflow. The outline is
+      illustrative and matches no official boundary.
+    geometry:
+      type: Polygon
+      coordinates:
+        - - [12.355, 51.325]
+          - [12.395, 51.325]
+          - [12.395, 51.355]
+          - [12.355, 51.355]
+          - [12.355, 51.325]
+    target:
+      code: primary
+      indicator: cyclist_fatal_serious
+      deadline_year: 2030
+      rationale_de: |
+        Leitet das städtische Vision-Zero-Ziel auf ein konkretes Gebiet herunter.
+      rationale_en: |
+        Brings the city-wide Vision Zero goal down to one concrete area.

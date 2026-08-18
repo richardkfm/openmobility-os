@@ -1,0 +1,304 @@
+{% extends "workspaces/base_workspace.html" %}
+{% load i18n l10n %}
+
+{% block title %}{{ area.name }} — {{ workspace.name }}{% endblock %}
+
+{% block content %}
+<div class="flex flex-col gap-6">
+
+  <div class="flex items-start justify-between gap-4 flex-wrap">
+    <div>
+      <a href="{% url 'areas_list' workspace.slug %}"
+         class="text-xs text-slate-500 hover:underline">← {% trans "Target areas" %}</a>
+      <h1 class="text-2xl font-semibold mt-1">{{ area.name }}</h1>
+      {% if indicator_label %}
+      <p class="text-slate-500 text-sm mt-0.5">
+        {{ indicator_label }}{% if target.deadline_year %} · {% trans "by" %} {{ target.deadline_year|unlocalize }}{% endif %}
+      </p>
+      {% endif %}
+    </div>
+    {% if is_admin %}
+    <div class="flex gap-2">
+      <form method="post" action="{% url 'area_generate_plan' workspace.slug area.slug %}">
+        {% csrf_token %}
+        <button class="text-sm px-3 py-1.5 rounded-lg border hover:bg-slate-50">
+          {% trans "Rebuild plan" %}
+        </button>
+      </form>
+      <form method="post" action="{% url 'area_delete' workspace.slug area.slug %}"
+            onsubmit="return confirm('{% trans "Delete this target area and its plan?" %}');">
+        {% csrf_token %}
+        <button class="text-sm px-3 py-1.5 rounded-lg border border-red-200 text-red-700 hover:bg-red-50">
+          {% trans "Delete area" %}
+        </button>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+
+  {% if not plan %}
+  <div class="rounded-lg border border-dashed p-6 text-sm text-slate-500">
+    {% trans "No plan has been generated for this area yet." %}
+  </div>
+  {% else %}
+  {% with p=plan.projection %}
+
+  {# ── Outcome ─────────────────────────────────────────────────────────── #}
+  <section class="rounded-lg border bg-white p-5">
+    <h2 class="font-semibold mb-3">{% trans "Expected outcome" %}</h2>
+
+    <div class="grid gap-4 sm:grid-cols-3">
+      <div>
+        <p class="text-xs text-slate-500">{% trans "Today (baseline)" %}</p>
+        <p class="text-2xl font-semibold">{{ p.baseline|floatformat:2|unlocalize }}</p>
+        <p class="text-xs text-slate-500">{{ unit }}</p>
+      </div>
+      <div>
+        <p class="text-xs text-slate-500">{% trans "After the plan" %}</p>
+        <p class="text-2xl font-semibold">{{ p.residual_absolute|floatformat:2|unlocalize }}</p>
+        <p class="text-xs text-slate-500">
+          {% blocktrans trimmed with lo=p.low|floatformat:2|unlocalize hi=p.high|floatformat:2|unlocalize %}
+            range {{ hi }}–{{ lo }}
+          {% endblocktrans %}
+        </p>
+      </div>
+      <div>
+        <p class="text-xs text-slate-500">{% trans "Target" %}</p>
+        <p class="text-2xl font-semibold">{{ target.target_value|floatformat:0|unlocalize }}</p>
+        {% if is_vision_zero %}
+        <p class="text-xs text-slate-500">{% trans "Vision Zero — nothing else is a target" %}</p>
+        {% endif %}
+      </div>
+    </div>
+
+    {# The residual leads, and it is never dressed up as success. #}
+    {% if p.residual_absolute > 0 %}
+    <div class="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 leading-relaxed">
+      <strong>{% trans "Still open:" %}</strong>
+      {% blocktrans trimmed with n=p.residual_absolute|floatformat:2|unlocalize unit=unit %}
+        even with every segment below rebuilt, about {{ n }} {{ unit }} are still expected
+        in this area each year.
+      {% endblocktrans %}
+      {% if is_vision_zero %}
+      {% blocktrans trimmed %}
+        For a target of zero people killed or seriously injured, that is not a partial
+        success — it is the part of the problem this plan does not yet solve.
+      {% endblocktrans %}
+      {% endif %}
+    </div>
+    {% else %}
+    <div class="mt-4 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
+      {% trans "The plan is projected to reach the target." %}
+    </div>
+    {% endif %}
+
+    {% if not plan.baseline.robust %}
+    <p class="mt-3 text-xs text-slate-500">
+      {% blocktrans trimmed with n=plan.baseline.matched_cases min=plan.baseline.min_robust_cases %}
+        Note: only {{ n }} recorded cases in this area over the counting window
+        (below {{ min }}). Rates on small numbers move a lot by chance — treat the
+        projection as indicative.
+      {% endblocktrans %}
+    </p>
+    {% endif %}
+  </section>
+
+  {# ── Space budget ────────────────────────────────────────────────────── #}
+  <section class="rounded-lg border bg-white p-5">
+    <h2 class="font-semibold mb-1">{% trans "What the rebuild costs" %}</h2>
+    <p class="text-xs text-slate-500 mb-3">
+      {% blocktrans trimmed %}
+        The space for new cycling infrastructure has to come from somewhere. This is
+        where, so the trade-off is on the table before the debate starts.
+      {% endblocktrans %}
+    </p>
+    {% with sb=plan.space_budget %}
+    <dl class="grid gap-4 sm:grid-cols-4 text-sm">
+      <div>
+        <dt class="text-xs text-slate-500">{% trans "Parking spaces removed" %}</dt>
+        <dd class="text-xl font-semibold">≈ {{ sb.parking_spaces_removed|unlocalize }}</dd>
+      </div>
+      <div>
+        <dt class="text-xs text-slate-500">{% trans "Motor-traffic lanes reallocated" %}</dt>
+        <dd class="text-xl font-semibold">{{ sb.car_lanes_reallocated|unlocalize }}</dd>
+      </div>
+      <div>
+        <dt class="text-xs text-slate-500">{% trans "Segments needing a site check" %}</dt>
+        <dd class="text-xl font-semibold">{{ sb.segments_width_unknown|unlocalize }}</dd>
+      </div>
+      <div>
+        <dt class="text-xs text-slate-500">{% trans "Segments that do not fit" %}</dt>
+        <dd class="text-xl font-semibold">{{ sb.segments_insufficient_space|unlocalize }}</dd>
+      </div>
+    </dl>
+    <p class="mt-3 text-xs text-slate-400">{{ sb.note }}</p>
+    {% endwith %}
+  </section>
+
+  {# ── Segment table ───────────────────────────────────────────────────── #}
+  <section class="rounded-lg border bg-white p-5">
+    <h2 class="font-semibold mb-1">{% trans "Proposed segments" %}</h2>
+    <p class="text-xs text-slate-500 mb-3">
+      {% blocktrans trimmed %}
+        Ordered so that segments where someone was killed or seriously injured come
+        first, whatever the case counts elsewhere. The order sequences the work — it
+        is not a reason to leave anything out.
+      {% endblocktrans %}
+    </p>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm min-w-[52rem]">
+        <thead class="text-xs text-slate-500 text-left border-b">
+          <tr>
+            <th class="py-2 pr-3">#</th>
+            <th class="py-2 pr-3">{% trans "Measure" %}</th>
+            <th class="py-2 pr-3">{% trans "Length" %}</th>
+            <th class="py-2 pr-3">{% trans "Width needed / available" %}</th>
+            <th class="py-2 pr-3">{% trans "Space from" %}</th>
+            <th class="py-2 pr-3">{% trans "Share of harm" %}</th>
+            <th class="py-2 pr-3">{% trans "Expected effect" %}</th>
+            <th class="py-2">{% trans "Source" %}</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y">
+          {% for item in items %}
+          <tr class="align-top">
+            <td class="py-2 pr-3 text-slate-400">{{ item.rank|unlocalize }}</td>
+            <td class="py-2 pr-3">
+              <a href="{% url 'measure_detail' workspace.slug item.measure.slug %}"
+                 class="hover:underline">{% if LANGUAGE_CODE|slice:":2" == "en" and item.measure.title_en %}{{ item.measure.title_en }}{% else %}{{ item.measure.title_de }}{% endif %}</a>
+              {% if item.addresses_severe_harm %}
+              <span class="ml-1 text-xs px-1.5 py-0.5 rounded bg-red-100 text-red-800">
+                {% trans "killed / seriously injured" %}
+              </span>
+              {% endif %}
+            </td>
+            <td class="py-2 pr-3 whitespace-nowrap">
+              {% if item.quantity %}{{ item.quantity|floatformat:0|unlocalize }} m{% else %}—{% endif %}
+            </td>
+            <td class="py-2 pr-3 whitespace-nowrap">
+              {{ item.width_required_m|floatformat:1|unlocalize }} /
+              {% if item.width_available_m %}{{ item.width_available_m|floatformat:1|unlocalize }}{% else %}?{% endif %} m
+              {% if item.needs_site_check %}
+              <span class="block text-xs text-amber-700">{% trans "check on site" %}</span>
+              {% endif %}
+            </td>
+            <td class="py-2 pr-3">
+              {{ item.get_space_source_display }}
+              {% if item.parking_spaces_removed %}
+              <span class="block text-xs text-slate-500">
+                ≈ {{ item.parking_spaces_removed|unlocalize }} {% trans "parking spaces" %}
+              </span>
+              {% endif %}
+              {% if item.car_lanes_reallocated %}
+              <span class="block text-xs text-slate-500">
+                {{ item.car_lanes_reallocated|unlocalize }} {% trans "lane(s)" %}
+              </span>
+              {% endif %}
+              {% if item.obstacles %}
+              <span class="block text-xs text-slate-500">
+                {% trans "obstacles:" %}
+                {% for o in item.obstacles %}{{ o.obstacle_type }}{% if not forloop.last %}, {% endif %}{% endfor %}
+              </span>
+              {% endif %}
+            </td>
+            <td class="py-2 pr-3 whitespace-nowrap">
+              {{ item.affected_baseline|floatformat:3|unlocalize }}
+            </td>
+            <td class="py-2 pr-3 whitespace-nowrap">
+              −{{ item.effect_low|floatformat:2|unlocalize }} … −{{ item.effect_high|floatformat:2|unlocalize }}
+              <span class="block text-xs text-slate-500">{% trans "confidence" %}: {{ item.confidence }}</span>
+            </td>
+            <td class="py-2 text-xs">
+              {% for s in item.sources %}
+              {% if s.url %}<a href="{{ s.url }}" rel="noopener" target="_blank"
+                               class="text-brand-700 hover:underline">{{ s.title }}</a>{% else %}{{ s.title }}{% endif %}
+              {% empty %}—{% endfor %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="8" class="py-4 text-slate-500">
+            {% trans "No segments proposed — this area has no recorded harm of the kind this target measures." %}
+          </td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  {# ── Cumulative curve, plain CSS bars — no chart library ─────────────── #}
+  {% if cumulative %}
+  <section class="rounded-lg border bg-white p-5">
+    <h2 class="font-semibold mb-3">{% trans "How far each step gets you" %}</h2>
+    <ul class="flex flex-col gap-1.5">
+      {% for step in cumulative %}
+      <li class="flex items-center gap-3 text-xs">
+        <span class="w-6 text-slate-400 text-right">{{ step.rank|unlocalize }}</span>
+        <span class="flex-1 h-2.5 rounded-full bg-slate-100 overflow-hidden">
+          <span class="block h-full bg-brand-500" style="width: {{ step.pct|unlocalize }}%"></span>
+        </span>
+        <span class="w-28 text-slate-600 text-right">
+          {{ step.remaining|floatformat:2|unlocalize }} {% trans "left" %}
+        </span>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
+  {# ── Assumptions ─────────────────────────────────────────────────────── #}
+  <section class="rounded-lg border bg-white p-5">
+    <h2 class="font-semibold mb-3">{% trans "Assumptions behind these numbers" %}</h2>
+    <div class="grid gap-4 md:grid-cols-2 text-sm">
+      <div>
+        <h3 class="text-xs uppercase tracking-wide text-slate-500 mb-1">{% trans "Baseline" %}</h3>
+        <p class="text-slate-600">
+          {% blocktrans trimmed with years=plan.baseline.years|join:", " n=plan.baseline.matched_cases %}
+            {{ n }} recorded cases across {{ years }}.
+          {% endblocktrans %}
+        </p>
+      </div>
+      <div>
+        <h3 class="text-xs uppercase tracking-wide text-slate-500 mb-1">{% trans "Rules applied" %}</h3>
+        <p class="text-slate-600">{{ plan.assumptions.overlap_rule }}</p>
+        <p class="text-slate-600 mt-1">{{ plan.assumptions.ranking_rule }}</p>
+      </div>
+    </div>
+
+    <h3 class="text-xs uppercase tracking-wide text-slate-500 mt-4 mb-2">
+      {% trans "Effect factors used" %}
+    </h3>
+    <ul class="text-xs text-slate-600 flex flex-col gap-1.5">
+      {% for key, factor in effect_factors.items %}
+      <li>
+        <span class="font-medium">{{ key }}</span>:
+        {{ factor.low|floatformat:2|unlocalize }}–{{ factor.high|floatformat:2|unlocalize }}
+        ({% trans "planning figure" %} {{ factor.central|floatformat:2|unlocalize }},
+        {% trans "confidence" %} {{ factor.confidence }})
+        {% if factor.source.url %}
+        — <a href="{{ factor.source.url }}" rel="noopener" target="_blank"
+             class="text-brand-700 hover:underline">{{ factor.source.title }}</a>
+        {% endif %}
+        {% if factor.needs_review %}
+        <span class="ml-1 px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
+          {% trans "placeholder — not yet checked against the source" %}
+        </span>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+
+    <p class="mt-4 text-xs text-slate-400 leading-relaxed">
+      {% blocktrans trimmed %}
+        This is a projection built from published evidence applied to this area's own
+        data — not a simulation of traffic and not a promise about any individual
+        crash. Regression to the mean is not corrected for. The space budget shows the
+        scale of the conflict; it does not replace detailed design.
+      {% endblocktrans %}
+    </p>
+  </section>
+
+  {% endwith %}
+  {% endif %}
+</div>
+{% endblock %}

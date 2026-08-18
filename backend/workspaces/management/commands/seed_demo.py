@@ -10,14 +10,15 @@ from pathlib import Path
 
 import yaml
 from django.conf import settings
-from django.contrib.gis.geos import Point, Polygon
+from django.contrib.gis.geos import GEOSGeometry, MultiPolygon, Point, Polygon
 from django.core.management.base import BaseCommand
 
 from datasets.models import DataSource
 from datasets.views import _run_sync
-from goals.models import WorkspaceGoal
+from goals.indicators import is_vision_zero
+from goals.models import AreaTarget, WorkspaceGoal
 from measures.models import Measure, MeasureScore
-from workspaces.models import Workspace
+from workspaces.models import FocusArea, Workspace
 
 
 class Command(BaseCommand):
@@ -162,11 +163,67 @@ class Command(BaseCommand):
                     DataSource.LayerKind.GREEN_AREAS,
                     DataSource.LayerKind.WATER_BODIES,
                     DataSource.LayerKind.SEALED_SURFACES,
+                    # Street-space layers: without these an area plan cannot
+                    # say which parking or which lane a rebuild would cost.
+                    DataSource.LayerKind.STREET_PARKING,
+                    DataSource.LayerKind.CAR_LANES,
+                    DataSource.LayerKind.OBSTACLES,
                 )
             ):
                 success, msg = _run_sync(source)
                 style = self.style.SUCCESS if success else self.style.WARNING
                 self.stdout.write(style(f"     sync {source.name}: {msg}"))
+
+        # Optional focus areas with their targets. Generic loader — a config
+        # without this block seeds exactly as before. Plans are not built here
+        # because they need synced feature data; run `generate_area_plan`.
+        for fa in data.get("focus_areas", []):
+            geometry = fa.get("geometry")
+            if not geometry:
+                self.stdout.write(
+                    self.style.WARNING(f"     focus area {fa.get('slug')}: no geometry, skipped")
+                )
+                continue
+            geom = GEOSGeometry(json.dumps(geometry), srid=4326)
+            if geom.geom_type == "Polygon":
+                geom = MultiPolygon(geom, srid=4326)
+            area, _ = FocusArea.objects.update_or_create(
+                workspace=ws,
+                slug=fa["slug"],
+                defaults={
+                    "name": fa.get("name", fa["slug"]),
+                    "geometry": geom,
+                    "origin": fa.get("origin", FocusArea.Origin.DRAWN),
+                    "origin_ref": fa.get("origin_ref", ""),
+                    "description_de": fa.get("description_de", ""),
+                    "description_en": fa.get("description_en", ""),
+                },
+            )
+            target_cfg = fa.get("target")
+            if not target_cfg:
+                continue
+            indicator = target_cfg["indicator"]
+            # AreaTarget.clean() refuses a non-zero target on an indicator that
+            # counts people killed or seriously injured, so a seed config cannot
+            # smuggle in a "90 % fewer deaths" goal either.
+            code = target_cfg.get("code", "primary")
+            target = AreaTarget.objects.filter(focus_area=area, code=code).first()
+            if target is None:
+                target = AreaTarget(focus_area=area, code=code)
+            target.workspace = ws
+            target.indicator = indicator
+            default_mode = (
+                AreaTarget.TargetMode.ZERO
+                if is_vision_zero(indicator)
+                else AreaTarget.TargetMode.ABSOLUTE
+            )
+            target.target_mode = target_cfg.get("target_mode", default_mode)
+            target.target_value = 0 if is_vision_zero(indicator) else target_cfg.get("target_value")
+            target.unit = target_cfg.get("unit", "")
+            target.deadline_year = target_cfg.get("deadline_year")
+            target.rationale_de = target_cfg.get("rationale_de", "")
+            target.rationale_en = target_cfg.get("rationale_en", "")
+            target.save()
 
         for m in data.get("measures", []):
             measure, _ = Measure.objects.update_or_create(

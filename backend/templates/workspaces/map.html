@@ -136,6 +136,104 @@
       </div>
       {% endif %}
 
+      {% comment %}
+      Target areas — the step after a story view: take the problem the story just
+      showed, draw the area you are responsible for, and let OMOS work out what
+      to rebuild there. Reading the existing areas needs no login; creating one
+      is admin-token protected like every other write action.
+      {% endcomment %}
+      <div class="rounded-lg border bg-white p-4 text-sm"
+           x-data="areaTargets()"
+           x-init="init()"
+           @omos:storyview.document="onStoryView($event.detail)"
+           @omos:storyview-cleared.document="storyIndicator = null"
+           @omos:storyview-dismissed.document="storyIndicator = null">
+        <button @click="open = !open"
+                class="flex items-center justify-between w-full font-semibold text-xs uppercase tracking-wide text-slate-500">
+          {% trans "Target areas" %}
+          <span x-text="open ? '▲' : '▼'" class="text-slate-400"></span>
+        </button>
+
+        <div x-show="open" class="mt-2.5 flex flex-col gap-2.5">
+          <label class="flex items-center gap-2 text-sm">
+            <input type="checkbox" class="rounded" x-model="showAreas" @change="syncAreaLayer()">
+            <span>{% trans "Show target areas" %}</span>
+          </label>
+
+          {% if is_admin %}
+          <template x-if="!drawing && !pendingGeometry">
+            <button @click="startDrawing()"
+                    class="w-full text-left px-3 py-2 rounded-lg bg-slate-50 hover:bg-slate-100 border transition-colors">
+              {% trans "Define target area" %}
+            </button>
+          </template>
+
+          <template x-if="drawing">
+            <div class="rounded-md bg-blue-50 border border-blue-200 p-2.5 text-xs text-blue-900">
+              <p class="leading-relaxed">
+                {% trans "Click on the map to place corners, double-click to close the area. Or click an existing area on a visible polygon layer to adopt its shape." %}
+              </p>
+              <button @click="cancelDrawing()" class="mt-2 underline">{% trans "Cancel" %}</button>
+            </div>
+          </template>
+
+          <template x-if="pendingGeometry">
+            <form method="post" action="{% url 'area_create' workspace.slug %}"
+                  class="flex flex-col gap-2">
+              {% csrf_token %}
+              <input type="hidden" name="geometry" :value="pendingGeometry">
+              <input type="hidden" name="origin" :value="pendingOrigin">
+              <input type="hidden" name="origin_ref" :value="pendingOriginRef">
+
+              <input name="name" required maxlength="200"
+                     placeholder="{% trans 'Area name' %}"
+                     class="w-full rounded-lg border px-2.5 py-1.5 text-sm">
+
+              <select name="indicator" x-model="indicator"
+                      class="w-full rounded-lg border px-2.5 py-1.5 text-sm">
+                {% for ind in area_indicators %}
+                <option value="{{ ind.key }}" data-vision-zero="{{ ind.vision_zero|yesno:'1,0' }}">
+                  {{ ind.label }}
+                </option>
+                {% endfor %}
+              </select>
+
+              {# For indicators counting people killed or seriously injured there is
+                 no percentage field at all. The only target the platform will store
+                 is zero, so offering "reduce by X%" would be offering something it
+                 refuses to mean. #}
+              <template x-if="isVisionZero()">
+                <p class="text-xs rounded-md bg-slate-900 text-white p-2 leading-relaxed">
+                  {% trans "Target: zero people killed or seriously injured. No percentage target is offered here — a share of deaths is not something to plan for." %}
+                </p>
+              </template>
+              <template x-if="!isVisionZero()">
+                <input name="target_value" type="number" step="any" min="0"
+                       placeholder="{% trans 'Target value (per year)' %}"
+                       class="w-full rounded-lg border px-2.5 py-1.5 text-sm">
+              </template>
+
+              <input name="deadline_year" type="number" min="2000" max="2100"
+                     placeholder="{% trans 'Target year' %}"
+                     class="w-full rounded-lg border px-2.5 py-1.5 text-sm">
+
+              <div class="flex gap-2">
+                <button type="submit"
+                        class="flex-1 px-3 py-1.5 rounded-lg bg-brand-600 text-white text-sm hover:bg-brand-700">
+                  {% trans "Create and plan" %}
+                </button>
+                <button type="button" @click="cancelDrawing()"
+                        class="px-3 py-1.5 rounded-lg border text-sm">{% trans "Cancel" %}</button>
+              </div>
+            </form>
+          </template>
+          {% endif %}
+
+          <a href="{% url 'areas_list' workspace.slug %}"
+             class="text-xs text-brand-700 hover:underline">{% trans "All target areas" %} →</a>
+        </div>
+      </div>
+
       {# Layer toggles — start collapsed on small screens so the map stays above the fold. #}
       <div class="rounded-lg border bg-white p-4" x-data="{ open: window.matchMedia('(min-width: 1024px)').matches }">
         <button @click="open = !open" class="flex items-center justify-between w-full font-semibold text-sm">
@@ -650,6 +748,12 @@ const LAYER_STYLE = {
   shared_stations:        { color: "#7e22ce", geom: "point", point: "icon", icon: "bikedock" },
   schools:                { color: "#d97706", geom: "point", point: "icon", icon: "school" },
   parking:                { color: "#7c3aed", geom: "point", point: "icon", icon: "parking" },
+  // Street-space layers. These are what makes a rebuild proposal honest: they
+  // show the kerbside parking and the traffic lanes a new cycle lane would have
+  // to come out of, and the structures that stop it being a re-striping job.
+  street_parking:         { color: "#a855f7", geom: "line" },
+  car_lanes:              { color: "#6b7280", geom: "line" },
+  obstacles:              { color: "#b91c1c", geom: "point", point: "dot" },
   ev_charging:            { color: "#0891b2", geom: "point", point: "icon", icon: "charger" },
   public_buildings:       { color: "#b45309", geom: "point", point: "icon", icon: "building" },
   districts:              { color: "#64748b", geom: "area" },
@@ -1898,6 +2002,182 @@ function accidentFilter() {
   };
 }
 
+// ─── Target areas ────────────────────────────────────────────────────────────
+// The step after a story view. Drawing is done with a plain GeoJSON source and
+// two layers rather than a draw plugin: the project ships no build step and no
+// extra CDN dependencies, and a click-to-add-vertex polygon is all this needs.
+//
+// When a plan is on screen the street-space layers (kerbside parking, traffic
+// lanes, obstacles) are switched on, so the cost of the rebuild is visible on
+// the map and not only in a table.
+const AREA_SPACE_LAYERS = ["street_parking", "car_lanes", "obstacles"];
+const EMPTY_FC = { type: "FeatureCollection", features: [] };
+
+function areaTargets() {
+  return {
+    open: window.matchMedia("(min-width: 1024px)").matches,
+    showAreas: false,
+    drawing: false,
+    pendingGeometry: "",
+    pendingOrigin: "drawn",
+    pendingOriginRef: "",
+    storyIndicator: null,
+    indicator: "",
+    vertices: [],
+
+    init() {
+      this._ensureLayers();
+    },
+
+    onStoryView(detail) {
+      // Pre-select the indicator the story view is about, so the form opens on
+      // the question the user is already looking at.
+      this.storyIndicator = detail.indicator || null;
+      if (this.storyIndicator) this.indicator = this.storyIndicator;
+    },
+
+    isVisionZero() {
+      const option = document.querySelector(`option[value="${this.indicator}"]`);
+      return option ? option.dataset.visionZero === "1" : true;
+    },
+
+    _ensureLayers() {
+      if (!window.map || !map.isStyleLoaded()) {
+        map && map.once("load", () => this._ensureLayers());
+        return;
+      }
+      if (!map.getSource("focus-areas")) {
+        map.addSource("focus-areas", { type: "geojson", data: EMPTY_FC });
+        map.addLayer({
+          id: "focus-areas-fill", type: "fill", source: "focus-areas",
+          layout: { visibility: "none" },
+          paint: { "fill-color": "#6366f1", "fill-opacity": 0.15 },
+        });
+        map.addLayer({
+          id: "focus-areas-outline", type: "line", source: "focus-areas",
+          layout: { visibility: "none" },
+          paint: { "line-color": "#4338ca", "line-width": 2 },
+        });
+      }
+      if (!map.getSource("area-draft")) {
+        map.addSource("area-draft", { type: "geojson", data: EMPTY_FC });
+        map.addLayer({
+          id: "area-draft-fill", type: "fill", source: "area-draft",
+          paint: { "fill-color": "#f59e0b", "fill-opacity": 0.2 },
+        });
+        map.addLayer({
+          id: "area-draft-line", type: "line", source: "area-draft",
+          paint: { "line-color": "#b45309", "line-width": 2, "line-dasharray": [2, 1] },
+        });
+      }
+    },
+
+    syncAreaLayer() {
+      this._ensureLayers();
+      const visibility = this.showAreas ? "visible" : "none";
+      ["focus-areas-fill", "focus-areas-outline"].forEach(id => {
+        if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", visibility);
+      });
+      if (this.showAreas) {
+        fetch(`/api/v1/workspaces/${WORKSPACE_SLUG}/focus-areas/`)
+          .then(r => r.json())
+          .then(fc => { const src = map.getSource("focus-areas"); if (src) src.setData(fc); })
+          .catch(() => {});
+        this._showSpaceLayers();
+      }
+    },
+
+    // Turn on the layers that show what a rebuild would cost. Only ones the
+    // workspace actually has appear, same gating rule as the story views.
+    _showSpaceLayers() {
+      AREA_SPACE_LAYERS.forEach(kind => {
+        const cb = document.querySelector(`.layer-toggle[data-layer="${kind}"]`);
+        if (!cb) return;
+        cb.checked = true;
+        setLayerVisible(kind, true);
+      });
+      document.dispatchEvent(new CustomEvent("omos:layerschanged"));
+    },
+
+    startDrawing() {
+      this._ensureLayers();
+      this.drawing = true;
+      this.vertices = [];
+      this.pendingGeometry = "";
+      map.getCanvas().style.cursor = "crosshair";
+      this._onClick = (e) => this._addVertex(e);
+      this._onDblClick = (e) => { e.preventDefault(); this._finish(); };
+      map.on("click", this._onClick);
+      map.on("dblclick", this._onDblClick);
+      map.doubleClickZoom.disable();
+      this._showSpaceLayers();
+    },
+
+    _addVertex(e) {
+      // A click that lands on an existing polygon with no vertices placed yet is
+      // read as "adopt this shape" — districts, grid cells, any area layer.
+      if (this.vertices.length === 0) {
+        const hit = map.queryRenderedFeatures(e.point).find(f =>
+          f.layer && f.layer.type === "fill" &&
+          !f.layer.id.startsWith("area-draft") && !f.layer.id.startsWith("focus-areas")
+        );
+        if (hit && hit.geometry && hit.geometry.type.includes("Polygon")) {
+          this.pendingGeometry = JSON.stringify(hit.geometry);
+          this.pendingOrigin = "adopted";
+          this.pendingOriginRef =
+            `${hit.layer.id}: ${hit.properties.name || hit.properties.district_name || ""}`.slice(0, 300);
+          this._stopDrawing();
+          map.getSource("area-draft").setData({
+            type: "FeatureCollection",
+            features: [{ type: "Feature", geometry: hit.geometry, properties: {} }],
+          });
+          return;
+        }
+      }
+      this.vertices.push([e.lngLat.lng, e.lngLat.lat]);
+      this._render();
+    },
+
+    _render() {
+      if (this.vertices.length < 2) return;
+      const ring = [...this.vertices, this.vertices[0]];
+      map.getSource("area-draft").setData({
+        type: "FeatureCollection",
+        features: [{
+          type: "Feature",
+          geometry: { type: "Polygon", coordinates: [ring] },
+          properties: {},
+        }],
+      });
+    },
+
+    _finish() {
+      if (this.vertices.length < 3) return; // a polygon needs three corners
+      const ring = [...this.vertices, this.vertices[0]];
+      this.pendingGeometry = JSON.stringify({ type: "Polygon", coordinates: [ring] });
+      this.pendingOrigin = "drawn";
+      this.pendingOriginRef = "";
+      this._stopDrawing();
+    },
+
+    _stopDrawing() {
+      this.drawing = false;
+      map.getCanvas().style.cursor = "";
+      if (this._onClick) map.off("click", this._onClick);
+      if (this._onDblClick) map.off("dblclick", this._onDblClick);
+      map.doubleClickZoom.enable();
+    },
+
+    cancelDrawing() {
+      this._stopDrawing();
+      this.vertices = [];
+      this.pendingGeometry = "";
+      const src = map.getSource("area-draft");
+      if (src) src.setData(EMPTY_FC);
+    },
+  };
+}
+
 // ─── Story views (compound presets) ──────────────────────────────────────────
 // A story view is a named, one-click arrangement of layers + accident view mode
 // for a recurring planning/journalism question. Each entry only enables the
@@ -1905,18 +2185,23 @@ function accidentFilter() {
 // city. The "reading" text is the plain-language key shown while it is active.
 const STORY_VIEWS = {
   cycling_gap: {
+    // Which area-target indicator this story is about, so "Define target area"
+    // opens pre-set to the question the user is already looking at.
+    indicator: "cyclist_fatal_serious",
     layers: ["dedicated_bike_network", "cycling_counts"],
     accidents: "heatmap",
     accidentModes: ["cyclist"],
     reading: "{% trans "The heatmap shows where cyclist crashes cluster over the last three years (yellow → red = denser). Teal = protected bike lanes, amber = painted lanes; a white dashed overlay marks lanes built after the latest accident year. Dense red areas with no teal or amber lane underneath are priority intervention zones." %}",
   },
   safe_school: {
+    indicator: "vru_fatal_serious",
     layers: ["schools", "streets_with_speed", "bike_network", "dedicated_bike_network"],
     accidents: "heatmap",
     accidentModes: [],
     reading: "{% trans "School markers show where children arrive. The heatmap shows where crashes cluster (yellow → red = denser), and street colours show posted speed limits — a school ringed by fast streets and a dense crash area is a priority for safe crossings and traffic calming." %}",
   },
   traffic_safety: {
+    indicator: "all_fatal_serious",
     layers: ["streets_with_speed", "traffic_counts"],
     accidents: "heatmap",
     accidentModes: [],
@@ -1989,6 +2274,7 @@ function activateStoryView(key) {
   _storyActive = key;
   document.dispatchEvent(new CustomEvent("omos:storyview", { detail: {
     key, accidents: cfg.accidents || null, modes: cfg.accidentModes || [], reading: cfg.reading,
+    indicator: cfg.indicator || null,
   } }));
   document.dispatchEvent(new CustomEvent("omos:layerschanged"));
 }

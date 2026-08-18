@@ -13,7 +13,11 @@ from datasets.readiness import (
 from measures.accident_kpis import compute_accident_kpis
 from measures.models import Measure, MeasureScore
 from measures.scoring import compute_priority_score
+from measures.effects import factors_for as effect_factors_for
+from measures.street_space import params_for as street_space_params_for
 from measures.transit_kpis import compute_transit_kpis
+
+from .views_areas import area_indicator_options
 
 
 def dashboard(request, workspace_slug: str):
@@ -99,6 +103,11 @@ def workspace_map(request, workspace_slug: str):
     )
     has_districts = ws.districts.exists()
 
+    # Indicators this workspace can actually measure, for the target form in the
+    # map's "Target areas" panel. Same gating idea as the story views: never
+    # offer a target there is no data to evaluate.
+    area_indicators = area_indicator_options(ws, request.LANGUAGE_CODE)
+
     # Shared-mobility availability gap overlay — only offered when snapshots
     # have actually been collected (otherwise the grid is empty). Lists the
     # sources that have a history so the operator can pick which fleet to view.
@@ -128,6 +137,7 @@ def workspace_map(request, workspace_slug: str):
             "has_flood_water_data": has_flood_water_data,
             "has_cooling_green_data": has_cooling_green_data,
             "has_districts": has_districts,
+            "area_indicators": area_indicators,
             "measure_categories": Measure.Category.choices,
             "page_title": _("Map — %(name)s") % {"name": ws.name},
         },
@@ -214,6 +224,10 @@ def workspace_methodology(request, workspace_slug: str):
             "data_sources_with_meta": data_sources_with_meta,
             "data_basis": workspace_data_basis(ws),
             "scoring_weights": ws.scoring_weights or {},
+            # Area-target transparency: every effect factor and street-space
+            # parameter a plan in this workspace uses, with its source.
+            "effect_factors": effect_factors_for(ws),
+            "street_space_params": street_space_params_for(ws),
             "page_title": _("Methodology — %(name)s") % {"name": ws.name},
         },
     )

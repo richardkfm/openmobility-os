@@ -62,6 +62,14 @@ class Measure(models.Model):
         blank=True,
         related_name="measures",
     )
+    focus_area = models.ForeignKey(
+        "workspaces.FocusArea",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="measures",
+        help_text=_("Set when this measure belongs to an area plan."),
+    )
 
     status = models.CharField(
         max_length=20, choices=Status.choices, default=Status.PROPOSED
@@ -145,3 +153,138 @@ class MeasureScore(models.Model):
         if language_code.startswith("en") and self.rationale_en:
             return self.rationale_en
         return self.rationale_de
+
+
+class AreaPlan(models.Model):
+    """What OpenMobility OS proposes in order to meet one area target.
+
+    A plan is a projection, not a promise, and it is written to be argued with:
+    ``assumptions`` records every parameter the run used, ``baseline`` how the
+    starting value was measured, ``projection`` the expected outcome as a band,
+    and ``space_budget`` what the rebuild costs in parking and carriageway.
+
+    ``projection["residual_absolute"]`` is the number that matters most for a
+    Vision Zero target. It is the harm still expected *after* the whole plan is
+    built, and it is reported as an open task — never folded away into a
+    percentage that would make it look like success.
+    """
+
+    area_target = models.ForeignKey(
+        "goals.AreaTarget", on_delete=models.CASCADE, related_name="plans"
+    )
+    workspace = models.ForeignKey(
+        "workspaces.Workspace", on_delete=models.CASCADE, related_name="area_plans"
+    )
+
+    generated_at = models.DateTimeField(auto_now=True)
+    assumptions = models.JSONField(default=dict, blank=True)
+    baseline = models.JSONField(default=dict, blank=True)
+    projection = models.JSONField(default=dict, blank=True)
+    space_budget = models.JSONField(default=dict, blank=True)
+    sources = models.JSONField(default=list, blank=True)
+
+    class Meta:
+        ordering = ["-generated_at"]
+
+    def __str__(self):
+        return f"plan:{self.area_target}"
+
+    @property
+    def residual_absolute(self):
+        return (self.projection or {}).get("residual_absolute")
+
+    @property
+    def reaches_target(self) -> bool:
+        """Whether the plan alone is projected to meet the target.
+
+        For a Vision Zero target this is true only when nothing is left — there
+        is no partial credit for a plan that still leaves people being killed
+        or seriously injured.
+        """
+        residual = self.residual_absolute
+        if residual is None:
+            return False
+        target = self.area_target.target_value
+        if target is None:
+            return False
+        return residual <= target
+
+
+class AreaPlanItem(models.Model):
+    """One segment of an area plan: what to build, at whose expense, to what end."""
+
+    class Intervention(models.TextChoices):
+        PROTECTED_BIKE_LANE = "protected_bike_lane", _("Protected cycle lane")
+        SAFE_CROSSING = "safe_crossing", _("Safe crossing")
+        SPEED_LIMIT_30 = "speed_limit_30", _("30 km/h speed limit")
+        INTERSECTION_REDESIGN = "intersection_redesign", _("Junction redesign")
+        TRAFFIC_CALMING = "traffic_calming", _("Traffic calming")
+
+    class SpaceSource(models.TextChoices):
+        NOT_NEEDED = "not_needed", _("No extra width needed")
+        PARKING_REMOVAL = "parking_removal", _("Removing kerbside parking")
+        LANE_REALLOCATION = "lane_reallocation", _("Reallocating a motor-traffic lane")
+        CARRIAGEWAY_NARROWING = "carriageway_narrowing", _("Narrowing the carriageway")
+        UNKNOWN = "unknown", _("Width unknown — check on site")
+        INSUFFICIENT = "insufficient", _("Does not fit — needs a larger rebuild")
+
+    class WidthConfidence(models.TextChoices):
+        TAGGED = "tagged", _("Stated in the source data")
+        ESTIMATED = "estimated", _("Estimated from lane count")
+        UNKNOWN = "unknown", _("Not available")
+
+    class AffectedSeverity(models.TextChoices):
+        FATAL_SERIOUS = "fatal_serious", _("Includes people killed or seriously injured")
+        MINOR_ONLY = "minor_only", _("Slight injuries only")
+
+    plan = models.ForeignKey(AreaPlan, on_delete=models.CASCADE, related_name="items")
+    measure = models.ForeignKey(
+        Measure, on_delete=models.CASCADE, related_name="plan_items"
+    )
+    rank = models.PositiveSmallIntegerField(default=0)
+
+    intervention = models.CharField(max_length=40, choices=Intervention.choices)
+    quantity = models.FloatField(null=True, blank=True)
+    unit = models.CharField(max_length=20, blank=True)
+
+    # --- Space budget: who pays for the room this needs ---
+    width_required_m = models.FloatField(null=True, blank=True)
+    width_available_m = models.FloatField(null=True, blank=True)
+    width_confidence = models.CharField(
+        max_length=20, choices=WidthConfidence.choices, default=WidthConfidence.UNKNOWN
+    )
+    space_source = models.CharField(
+        max_length=30, choices=SpaceSource.choices, default=SpaceSource.UNKNOWN
+    )
+    parking_spaces_removed = models.PositiveIntegerField(default=0)
+    car_lanes_reallocated = models.PositiveSmallIntegerField(default=0)
+    obstacles = models.JSONField(default=list, blank=True)
+
+    # --- Expected effect ---
+    affected_baseline = models.FloatField(
+        default=0.0, help_text=_("Share of the area's baseline harm on this segment.")
+    )
+    affected_severity = models.CharField(
+        max_length=20,
+        choices=AffectedSeverity.choices,
+        default=AffectedSeverity.MINOR_ONLY,
+    )
+    effect_low = models.FloatField(default=0.0)
+    effect_central = models.FloatField(default=0.0)
+    effect_high = models.FloatField(default=0.0)
+    confidence = models.CharField(max_length=10, default="medium")
+    sources = models.JSONField(default=list, blank=True)
+
+    class Meta:
+        ordering = ["plan", "rank"]
+
+    def __str__(self):
+        return f"{self.plan_id}/{self.rank}:{self.intervention}"
+
+    @property
+    def needs_site_check(self) -> bool:
+        return self.width_confidence != self.WidthConfidence.TAGGED
+
+    @property
+    def addresses_severe_harm(self) -> bool:
+        return self.affected_severity == self.AffectedSeverity.FATAL_SERIOUS

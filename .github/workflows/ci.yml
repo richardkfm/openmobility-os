@@ -16,7 +16,13 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install Ruff
-        run: pip install ruff
+        # Pinned deliberately. An unpinned `pip install ruff` means any upstream
+        # release can turn every open pull request red without a line of project
+        # code changing — which is exactly what happened when a newer default
+        # rule set started flagging ~200 findings across files nobody had
+        # touched. Bump this pin in its own pull request, together with the
+        # cleanup the new rules ask for.
+        run: pip install "ruff==0.15.8"
       - name: Run Ruff
         run: ruff check backend/
 

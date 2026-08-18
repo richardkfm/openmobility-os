@@ -256,6 +256,11 @@ These features are **not in the MVP**, but the architecture is already prepared 
       → WGS84 polygon via pyproj, workspace-bbox clipping)
 - [x] Population-equity-gap measure rule — identifies cells with
       high child/elderly share, quantifies the affected population
+- [x] **Target areas with impact projection** — a focus area plus a goal
+      produces a ranked, costed rebuild plan (`street_parking`, `car_lanes` and
+      `obstacles` layer kinds; transparent effect factors with sources; space
+      budget in parking spaces and traffic lanes). Targets for people killed or
+      seriously injured are constrained to zero by the data model
 - [ ] Air quality monitoring (integration with UBA API, Luftdaten.info / Sensor.Community) — unblocked by REST connector + UBA preset
 - [ ] openCode / DE-Government platform integration and mirroring
 

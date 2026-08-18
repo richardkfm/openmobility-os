@@ -69,6 +69,87 @@
     {% endif %}
   </section>
 
+  {# Area targets — mandated by the transparency principle: no score or
+     projection may be a black box, so every factor is printed with its source. #}
+  <section>
+    <h2 class="text-lg font-semibold mb-2">{% trans "Area targets and impact projection" %}</h2>
+    <div class="rounded-lg border bg-white p-5 text-sm flex flex-col gap-4">
+      <p class="text-slate-600 leading-relaxed">
+        {% blocktrans trimmed %}
+          A target area combines a polygon with a goal. The baseline is counted from
+          this workspace's own accident records inside that polygon; the projection
+          applies published effect factors to the segments proposed for rebuilding.
+          It is a planning estimate with a stated range, not a forecast of individual
+          events, and regression to the mean is not corrected for.
+        {% endblocktrans %}
+      </p>
+
+      <div class="rounded-md border border-slate-900 bg-slate-900 text-white p-3 leading-relaxed">
+        <strong>{% trans "Targets for people killed or seriously injured are always zero." %}</strong>
+        {% blocktrans trimmed %}
+          A target such as “90 % fewer road deaths” declares the remaining deaths
+          acceptable. OpenMobility OS does not offer percentage targets for those
+          indicators and cannot store one — and where a plan does not reach zero, it
+          reports the number of people still expected to be harmed rather than a
+          percentage that hides them.
+        {% endblocktrans %}
+      </div>
+
+      <div>
+        <h3 class="text-xs uppercase tracking-wide text-slate-500 mb-2">{% trans "Effect factors in use" %}</h3>
+        <table class="w-full text-xs">
+          <thead class="text-slate-500 text-left border-b">
+            <tr>
+              <th class="py-1.5 pr-3">{% trans "Intervention" %}</th>
+              <th class="py-1.5 pr-3">{% trans "Range" %}</th>
+              <th class="py-1.5 pr-3">{% trans "Confidence" %}</th>
+              <th class="py-1.5">{% trans "Source" %}</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y">
+            {% for key, factor in effect_factors.items %}
+            <tr class="align-top">
+              <td class="py-1.5 pr-3 font-medium">{{ key }}</td>
+              <td class="py-1.5 pr-3 whitespace-nowrap">
+                {{ factor.low }}–{{ factor.high }}
+                <span class="text-slate-400">({{ factor.central }})</span>
+              </td>
+              <td class="py-1.5 pr-3">
+                {{ factor.confidence }}
+                {% if factor.needs_review %}
+                <span class="block text-amber-700">{% trans "placeholder, unchecked" %}</span>
+                {% endif %}
+                {% if factor.overridden %}
+                <span class="block text-slate-500">{% trans "overridden locally" %}</span>
+                {% endif %}
+              </td>
+              <td class="py-1.5">
+                {% if factor.source.url %}
+                <a href="{{ factor.source.url }}" rel="noopener" target="_blank"
+                   class="text-brand-700 hover:underline">{{ factor.source.title }}</a>
+                {% else %}{{ factor.source.title|default:"—" }}{% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div>
+        <h3 class="text-xs uppercase tracking-wide text-slate-500 mb-2">{% trans "Street-space assumptions" %}</h3>
+        <p class="text-xs text-slate-600 leading-relaxed">
+          {% blocktrans trimmed with lane=street_space_params.car_lane_width_m rest=street_space_params.min_remaining_carriageway_m %}
+            One motor-traffic lane is assumed to be {{ lane }} m wide, and at least
+            {{ rest }} m of carriageway must remain after any reallocation. Parking-space
+            counts are derived from segment length and bay length. Where the source data
+            states no width, the plan says “check on site” instead of estimating.
+            Design standards differ by country — override these per workspace.
+          {% endblocktrans %}
+        </p>
+      </div>
+    </div>
+  </section>
+
   <a href="{% url 'methodology' %}" class="text-sm text-slate-600 hover:underline">{% trans "→ Global methodology" %}</a>
 </div>
 {% endblock %}
