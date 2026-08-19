@@ -44,6 +44,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   confidence and source, plus the street-space assumptions behind the parking and
   width figures — both overridable per workspace without forking the code.
 
+### Fixed
+- **Drawing a target area no longer leaves a stray corner.** The second half of
+  the closing double-click was landing on the map as an extra corner, so the
+  finished area ended in a spike back to it. The area can now also be closed by
+  clicking the first corner again, by pressing `Enter`, or with a **Close area**
+  button that appears once three corners are set; `Backspace` removes the last
+  corner and `Esc` cancels. Corners are drawn as dots while placing them, with
+  the first one highlighted as the click target for closing.
+- **Kerbside parking no longer appears on nearly every street.** OSM parking
+  tags also record streets that were surveyed and have *no* parking. Those were
+  drawn exactly like real parking. They are still kept — a surveyed "none" says
+  more than silence — but only actual kerbside parking is now drawn in the
+  layer's colour, thickened by the parking layout, while a surveyed "none" shows
+  as a thin grey hairline.
+- **The obstacles layer is no longer mostly fences.** It was collecting every
+  `barrier` in OpenStreetMap, including garden fences, walls, hedges and kerbs,
+  which buried the ones that actually decide whether a cycle lane can be built.
+  It now collects tram rails, level crossings, kerbside bus stops, bridges,
+  tunnels, construction and route-blocking barriers such as bollards, chicanes
+  and gates. Re-sync the layer to pick up the narrower selection.
+
 ### Added
 - **Built-in scheduled snapshot collector** — an opt-in `snapshots` service in
   `docker-compose.yml` collects shared-mobility availability history

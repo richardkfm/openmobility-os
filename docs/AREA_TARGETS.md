@@ -29,8 +29,11 @@ cyclists are being hurt — now what exactly do we build, and is it enough?*
 
 1. Open `/<workspace>/map/` and activate a story view, e.g. **Cycling gap analysis**.
 2. In the **Target areas** panel, sign in as admin and choose **Define target area**.
-3. Either click corners on the map to draw a polygon (double-click to close), or
-   click an existing polygon on any visible area layer to adopt its shape.
+3. Either click corners on the map to draw a polygon, or click an existing
+   polygon on any visible area layer to adopt its shape. While drawing, close the
+   ring by clicking the first corner again, by pressing `Enter`, or with **Close
+   area**. `Backspace` removes the last corner, `Esc` cancels. Double-click still
+   works and no longer leaves a stray corner behind.
 4. Name the area. The indicator is pre-filled from the story view you are in.
    Set a deadline year.
 5. **Create and plan.** You land on the area page with the plan.
@@ -137,6 +140,25 @@ neither, and the plan asks for an on-site check instead of producing a number.
 Obstacles are matched to a street by OSM way id only. A proximity guess would
 send a planner to the wrong street, so the list is labelled *recorded* obstacles
 and is knowingly incomplete rather than padded.
+
+**What counts as an obstacle.** Not everything solid by the roadside. The layer
+collects what changes whether a cycle lane can be built at all: tram rails (a
+well-documented cause of cyclist falls, and impossible to re-stripe across),
+level and rail crossings, kerbside bus stops (a lane has to pass behind the stop
+or the stop becomes an island), bridges and tunnels (a fixed cross-section that
+cannot be widened by paint), construction, and route-blocking barriers —
+bollards, chicanes, cycle barriers, gates, height restrictors. Fences, walls,
+hedges, kerbs and guard rails are deliberately **not** collected: OSM has
+hundreds of thousands of them, and mapping them all would bury the handful that
+matter.
+
+**What `street_parking` shows.** OSM parking tags record two different things:
+that a street has kerbside parking, and that a street was surveyed and has none.
+Both are stored — a surveyed “none” means the space genuinely is not there,
+which is worth more than silence — but only actual parking is drawn in the
+layer's colour, thickened by how much width the layout takes. A surveyed “none”
+is a thin grey hairline. Only features with `parking_present: true` are ever
+counted as space a rebuild could use.
 
 ---
 

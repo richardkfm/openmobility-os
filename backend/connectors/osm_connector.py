@@ -228,6 +228,12 @@ OVERPASS_TEMPLATES: dict[str, str] = {
     # Physical constraints in the street profile: tram rails (a well-known
     # cause of cyclist falls), level crossings, kerbside bus stops, barriers,
     # and structures whose cross-section cannot simply be re-striped.
+    #
+    # The barrier match is deliberately narrow. `barrier=*` in OSM also covers
+    # every fence, wall, hedge and kerb in a city — mapping all of them would
+    # bury the handful that actually decide whether a cycle lane can be built
+    # under thousands of garden fences. Only barriers that stand in a route or
+    # force a detour are collected.
     "obstacles": """
         [out:json][timeout:90];
         (
@@ -235,8 +241,10 @@ OVERPASS_TEMPLATES: dict[str, str] = {
           node["railway"="level_crossing"]({bbox});
           node["railway"="crossing"]({bbox});
           node["highway"="bus_stop"]({bbox});
-          node["barrier"]({bbox});
-          way["barrier"]({bbox});
+          node["barrier"~"^(bollard|cycle_barrier|block|chicane|planter)$"]({bbox});
+          node["barrier"~"^(gate|lift_gate|swing_gate|kissing_gate|stile)$"]({bbox});
+          node["barrier"~"^(jersey_barrier|height_restrictor|debris)$"]({bbox});
+          way["barrier"~"^(cycle_barrier|block|chicane|jersey_barrier)$"]({bbox});
           way["bridge"="yes"]["highway"]({bbox});
           way["tunnel"="yes"]["highway"]({bbox});
           way["highway"="construction"]({bbox});
