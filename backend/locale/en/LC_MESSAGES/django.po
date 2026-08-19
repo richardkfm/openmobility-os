@@ -1572,8 +1572,9 @@ msgstr ""
 
 #: backend/templates/workspaces/map.html:176
 msgid ""
-"Click on the map to place corners, double-click to close the area. Or click "
-"an existing area on a visible polygon layer to adopt its shape."
+"Click on the map to place corners. Close the area by clicking the first "
+"corner again, by pressing Enter, or with the button below. Or click an "
+"existing area on a visible polygon layer to adopt its shape."
 msgstr ""
 
 #: backend/templates/workspaces/map.html:191
@@ -1700,4 +1701,16 @@ msgstr ""
 
 #: backend/workspaces/views_areas.py:233
 msgid "Focus area deleted."
+msgstr ""
+
+#: backend/templates/workspaces/map.html:180
+msgid "Corners placed:"
+msgstr ""
+
+#: backend/templates/workspaces/map.html:185
+msgid "Close area"
+msgstr ""
+
+#: backend/templates/workspaces/map.html:189
+msgid "Undo corner"
 msgstr ""

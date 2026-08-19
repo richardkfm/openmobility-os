@@ -1709,9 +1709,10 @@ msgstr "Zielgebiet festlegen"
 
 #: backend/templates/workspaces/map.html:176
 msgid ""
-"Click on the map to place corners, double-click to close the area. Or click "
-"an existing area on a visible polygon layer to adopt its shape."
-msgstr "Auf die Karte klicken, um Eckpunkte zu setzen; Doppelklick schließt das Gebiet. Oder eine vorhandene Fläche einer sichtbaren Polygon-Ebene anklicken, um deren Zuschnitt zu übernehmen."
+"Click on the map to place corners. Close the area by clicking the first "
+"corner again, by pressing Enter, or with the button below. Or click an "
+"existing area on a visible polygon layer to adopt its shape."
+msgstr "Auf die Karte klicken, um Eckpunkte zu setzen. Das Gebiet schließen, indem Sie den ersten Eckpunkt erneut anklicken, Enter drücken oder die Schaltfläche unten verwenden. Oder eine vorhandene Fläche einer sichtbaren Polygon-Ebene anklicken, um deren Zuschnitt zu übernehmen."
 
 #: backend/templates/workspaces/map.html:191
 msgid "Area name"
@@ -1838,3 +1839,15 @@ msgstr "Plan neu berechnet: %(n)d Abschnitte."
 #: backend/workspaces/views_areas.py:233
 msgid "Focus area deleted."
 msgstr "Zielgebiet gelöscht."
+
+#: backend/templates/workspaces/map.html:180
+msgid "Corners placed:"
+msgstr "Gesetzte Eckpunkte:"
+
+#: backend/templates/workspaces/map.html:185
+msgid "Close area"
+msgstr "Gebiet schließen"
+
+#: backend/templates/workspaces/map.html:189
+msgid "Undo corner"
+msgstr "Eckpunkt zurücknehmen"

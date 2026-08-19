@@ -171,9 +171,22 @@
           <template x-if="drawing">
             <div class="rounded-md bg-blue-50 border border-blue-200 p-2.5 text-xs text-blue-900">
               <p class="leading-relaxed">
-                {% trans "Click on the map to place corners, double-click to close the area. Or click an existing area on a visible polygon layer to adopt its shape." %}
+                {% trans "Click on the map to place corners. Close the area by clicking the first corner again, by pressing Enter, or with the button below. Or click an existing area on a visible polygon layer to adopt its shape." %}
               </p>
-              <button @click="cancelDrawing()" class="mt-2 underline">{% trans "Cancel" %}</button>
+              <p class="mt-1.5" x-show="vertices.length">
+                {% trans "Corners placed:" %} <span x-text="vertices.length" class="font-semibold"></span>
+              </p>
+              <div class="mt-2 flex flex-wrap items-center gap-2">
+                <button @click="finishDrawing()" :disabled="vertices.length < 3"
+                        class="px-2.5 py-1 rounded-md bg-blue-600 text-white disabled:opacity-40 disabled:cursor-not-allowed">
+                  {% trans "Close area" %}
+                </button>
+                <button @click="undoVertex()" :disabled="!vertices.length"
+                        class="px-2.5 py-1 rounded-md border border-blue-300 bg-white disabled:opacity-40 disabled:cursor-not-allowed">
+                  {% trans "Undo corner" %}
+                </button>
+                <button @click="cancelDrawing()" class="underline">{% trans "Cancel" %}</button>
+              </div>
             </div>
           </template>
 
@@ -1507,6 +1520,22 @@ function addGeoJsonLayer(id, url, color) {
                 /* default */ "#0d9488",
               ],
             };
+          } else if (id === "street_parking") {
+            // OSM parking tags say both "there is parking here" and "this street
+            // was surveyed and has none". Both are worth keeping — a surveyed
+            // "none" means the space genuinely is not there, which is more than
+            // silence tells you — but drawing them alike put a parking line on
+            // nearly every street. Only actual kerbside parking gets the layer
+            // colour, thickened by how much width the layout takes; a surveyed
+            // "none" stays as a thin grey hairline.
+            const hasParking = ["==", ["get", "parking_present"], true];
+            linePaint = {
+              "line-color": ["case", hasParking, color, "#cbd5e1"],
+              "line-width": ["case", hasParking,
+                ["match", ["get", "orientation"],
+                  "perpendicular", 5, "diagonal", 4, /* parallel */ 3], 1],
+              "line-opacity": ["case", hasParking, 0.9, 0.35],
+            };
           } else {
             linePaint = { "line-color": color, "line-width": 2.5, "line-opacity": 0.85 };
           }
@@ -2012,6 +2041,10 @@ function accidentFilter() {
 // the map and not only in a table.
 const AREA_SPACE_LAYERS = ["street_parking", "car_lanes", "obstacles"];
 const EMPTY_FC = { type: "FeatureCollection", features: [] };
+// How close a click has to land, in screen pixels, to count as hitting a corner
+// that is already placed — used both for closing the ring on the first corner
+// and for recognising the corner a closing double-click produced.
+const DRAW_SNAP_PX = 12;
 
 function areaTargets() {
   return {
@@ -2070,6 +2103,20 @@ function areaTargets() {
           paint: { "line-color": "#b45309", "line-width": 2, "line-dasharray": [2, 1] },
         });
       }
+      // The corners are drawn as dots so the shape is legible while it is being
+      // placed, and so the first corner is a visible click target for closing.
+      if (!map.getSource("area-draft-points")) {
+        map.addSource("area-draft-points", { type: "geojson", data: EMPTY_FC });
+        map.addLayer({
+          id: "area-draft-vertices", type: "circle", source: "area-draft-points",
+          paint: {
+            "circle-radius": ["case", ["==", ["get", "first"], 1], 7, 4],
+            "circle-color": ["case", ["==", ["get", "first"], 1], "#b45309", "#ffffff"],
+            "circle-stroke-color": "#b45309",
+            "circle-stroke-width": 2,
+          },
+        });
+      }
     },
 
     syncAreaLayer() {
@@ -2106,11 +2153,22 @@ function areaTargets() {
       this.pendingGeometry = "";
       map.getCanvas().style.cursor = "crosshair";
       this._onClick = (e) => this._addVertex(e);
-      this._onDblClick = (e) => { e.preventDefault(); this._finish(); };
+      this._onDblClick = (e) => { e.preventDefault(); this._finish(e.point); };
+      this._onKey = (e) => this._onKeyDown(e);
       map.on("click", this._onClick);
       map.on("dblclick", this._onDblClick);
+      document.addEventListener("keydown", this._onKey);
       map.doubleClickZoom.disable();
       this._showSpaceLayers();
+    },
+
+    _onKeyDown(e) {
+      if (!this.drawing) return;
+      const tag = e.target && e.target.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      if (e.key === "Enter") { e.preventDefault(); this._finish(); }
+      else if (e.key === "Escape") { e.preventDefault(); this.cancelDrawing(); }
+      else if (e.key === "Backspace") { e.preventDefault(); this.undoVertex(); }
     },
 
     _addVertex(e) {
@@ -2127,6 +2185,8 @@ function areaTargets() {
           this.pendingOriginRef =
             `${hit.layer.id}: ${hit.properties.name || hit.properties.district_name || ""}`.slice(0, 300);
           this._stopDrawing();
+          const points = map.getSource("area-draft-points");
+          if (points) points.setData(EMPTY_FC);
           map.getSource("area-draft").setData({
             type: "FeatureCollection",
             features: [{ type: "Feature", geometry: hit.geometry, properties: {} }],
@@ -2134,14 +2194,51 @@ function areaTargets() {
           return;
         }
       }
+      // Clicking the first corner again closes the ring. This is the gesture
+      // every drawing tool uses, and unlike a double-click it cannot race with
+      // the click that places a corner.
+      if (this.vertices.length >= 3 && this._distanceToPx(this.vertices[0], e.point) <= DRAW_SNAP_PX) {
+        this._finish();
+        return;
+      }
       this.vertices.push([e.lngLat.lng, e.lngLat.lat]);
       this._render();
     },
 
+    undoVertex() {
+      this.vertices.pop();
+      this._render();
+    },
+
+    finishDrawing() {
+      this._finish();
+    },
+
+    _distanceToPx(lngLat, point) {
+      const projected = map.project(lngLat);
+      return Math.hypot(projected.x - point.x, projected.y - point.y);
+    },
+
     _render() {
-      if (this.vertices.length < 2) return;
+      const points = map.getSource("area-draft-points");
+      if (points) {
+        points.setData({
+          type: "FeatureCollection",
+          features: this.vertices.map((coords, i) => ({
+            type: "Feature",
+            geometry: { type: "Point", coordinates: coords },
+            properties: { first: i === 0 ? 1 : 0 },
+          })),
+        });
+      }
+      const src = map.getSource("area-draft");
+      if (!src) return;
+      if (this.vertices.length < 2) {
+        src.setData(EMPTY_FC);
+        return;
+      }
       const ring = [...this.vertices, this.vertices[0]];
-      map.getSource("area-draft").setData({
+      src.setData({
         type: "FeatureCollection",
         features: [{
           type: "Feature",
@@ -2151,13 +2248,35 @@ function areaTargets() {
       });
     },
 
-    _finish() {
-      if (this.vertices.length < 3) return; // a polygon needs three corners
+    // `point` is the screen position of a closing double-click, when that is how
+    // the area was closed. The browser and MapLibre both fire a plain click for
+    // each half of a double-click, so the second one has already been placed as
+    // a corner by the time this runs. Every trailing corner sitting on that spot
+    // but one is dropped again — otherwise the ring ends in a spike back to the
+    // corner the closing gesture itself produced.
+    _finish(point) {
+      if (point) this._dropClosingDuplicates(point);
+      if (this.vertices.length < 3) {
+        this._render();
+        return; // a polygon needs three corners; keep drawing
+      }
       const ring = [...this.vertices, this.vertices[0]];
       this.pendingGeometry = JSON.stringify({ type: "Polygon", coordinates: [ring] });
       this.pendingOrigin = "drawn";
       this.pendingOriginRef = "";
       this._stopDrawing();
+      this._render();
+      const points = map.getSource("area-draft-points");
+      if (points) points.setData(EMPTY_FC);
+    },
+
+    _dropClosingDuplicates(point) {
+      while (this.vertices.length > 1) {
+        const last = this._distanceToPx(this.vertices[this.vertices.length - 1], point);
+        const previous = this._distanceToPx(this.vertices[this.vertices.length - 2], point);
+        if (last <= DRAW_SNAP_PX && previous <= DRAW_SNAP_PX) this.vertices.pop();
+        else break;
+      }
     },
 
     _stopDrawing() {
@@ -2165,6 +2284,7 @@ function areaTargets() {
       map.getCanvas().style.cursor = "";
       if (this._onClick) map.off("click", this._onClick);
       if (this._onDblClick) map.off("dblclick", this._onDblClick);
+      if (this._onKey) document.removeEventListener("keydown", this._onKey);
       map.doubleClickZoom.enable();
     },
 
@@ -2174,6 +2294,8 @@ function areaTargets() {
       this.pendingGeometry = "";
       const src = map.getSource("area-draft");
       if (src) src.setData(EMPTY_FC);
+      const points = map.getSource("area-draft-points");
+      if (points) points.setData(EMPTY_FC);
     },
   };
 }

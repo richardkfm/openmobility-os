@@ -2644,6 +2644,23 @@ class StreetSpaceTemplateTests(TestCase):
             self.assertIn(name, OVERPASS_TEMPLATES)
             self.assertIn("{bbox}", OVERPASS_TEMPLATES[name])
 
+    def test_obstacles_template_does_not_collect_every_fence_and_kerb(self):
+        """`barrier=*` in OSM covers garden fences, walls and kerbs as well.
+
+        Collecting those unfiltered buries the handful of barriers that decide
+        whether a cycle lane can be built under thousands of irrelevant ones —
+        which is exactly what the layer looked like before this filter.
+        """
+        from connectors.osm_connector import OVERPASS_TEMPLATES
+
+        query = OVERPASS_TEMPLATES["obstacles"]
+        self.assertNotIn('node["barrier"](', query)
+        self.assertNotIn('way["barrier"](', query)
+        for irrelevant in ("fence", "wall", "hedge", "kerb", "guard_rail"):
+            self.assertNotIn(irrelevant, query)
+        for relevant in ("bollard", "cycle_barrier", "chicane"):
+            self.assertIn(relevant, query)
+
     def test_templates_are_offered_in_the_config_schema(self):
         from connectors.osm_connector import OSMOverpassConnector
 
