@@ -1714,3 +1714,15 @@ msgstr ""
 #: backend/templates/workspaces/map.html:189
 msgid "Undo corner"
 msgstr ""
+
+#: backend/templates/workspaces/map.html
+msgid "This layer could not be loaded. Switch it off and on again to retry."
+msgstr ""
+
+#: backend/templates/workspaces/map.html
+msgid "not loaded"
+msgstr ""
+
+#: backend/templates/workspaces/map.html
+msgid "Show where the space would come from (parking, lanes, obstacles)"
+msgstr ""

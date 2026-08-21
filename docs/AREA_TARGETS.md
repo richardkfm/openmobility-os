@@ -115,6 +115,12 @@ The last three are what make the plan honest. Without them a plan can still say
 “a protected lane belongs here”, but not where the space comes from — and it will
 say so rather than pretend.
 
+These three are also the heaviest layers in the catalogue — `car_lanes` alone
+pulls every street in the bounding box with its full geometry — so nothing syncs
+or displays them on your behalf. Sync them from the data hub when you want an
+area plan to cost its proposals, and use **Show where the space would come from**
+in the target-area panel to put them on the map.
+
 Normalised properties:
 
 ```jsonc

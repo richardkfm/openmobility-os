@@ -1851,3 +1851,15 @@ msgstr "Gebiet schließen"
 #: backend/templates/workspaces/map.html:189
 msgid "Undo corner"
 msgstr "Eckpunkt zurücknehmen"
+
+#: backend/templates/workspaces/map.html
+msgid "This layer could not be loaded. Switch it off and on again to retry."
+msgstr "Diese Ebene konnte nicht geladen werden. Zum erneuten Versuch aus- und wieder einschalten."
+
+#: backend/templates/workspaces/map.html
+msgid "not loaded"
+msgstr "nicht geladen"
+
+#: backend/templates/workspaces/map.html
+msgid "Show where the space would come from (parking, lanes, obstacles)"
+msgstr "Zeigen, woher der Platz käme (Parken, Fahrspuren, Zwangspunkte)"
