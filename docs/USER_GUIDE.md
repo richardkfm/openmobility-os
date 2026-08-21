@@ -452,8 +452,15 @@ single region (e.g. Berlin), which won't contain your city.
 
 The connector clips rows to the workspace bounding box by default
 (`clip_to_workspace: true`). Set `"clip_to_workspace": false` to import all
-rows. If a clip would drop every row, the sync imports unclipped and warns you,
-so you never get a silent empty result.
+rows.
+
+If the clip would drop **every** row, the sync stops and tells you so, printing
+the workspace bounds next to the area the file actually covers. That
+combination is nearly always a mismatch between the two — wrong workspace
+polygon, or a file for a different region — and importing the file anyway would
+fill the workspace with data the map cannot show. Fix the bounds (or set an
+explicit `"bbox"` in the source config) and sync again; to import a whole file
+on purpose, set `"clip_to_workspace": false`.
 
 **Bootstrapping via command line:**
 

@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **A geographic mismatch in an accident import is now an error, not a
+  warning.** When clipping an Unfallatlas file to the workspace left *no* rows
+  at all, the connector used to import the whole file instead and note it in a
+  warning line — so a wrong workspace polygon, or a file covering a different
+  region, produced a green sync. What the operator got was a workspace full of
+  another area's accidents, a map that could not show any of them because they
+  lay outside its viewport, and a layer large enough to break the request that
+  fetched it. The sync now stops and prints the workspace bounds next to the
+  area the file actually covers, so the mismatch is visible in one line. A
+  deliberate whole-file import is unchanged: set `"clip_to_workspace": false`.
+  The "Test connection" panel says the same thing before you sync.
+
 ### Fixed
 - **Contributor comments no longer leak onto the page.** Five notes meant for
   people reading the source were rendering as visible text — under "Show target
