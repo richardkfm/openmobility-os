@@ -2059,9 +2059,14 @@ class UnfallatlasMfdzLayoutTests(TestCase):
 
 
 class UnfallatlasDiagnosticsAndFallbackTests(TestCase):
-    """Behaviour the operator depends on when the test/sync result is 0:
-    diagnostics expose what the connector saw, and sync falls back to an
-    unclipped import when workspace bounds would drop every row."""
+    """Behaviour the operator depends on when the clip result is 0.
+
+    A clip that keeps nothing is a configuration problem, so the sync has to
+    refuse it and say which two boxes disagree. The earlier behaviour —
+    importing the whole file instead — turned a broken configuration into a
+    successful sync whose only trace was a warning line, and shipped a
+    workspace full of another region's data that the map could not show.
+    """
 
     NATIONWIDE_CSV = (
         # Two rows, neither in the (10, 50, 11, 51) bbox below.
@@ -2083,7 +2088,36 @@ class UnfallatlasDiagnosticsAndFallbackTests(TestCase):
         ws.bounds = self._FakeBounds()
         return ws
 
-    def test_fetch_imports_unclipped_when_bbox_drops_everything(self):
+    def test_fetch_refuses_when_the_clip_would_drop_everything(self):
+        from connectors.unfallat_connector import UnfallatlasConnector
+
+        with mock.patch(
+            "connectors.unfallat_connector.fetch_bytes",
+            return_value=self.NATIONWIDE_CSV,
+        ), self.assertRaises(ValueError) as ctx:
+            UnfallatlasConnector().fetch(
+                {"url": "x", "clip_to_workspace": True}, workspace=self._ws()
+            )
+        self.assertIn("none of the 2 rows", str(ctx.exception).lower())
+
+    def test_the_refusal_names_both_boxes_that_disagree(self):
+        """Without both, the operator cannot tell which side is wrong."""
+        from connectors.unfallat_connector import UnfallatlasConnector
+
+        with mock.patch(
+            "connectors.unfallat_connector.fetch_bytes",
+            return_value=self.NATIONWIDE_CSV,
+        ), self.assertRaises(ValueError) as ctx:
+            UnfallatlasConnector().fetch(
+                {"url": "x", "clip_to_workspace": True}, workspace=self._ws()
+            )
+        message = str(ctx.exception)
+        self.assertIn("10.0000, 50.0000", message)   # workspace bounds
+        self.assertIn("12.3731, 51.3397", message)   # where the data actually is
+        self.assertIn("clip_to_workspace", message)  # the documented way out
+
+    def test_an_unclipped_import_is_still_possible_on_purpose(self):
+        """The refusal must not remove the deliberate whole-file import."""
         from connectors.unfallat_connector import UnfallatlasConnector
 
         with mock.patch(
@@ -2091,13 +2125,22 @@ class UnfallatlasDiagnosticsAndFallbackTests(TestCase):
             return_value=self.NATIONWIDE_CSV,
         ):
             result = UnfallatlasConnector().fetch(
-                {"url": "x", "clip_to_workspace": True}, workspace=self._ws()
+                {"url": "x", "clip_to_workspace": False}, workspace=self._ws()
             )
         self.assertEqual(result.record_count, 2)
-        self.assertTrue(
-            any("dropped" in w for w in result.warnings),
-            f"Expected a fallback warning, got: {result.warnings}",
-        )
+
+    def test_an_empty_file_is_not_reported_as_a_bounds_problem(self):
+        """No rows at all is a different fault and must not be misnamed."""
+        from connectors.unfallat_connector import UnfallatlasConnector
+
+        header_only = self.NATIONWIDE_CSV.split(b"\n")[0] + b"\n"
+        with mock.patch(
+            "connectors.unfallat_connector.fetch_bytes", return_value=header_only
+        ):
+            result = UnfallatlasConnector().fetch(
+                {"url": "x", "clip_to_workspace": True}, workspace=self._ws()
+            )
+        self.assertEqual(result.record_count, 0)
 
     def test_fetch_keeps_clip_when_at_least_one_row_is_inside(self):
         from connectors.unfallat_connector import UnfallatlasConnector
@@ -2114,6 +2157,7 @@ class UnfallatlasDiagnosticsAndFallbackTests(TestCase):
             )
         self.assertEqual(result.record_count, 1)
         self.assertEqual(result.warnings, [])
+        self.assertEqual(result.diagnostics["inside_bounds_count"], 1)
 
     def test_test_connection_diagnostics_contain_geographic_summary(self):
         from connectors.unfallat_connector import UnfallatlasConnector
@@ -2134,7 +2178,12 @@ class UnfallatlasDiagnosticsAndFallbackTests(TestCase):
         # which is exactly the case where the message must warn the user.
         self.assertEqual(d["inside_bounds_count"], 0)
         self.assertIn("None of them fall inside", result.message)
-        self.assertIn("the full dataset", result.message)
+        # "Test connection" has to predict what a sync will do. It now refuses,
+        # so promising a full-dataset import here would be a lie told one click
+        # before the sync contradicts it.
+        self.assertIn("would be refused", result.message)
+        self.assertIn("10.0000, 50.0000", result.message)
+        self.assertIn("12.3731, 51.3397", result.message)
 
     def test_test_connection_diagnostics_record_archive_member(self):
         from connectors.unfallat_connector import UnfallatlasConnector

@@ -205,10 +205,11 @@ class UnfallatlasConnector(BaseConnector):
         if bbox is not None:
             if inside_count == 0 and len(all_features) > 0:
                 message += (
-                    " None of them fall inside the workspace bounds — the sync"
-                    " will fall back to importing the full dataset. Check that"
-                    " your workspace polygon matches the geographic area the"
-                    " file covers."
+                    " None of them fall inside the workspace bounds, so a sync"
+                    " would be refused. Check that your workspace polygon"
+                    " matches the geographic area the file covers:"
+                    f" bounds {_format_bbox(bbox)},"
+                    f" data {_format_bbox(coord_range)}."
                 )
             elif inside_count is not None:
                 message += (
@@ -227,40 +228,49 @@ class UnfallatlasConnector(BaseConnector):
     def fetch(self, config, workspace=None):
         rows, _, meta = self._fetch_rows(config)
         bbox = self._resolve_bbox(config, workspace)
-        warnings = []
 
-        clipped = [f for r in rows if (f := _row_to_feature(r, bbox)) is not None]
-        unclipped_count = sum(
-            1 for r in rows if _row_to_feature(r, None) is not None
+        all_features = [
+            f for r in rows if (f := _row_to_feature(r, None)) is not None
+        ]
+        features = (
+            [f for f in all_features if _point_in_bbox(f, bbox)]
+            if bbox is not None
+            else all_features
         )
+        coord_range = _coord_range(all_features)
 
-        # Auto-fallback: if a workspace clip drops every row but the file
-        # itself parses fine, import the full dataset so the user sees
-        # something on the map. Operators almost always prefer this over a
-        # silent zero-result sync — they can re-narrow the bounds later.
-        features = clipped
-        if bbox is not None and len(clipped) == 0 and unclipped_count > 0:
-            features = [
-                f for r in rows if (f := _row_to_feature(r, None)) is not None
-            ]
-            warnings.append(
-                "Workspace bounds dropped every row — imported the full "
-                "dataset instead so the data is visible. Adjust the "
-                "workspace bounds, then re-sync to apply the clip."
+        # A clip that keeps nothing is a configuration problem, not a result.
+        #
+        # This used to import the whole file instead, "so the data is visible".
+        # It is not visible: it sits outside the map's viewport, and the only
+        # trace was a warning line on the data-source page. What an operator
+        # actually got was a workspace full of another region's accidents, a
+        # map that silently drew none of them, and a payload large enough to
+        # break the layer request — for weeks, because nothing failed. Stop,
+        # and name the two boxes that disagree.
+        if bbox is not None and all_features and not features:
+            raise ValueError(
+                f"None of the {len(all_features)} rows with usable coordinates "
+                "fall inside this workspace's bounds, so the clip would leave "
+                "nothing to show.\n"
+                f"Workspace bounds: {_format_bbox(bbox)}\n"
+                f"Data covers:      {_format_bbox(coord_range)}\n"
+                "Correct the workspace bounds, or set an explicit \"bbox\" in "
+                "this source's configuration, and sync again. To import the "
+                "file unclipped on purpose, set \"clip_to_workspace\": false."
             )
 
         diagnostics = dict(meta)
         diagnostics.update({
             "row_count": len(rows),
-            "valid_geometry_count": unclipped_count,
-            "inside_bounds_count": len(clipped) if bbox is not None else None,
+            "valid_geometry_count": len(all_features),
+            "coord_range": coord_range,
+            "inside_bounds_count": len(features) if bbox is not None else None,
             "workspace_bounds": list(bbox) if bbox is not None else None,
-            "imported_unclipped": bool(warnings),
         })
         return FetchResult(
             feature_collection={"type": "FeatureCollection", "features": features},
             record_count=len(features),
-            warnings=warnings,
             diagnostics=diagnostics,
         )
 
@@ -411,6 +421,14 @@ def _coord_range(features):
     lons = [f["geometry"]["coordinates"][0] for f in features]
     lats = [f["geometry"]["coordinates"][1] for f in features]
     return [min(lons), min(lats), max(lons), max(lats)]
+
+
+def _format_bbox(bbox):
+    """Render a (west, south, east, north) box for an operator-facing message."""
+    if not bbox:
+        return "unknown"
+    west, south, east, north = bbox
+    return f"{west:.4f}, {south:.4f} \u2192 {east:.4f}, {north:.4f}"
 
 
 def _point_in_bbox(feature, bbox):
