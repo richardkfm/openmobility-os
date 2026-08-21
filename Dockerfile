@@ -31,4 +31,12 @@ ENV PYTHONPATH=/app/backend \
 EXPOSE 8000
 
 ENTRYPOINT ["/app/docker/entrypoint.sh"]
-CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3", "--access-logfile", "-"]
+# --timeout: a sync worker is held for the whole of a response, transmission
+# included, so a large layer going to a client on a slow link occupies it
+# for the duration. At gunicorn's 30 s default those workers were being
+# killed mid-send and the browser saw a broken transfer.
+# --threads: lets one worker serve several such slow reads at once instead
+# of the whole site stalling behind three of them.
+CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", \
+     "--workers", "3", "--threads", "4", "--timeout", "120", \
+     "--graceful-timeout", "30", "--access-logfile", "-"]

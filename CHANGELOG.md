@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **The map no longer downloads every layer before you ask for one.** Layer data
+  is now fetched the first time a layer is switched on. Previously every layer in
+  the workspace was requested on page load, whether or not anyone had ticked it —
+  on a city-sized workspace that meant tens of megabytes per map view. On a slow
+  connection the largest responses were still being sent when the server gave up
+  on them, so the accident and street layers silently failed while the small ones
+  came through, leaving a map that looked fine but was missing its data.
+- **A layer that fails to load now says so.** Its row in the layer list shows a
+  "not loaded" marker instead of leaving an empty map that reads as "nothing
+  here". Switching the layer off and on retries it.
+- **Large layers no longer take the server down with them.** A worker was being
+  killed 30 seconds into sending a large response, which broke the transfer and
+  blocked every other request behind it. The timeout is raised and requests are
+  served with threads, so one slow download no longer stalls the site.
+- **Street-space layers are no longer switched on behind your back.** Kerbside
+  parking, traffic lanes and obstacles are the heaviest layers a workspace
+  carries; showing target areas or drawing one used to enable all three
+  automatically. The target-area panel now offers them as a button instead.
+- **Demo seeding no longer syncs the street-space layers on every start.** Three
+  of the heaviest Overpass queries in the catalogue ran on every container boot.
+  Seed them on demand when an area plan needs them.
+
 ### Added
 - **Target areas — set a goal for a part of the city and get a costed plan** —
   the step after a story view. Draw an area on the map (or adopt the shape of a

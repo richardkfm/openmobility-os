@@ -160,6 +160,15 @@
             <span>{% trans "Show target areas" %}</span>
           </label>
 
+          {# The street-space layers are among the heaviest a workspace has, so
+             they are offered rather than switched on automatically. #}
+          <template x-if="availableSpaceLayers().length">
+            <button @click="showSpaceLayers()"
+                    class="text-left text-xs text-brand-700 hover:underline">
+              {% trans "Show where the space would come from (parking, lanes, obstacles)" %}
+            </button>
+          </template>
+
           {% if is_admin %}
           <template x-if="!drawing && !pendingGeometry">
             <button @click="startDrawing()"
@@ -268,6 +277,14 @@
                   {% if layer.provenance.level == 'demo' %}⚠ {% trans "demo" %}{% else %}{% trans "snapshot" %}{% endif %}
                 </span>
                 {% endif %}
+                {# A layer whose data never arrives must say so. Silently showing #}
+                {# an empty map is worse than showing nothing at all — a viewer   #}
+                {# would read "no accidents here" instead of "this did not load". #}
+                <span class="layer-error hidden shrink-0 text-[10px] leading-none rounded-full px-1.5 py-0.5 bg-red-100 text-red-800"
+                      data-layer="{{ layer.value }}"
+                      title="{% trans "This layer could not be loaded. Switch it off and on again to retry." %}">
+                  ⚠ {% trans "not loaded" %}
+                </span>
               </label>
               {% if layer.value != "accidents" %}
               <button type="button" @click="expanded = !expanded"
@@ -1257,9 +1274,36 @@ function setLayerLoading(delta) {
   document.getElementById("map-loading")?.classList.toggle("hidden", _pendingLayerLoads === 0);
 }
 
+// Show or clear the "not loaded" badge on a layer's row.
+function markLayerFailed(kind, failed) {
+  const badge = document.querySelector(`.layer-error[data-layer="${kind}"]`);
+  if (badge) badge.classList.toggle("hidden", !failed);
+}
+
+// Layer data is fetched the first time a layer is switched on — never on page
+// load. A workspace's layers run to tens of megabytes (a city's full accident
+// record or street network is the usual culprit), and fetching all of them up
+// front made every viewer pay for the whole workspace before looking at a
+// single layer. On a slow connection the largest responses were still being
+// sent when the server gave up on them, so the layers a viewer actually wanted
+// were the ones that failed. Nothing is requested until something asks to see
+// it.
+const LAYER_URLS = {};          // kind -> API url, registered on map load
+const _layerLoads = new Map();  // kind -> in-flight or settled load promise
+
+function ensureLayerLoaded(kind) {
+  if (_layerLoads.has(kind)) return _layerLoads.get(kind);
+  const url = LAYER_URLS[kind];
+  if (!url) return Promise.resolve();
+  const loading = addGeoJsonLayer(kind, url, layerColor(kind));
+  _layerLoads.set(kind, loading);
+  return loading;
+}
+
 function addGeoJsonLayer(id, url, color) {
   setLayerLoading(1);
-  fetch(url)
+  markLayerFailed(id, false);
+  return fetch(url)
     .then(r => r.json())
     .then(fc => {
       // Normalise a numeric `_year` on bike-infra features (from the connector's
@@ -1622,8 +1666,21 @@ function addGeoJsonLayer(id, url, color) {
         // Re-apply any viewer-saved display mode / opacity now the sublayers exist.
         applyStoredLayerSettings(id);
       }
+
+      if (id === "accidents") {
+        // The layer can be switched on — or a story view applied — while the
+        // data is still in flight. Adopt that state now the sublayers exist,
+        // otherwise a heatmap preset would come back showing circles.
+        syncAccidentLayers();
+      }
     })
-    .catch(() => console.warn("Layer failed to load:", id))
+    .catch(err => {
+      console.warn("Layer failed to load:", id, err);
+      // Drop the memoised promise so switching the layer off and on retries
+      // instead of silently returning the failure for the rest of the session.
+      _layerLoads.delete(id);
+      markLayerFailed(id, true);
+    })
     .finally(() => setLayerLoading(-1));
 }
 
@@ -1707,21 +1764,22 @@ map.on("load", () => {
   const accidentsCb = document.querySelector('.layer-toggle[data-layer="accidents"]');
   if (accidentsCb) accidentsState.enabled = accidentsCb.checked;
 
+  // Register where each layer's data lives, without fetching any of it.
   LAYER_KINDS.forEach(kind => {
-    const url = `/api/v1/workspaces/${WORKSPACE_SLUG}/features/${kind}/`;
-    addGeoJsonLayer(kind, url, layerColor(kind));
+    LAYER_URLS[kind] = `/api/v1/workspaces/${WORKSPACE_SLUG}/features/${kind}/`;
   });
+  LAYER_URLS["measures"] = `/api/v1/workspaces/${WORKSPACE_SLUG}/measures.geojson`;
 
-  const measuresUrl = `/api/v1/workspaces/${WORKSPACE_SLUG}/measures.geojson`;
-  addGeoJsonLayer("measures", measuresUrl, "#6366f1");
-
-  // Measures checkbox starts unchecked — keep the layer hidden until toggled on.
-  ["measures-circle", "measures-fill", "measures-line", "measures-outline"].forEach(id => {
-    if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", "none");
+  // Fetch only what the viewer has already asked to see. Every checkbox starts
+  // unchecked, so on a plain page load this fetches nothing at all.
+  LAYER_KINDS.forEach(kind => {
+    const cb = document.querySelector(`.layer-toggle[data-layer="${kind}"]`);
+    if (cb && cb.checked) ensureLayerLoaded(kind);
   });
 
   document.getElementById("toggle-measures")?.addEventListener("change", (e) => {
     dismissStoryView();
+    if (e.target.checked) ensureLayerLoaded("measures");
     const vis = e.target.checked ? "visible" : "none";
     ["measures-circle", "measures-fill", "measures-line", "measures-outline"].forEach(id => {
       if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", vis);
@@ -1836,6 +1894,8 @@ map.on("load", () => {
     checkbox.addEventListener("change", (e) => {
       dismissStoryView(); // change events only fire on user interaction
       const kind = e.target.dataset.layer;
+      // Switching a layer on is what triggers its first fetch.
+      if (e.target.checked) ensureLayerLoaded(kind);
       if (kind === "accidents") {
         accidentsState.enabled = e.target.checked;
         syncAccidentLayers();
@@ -2130,18 +2190,26 @@ function areaTargets() {
           .then(r => r.json())
           .then(fc => { const src = map.getSource("focus-areas"); if (src) src.setData(fc); })
           .catch(() => {});
-        this._showSpaceLayers();
       }
     },
 
-    // Turn on the layers that show what a rebuild would cost. Only ones the
-    // workspace actually has appear, same gating rule as the story views.
-    _showSpaceLayers() {
-      AREA_SPACE_LAYERS.forEach(kind => {
+    // Which street-space layers this workspace has, so the panel can point at
+    // them. They are deliberately NOT switched on here: these are among the
+    // heaviest layers a workspace carries, and turning three of them on behind
+    // the viewer's back — while they were looking at something else — is how
+    // a map ends up loading tens of megabytes nobody asked for. The viewer
+    // switches them on when they want to see what the rebuild costs.
+    availableSpaceLayers() {
+      return AREA_SPACE_LAYERS.filter(
+        kind => document.querySelector(`.layer-toggle[data-layer="${kind}"]`)
+      );
+    },
+
+    showSpaceLayers() {
+      this.availableSpaceLayers().forEach(kind => {
         const cb = document.querySelector(`.layer-toggle[data-layer="${kind}"]`);
-        if (!cb) return;
         cb.checked = true;
-        setLayerVisible(kind, true);
+        ensureLayerLoaded(kind).then(() => setLayerVisible(kind, true));
       });
       document.dispatchEvent(new CustomEvent("omos:layerschanged"));
     },
@@ -2159,7 +2227,6 @@ function areaTargets() {
       map.on("dblclick", this._onDblClick);
       document.addEventListener("keydown", this._onKey);
       map.doubleClickZoom.disable();
-      this._showSpaceLayers();
     },
 
     _onKeyDown(e) {
@@ -2378,6 +2445,7 @@ function activateStoryView(key) {
     // applyStoredLayerSettings() shows the layer (honouring the checkbox) the
     // moment its sublayers are added, so an early click still populates.
     cb.checked = true;
+    ensureLayerLoaded(kind);
     const def = defaultModeFor(kind);
     if (getLayerMode(kind) !== def) setLayerDisplayMode(kind, def);
     setLayerVisible(kind, true); // no-op until the layer exists
@@ -2388,6 +2456,7 @@ function activateStoryView(key) {
   if (cfg.accidents && document.querySelector('.layer-toggle[data-layer="accidents"]')) {
     accidentsState.enabled = true;
     accidentsState.mode = cfg.accidents;
+    ensureLayerLoaded("accidents");
     syncAccidentLayers();
     const acb = document.querySelector('.layer-toggle[data-layer="accidents"]');
     if (acb) acb.checked = true;
@@ -2657,6 +2726,7 @@ function savedViews() {
             .some(id => (v.layerVisibility[id] || "none") === "visible");
           cb.checked = on;
           accidentsState.enabled = on;
+          if (on) ensureLayerLoaded("accidents");
           // The restored layout properties are already applied, so the view
           // mode can be read straight off the map; syncing it here keeps the
           // filter panel and legend consistent with the saved view.
@@ -2668,12 +2738,16 @@ function savedViews() {
           s => (v.layerVisibility[kind + s] || "none") === "visible"
         );
         cb.checked = on;
+        // A saved view names layers that may never have been loaded in this
+        // session — restoring it has to fetch them, or it restores an empty map.
+        if (on) ensureLayerLoaded(kind).then(() => setLayerVisible(kind, true));
       });
       // Re-sync measures toggle (its filter panel follows via omos:layerschanged).
       const measuresCb = document.getElementById("toggle-measures");
       if (measuresCb) {
         measuresCb.checked = ["measures-circle", "measures-line", "measures-fill"]
           .some(id => (v.layerVisibility[id] || "none") === "visible");
+        if (measuresCb.checked) ensureLayerLoaded("measures");
       }
       // Re-sync district scores checkbox.
       const districtCb = document.getElementById("toggle-district-scores");
