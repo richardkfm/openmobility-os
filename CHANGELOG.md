@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **Contributor comments no longer leak onto the page.** Five notes meant for
+  people reading the source were rendering as visible text — under "Show target
+  areas" and in the Vision Zero part of the target form on the map, on the
+  methodology page, on the data-source provenance badge, in the connector
+  catalogue browser, and in the "Test connection" panel.
+
+### Fixed
 - **The map no longer downloads every layer before you ask for one.** Layer data
   is now fetched the first time a layer is switched on. Previously every layer in
   the workspace was requested on page load, whether or not anyone had ticked it —
