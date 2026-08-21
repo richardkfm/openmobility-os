@@ -160,8 +160,10 @@
             <span>{% trans "Show target areas" %}</span>
           </label>
 
-          {# The street-space layers are among the heaviest a workspace has, so
-             they are offered rather than switched on automatically. #}
+          {% comment %}
+            The street-space layers are among the heaviest a workspace has, so
+            they are offered rather than switched on automatically.
+          {% endcomment %}
           <template x-if="availableSpaceLayers().length">
             <button @click="showSpaceLayers()"
                     class="text-left text-xs text-brand-700 hover:underline">
@@ -220,10 +222,12 @@
                 {% endfor %}
               </select>
 
-              {# For indicators counting people killed or seriously injured there is
-                 no percentage field at all. The only target the platform will store
-                 is zero, so offering "reduce by X%" would be offering something it
-                 refuses to mean. #}
+              {% comment %}
+                For indicators counting people killed or seriously injured there is
+                no percentage field at all. The only target the platform will store
+                is zero, so offering "reduce by X%" would be offering something it
+                refuses to mean.
+              {% endcomment %}
               <template x-if="isVisionZero()">
                 <p class="text-xs rounded-md bg-slate-900 text-white p-2 leading-relaxed">
                   {% trans "Target: zero people killed or seriously injured. No percentage target is offered here — a share of deaths is not something to plan for." %}
@@ -1665,13 +1669,6 @@ function addGeoJsonLayer(id, url, color) {
 
         // Re-apply any viewer-saved display mode / opacity now the sublayers exist.
         applyStoredLayerSettings(id);
-      }
-
-      if (id === "accidents") {
-        // The layer can be switched on — or a story view applied — while the
-        // data is still in flight. Adopt that state now the sublayers exist,
-        // otherwise a heatmap preset would come back showing circles.
-        syncAccidentLayers();
       }
     })
     .catch(err => {

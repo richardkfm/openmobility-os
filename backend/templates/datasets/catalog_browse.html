@@ -39,10 +39,12 @@
   </form>
   {% endif %}
 
-  {# Search bar — only for connectors backed by a real keyword catalogue
-     (e.g. Mobilithek's DCAT-AP feed). Connectors that just list a few
-     curated releases (Unfallatlas) hide it so the page doesn't imply a
-     library search that doesn't exist. #}
+  {% comment %}
+    Search bar — only for connectors backed by a real keyword catalogue
+    (e.g. Mobilithek's DCAT-AP feed). Connectors that just list a few
+    curated releases (Unfallatlas) hide it so the page doesn't imply a
+    library search that doesn't exist.
+  {% endcomment %}
   {% if connector.catalog_searchable %}
   <form hx-get="{% url 'catalog_browse' workspace.slug connector.id %}"
         hx-target="#catalog-results"

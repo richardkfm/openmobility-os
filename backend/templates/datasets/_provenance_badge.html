@@ -1,7 +1,9 @@
 {% load i18n %}
-{# Provenance badge — expects `provenance` = {level, label, hint}. Shows
-   whether a data source is a live feed, an official snapshot, or
-   illustrative demo data. Reused on public and operator surfaces. #}
+{% comment %}
+  Provenance badge — expects `provenance` = {level, label, hint}. Shows
+  whether a data source is a live feed, an official snapshot, or
+  illustrative demo data. Reused on public and operator surfaces.
+{% endcomment %}
 {% if provenance %}
 <span title="{{ provenance.hint }}"
   class="text-xs rounded-full px-2 py-0.5 whitespace-nowrap

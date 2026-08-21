@@ -1,10 +1,11 @@
 {% load i18n %}
-{# Rich diagnostic panel for the "Test connection" button.
-   Replaces the legacy raw-JSON response so operators can see exactly what
-   the connector parsed, where the data lives geographically, and how that
-   compares to the workspace bounds. Renders a small MapLibre preview with
-   the workspace polygon and a sample of the data points.
-#}
+{% comment %}
+  Rich diagnostic panel for the "Test connection" button.
+  Replaces the legacy raw-JSON response so operators can see exactly what
+  the connector parsed, where the data lives geographically, and how that
+  compares to the workspace bounds. Renders a small MapLibre preview with
+  the workspace polygon and a sample of the data points.
+{% endcomment %}
 <div class="rounded-lg border bg-white p-4 flex flex-col gap-4">
   {# ── Verdict line ── #}
   <div class="flex items-start gap-2">
