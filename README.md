@@ -3,7 +3,7 @@
 
 # OpenMobility OS
 
-**Version:** 0.49.0 (pre-release) — see [CHANGELOG.md](CHANGELOG.md)
+**Version:** 0.50.0 (pre-release) — see [CHANGELOG.md](CHANGELOG.md)
 **License:** See [LICENSE](LICENSE)
 
 > The open, free, self-hostable operating system between open mobility data
@@ -158,6 +158,14 @@ four demo workspaces: **Leipzig**, **Utrecht**, **Musterstadt**, and **Muster-La
   plan reports how many people are still expected to be harmed rather than hiding
   it behind a percentage. See [docs/AREA_TARGETS.md](docs/AREA_TARGETS.md)
 - **Interactive maps** — MapLibre GL JS with configurable tile sources
+- **Pedestrian space and off-street parking on the map** — sidewalks, footpaths,
+  pedestrian streets and steps come in from OpenStreetMap under either of the two
+  ways it records them (a footway mapped as its own line, or a `sidewalk` tag on
+  the street), and car parks arrive with their footprint and area rather than as
+  a pin. A street that was surveyed and found to have no pavement is kept
+  distinct from one nobody has mapped yet — the first is evidence, the second is
+  silence, and a walkability reading that confused them would condemn every
+  unmapped street
 - **Map legend & distinct markers** — an always-on legend below the map lists
   every active layer with a swatch shaped like how it is drawn; place-type point
   layers (schools, parking, transit stops, EV chargers, public buildings) use
@@ -181,13 +189,17 @@ four demo workspaces: **Leipzig**, **Utrecht**, **Musterstadt**, and **Muster-La
 - **Data connectors** (fully implemented):
   - CSV (URL or direct file upload) with column mapping and encoding detection
   - GeoJSON URL with property remapping
-  - OpenStreetMap via Overpass API — seventeen built-in templates
+  - OpenStreetMap via Overpass API — twenty-two built-in templates
     (`streets`, `streets_with_speed`, `bike_network`,
     `dedicated_bike_network`, `transit_stops`, `schools`, `parking`,
     `trees`, `parks_and_green`, `water_bodies`, `sealed_surfaces`,
     `districts`, `kindergartens`, `hospitals`,
-    `public_buildings`, `pedestrian_crossings`, `ev_chargers_osm`) plus a
-    custom-query escape hatch
+    `public_buildings`, `pedestrian_crossings`, `ev_chargers_osm`,
+    `street_parking`, `car_lanes`, `obstacles`, `parking_lots`,
+    `footways`) plus a custom-query escape hatch.
+    The last five are the heavy ones — they pull every street or car park in
+    the bounding box with its full geometry — so they are never synced for you:
+    add them from the data hub when you want them
   - Static GTFS zip (transit stops, routes, coverage) — enriches stops with
     average headway, night service, and barrier-free status from the schedule
   - **GBFS shared mobility** — reads any operator's GBFS auto-discovery feed

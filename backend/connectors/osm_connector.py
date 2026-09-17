@@ -1,8 +1,9 @@
 """OpenStreetMap Overpass API connector.
 
-Supports six builtin query templates covering the most common mobility layers,
-plus a custom Overpass QL query escape hatch. Always workspace-agnostic: the
-bbox is derived from the workspace bounds.
+Supports the builtin query templates in OVERPASS_TEMPLATES below, covering the
+common mobility, street-space and pedestrian-space layers, plus a custom
+Overpass QL query escape hatch. Always workspace-agnostic: the bbox is derived
+from the workspace bounds, so the same template works for any municipality.
 """
 
 
@@ -248,6 +249,43 @@ OVERPASS_TEMPLATES: dict[str, str] = {
           way["bridge"="yes"]["highway"]({bbox});
           way["tunnel"="yes"]["highway"]({bbox});
           way["highway"="construction"]({bbox});
+        );
+        out geom tags;
+    """,
+    # ── Pedestrian space and off-street parking ──────────────────────────
+    # The counterpart to the street-space layers above: where the city stores
+    # its cars when they are not moving, and where people can walk.
+    #
+    # Off-street car parks *with their footprint*. The lighter `parking`
+    # template above asks for `out center` and so yields a pin per car park,
+    # which answers "where are they" but not "how big". This one carries the
+    # geometry, so a lot's area — and from it, in the measures layer, its
+    # likely capacity — can be worked out. It is a much heavier query, which
+    # is why it is a separate template rather than a change to `parking`:
+    # workspaces that only want pins should not start paying for rings.
+    "parking_lots": """
+        [out:json][timeout:90];
+        (
+          way["amenity"="parking"]({bbox});
+          relation["amenity"="parking"]({bbox});
+        );
+        out geom tags;
+    """,
+    # Footways and sidewalks. OSM maps pedestrian space two incompatible ways
+    # and coverage differs wildly by city, so both schemes are collected:
+    # separate ways (`highway=footway`, `pedestrian`, `steps`, foot-designated
+    # paths) and sidewalk tags carried on the carriageway itself
+    # (`sidewalk=both/left/right`). A city that maps one and not the other is
+    # the normal case, not the exception.
+    "footways": """
+        [out:json][timeout:90];
+        (
+          way["highway"~"^(footway|pedestrian|steps|living_street)$"]({bbox});
+          way["highway"="path"]["foot"~"^(designated|yes)$"]({bbox});
+          way["sidewalk"]({bbox});
+          way["sidewalk:both"]({bbox});
+          way["sidewalk:left"]({bbox});
+          way["sidewalk:right"]({bbox});
         );
         out geom tags;
     """,
@@ -576,10 +614,219 @@ def _normalize_obstacles(feat: dict) -> None:
     props["note"] = props.get("name") or ""
 
 
+# ─── Pedestrian-space and parking-lot normalisers ────────────────────────────
+
+# `access` values that mean the public may park here. Anything else — private,
+# permit-only, a customer car park — is still stored, because a planner
+# counting the city's parking supply wants to know it exists, but it is
+# labelled so it can be filtered out.
+_PUBLIC_ACCESS = {"yes", "public", "permissive", "designated"}
+_CUSTOMER_ACCESS = {"customers", "customer"}
+_PRIVATE_ACCESS = {"private", "no", "permit", "residents", "employees"}
+
+_PARKING_FORMS = {
+    "surface",
+    "multi-storey",
+    "underground",
+    "rooftop",
+    "carports",
+    "garage_boxes",
+    "street_side",
+    "lane",
+}
+
+
+def _normalize_parking_lots(feat: dict) -> None:
+    """Normalise an off-street car park into form, access, area and capacity.
+
+    ``capacity_source`` is the honesty flag, and it has only two values:
+    "tagged" when OSM states a capacity, "unknown" when it does not. The
+    number of spaces is deliberately NOT derived from the area here. Square
+    metres per space depends on the layout standard in force, which is a
+    measures-engine parameter overridable per workspace (see
+    measures/parking_estimate.py) — baking a default into stored data would
+    silently ignore that override, the same reason _normalize_street_parking
+    refuses to count kerbside bays.
+    """
+    props = feat["properties"]
+
+    capacity = _to_int(props.get("capacity"))
+    props["capacity"] = capacity
+    props["capacity_source"] = "tagged" if capacity is not None else "unknown"
+
+    form = str(props.get("parking") or "").lower()
+    props["parking_form"] = form if form in _PARKING_FORMS else None
+
+    access = str(props.get("access") or "").lower()
+    if not access:
+        props["access_class"] = "unknown"
+    elif access in _PUBLIC_ACCESS:
+        props["access_class"] = "public"
+    elif access in _CUSTOMER_ACCESS:
+        props["access_class"] = "customers"
+    elif access in _PRIVATE_ACCESS:
+        props["access_class"] = "private"
+    else:
+        props["access_class"] = "unknown"
+
+    fee = str(props.get("fee") or "").lower()
+    props["fee"] = True if fee in ("yes", "true") else (False if fee in ("no", "false") else None)
+
+    props["levels"] = _to_int(props.get("parking:levels") or props.get("levels"))
+    props["surface"] = props.get("surface") or None
+    props["name"] = props.get("name") or ""
+    props["area_m2"] = _polygon_area_m2(feat.get("geometry") or {})
+
+
+# Values of `sidewalk` / `sidewalk:<side>` that mean "surveyed, and there is
+# none here". A separately mapped sidewalk is tagged `separate` and is counted
+# as absence on the carriageway, because the footway itself arrives as its own
+# feature through the other half of the query.
+_SIDEWALK_ABSENT = {"no", "none", "separate"}
+_SIDEWALK_PRESENT = {"yes", "both", "left", "right"}
+
+# Highway values that are pedestrian space in their own right, where asking
+# "does it have a sidewalk?" is the wrong question.
+_FOOT_PRIORITY_HIGHWAYS = {"footway", "pedestrian", "steps", "path", "living_street"}
+
+# ... of which these two are shared space: a carriageway people on foot may use
+# for its full width, rather than a footway alongside one. Worth keeping apart,
+# because "no pavement here" means something entirely different on a living
+# street than it does on a through road.
+_SHARED_SPACE_HIGHWAYS = {"pedestrian", "living_street"}
+
+
+def _normalize_footways(feat: dict) -> None:
+    """Normalise pedestrian space from either OSM sidewalk scheme.
+
+    ``footway_present`` is three-state on purpose. ``True`` means a footway is
+    recorded, ``False`` means the street was surveyed and has none, and
+    ``None`` means OSM is silent. Collapsing the last two would turn every
+    unmapped street into a hostile one, which is a claim the data does not
+    support — a surveyed absence is evidence, silence is not.
+
+    ``width_source`` is likewise only ever "tagged" or "unknown". A carriageway
+    width can be estimated from a lane count; there is no equivalent inference
+    for a pavement, so this normaliser never invents one.
+    """
+    props = feat["properties"]
+    highway = str(props.get("highway") or "").lower()
+
+    if highway in _FOOT_PRIORITY_HIGHWAYS:
+        _normalize_separate_footway(props, highway)
+    else:
+        _normalize_street_sidewalk(props)
+
+    props["highway"] = highway or None
+    props["shared_space"] = highway in _SHARED_SPACE_HIGHWAYS
+    props["surface"] = props.get("surface") or None
+    props["smoothness"] = props.get("smoothness") or None
+    props["lit"] = _yes_no(props.get("lit"))
+    props["tactile_paving"] = _yes_no(props.get("tactile_paving"))
+    props["incline_pct"] = _incline_pct(props.get("incline"))
+    props["is_steps"] = highway == "steps"
+    props["step_count"] = _to_int(props.get("step_count"))
+    props["length_m"] = _line_length_m(feat.get("geometry") or {})
+
+
+def _normalize_separate_footway(props: dict, highway: str) -> None:
+    """A footway, path or pedestrian street mapped as a way of its own."""
+    props["foot_scheme"] = "separate_way"
+
+    access = str(props.get("foot") or "").lower()
+    if highway in ("footway", "pedestrian", "steps"):
+        props["foot_access"] = access or "designated"
+    else:
+        props["foot_access"] = access or "unknown"
+
+    # A way explicitly closed to people on foot is a surveyed absence.
+    props["footway_present"] = props["foot_access"] != "no"
+    props["sides"] = "both" if props["footway_present"] else "none"
+
+    width = _to_float(props.get("width"))
+    props["width_m"] = width if width and width > 0 else None
+    props["width_source"] = "tagged" if props["width_m"] else "unknown"
+
+
+def _normalize_street_sidewalk(props: dict) -> None:
+    """A carriageway carrying `sidewalk=*` / `sidewalk:<side>=*` tags."""
+    props["foot_scheme"] = "street_tag"
+    props["foot_access"] = str(props.get("foot") or "").lower() or "unknown"
+
+    present_sides = set()
+    surveyed = False
+
+    # Only a value we actually recognise counts as a survey. An unexpected one
+    # is not evidence that there is no pavement — it is evidence that we do not
+    # understand the tag, which is a different thing and must stay "unknown".
+    combined = str(props.get("sidewalk") or "").lower()
+    if combined in _SIDEWALK_PRESENT:
+        surveyed = True
+        present_sides.update(("left", "right") if combined in ("yes", "both") else [combined])
+    elif combined in _SIDEWALK_ABSENT:
+        surveyed = True
+
+    for side in ("both", "left", "right"):
+        value = str(props.get(f"sidewalk:{side}") or "").lower()
+        if value in _SIDEWALK_PRESENT:
+            surveyed = True
+            present_sides.update(("left", "right") if side == "both" else [side])
+        elif value in _SIDEWALK_ABSENT:
+            surveyed = True
+
+    if not surveyed:
+        props["footway_present"] = None
+        props["sides"] = "unknown"
+    elif present_sides:
+        props["footway_present"] = True
+        props["sides"] = "both" if len(present_sides) == 2 else next(iter(present_sides))
+    else:
+        props["footway_present"] = False
+        props["sides"] = "none"
+
+    # Sidewalk widths hang off the side they describe; take the narrowest
+    # stated one, since the tightest pavement is what constrains a walk.
+    widths = []
+    for key in (
+        "sidewalk:width",
+        "sidewalk:both:width",
+        "sidewalk:left:width",
+        "sidewalk:right:width",
+    ):
+        width = _to_float(props.get(key))
+        if width and width > 0:
+            widths.append(width)
+    props["width_m"] = min(widths) if widths else None
+    props["width_source"] = "tagged" if widths else "unknown"
+
+
+def _yes_no(value):
+    """Tri-state reading of a yes/no tag: True, False, or None for silence."""
+    text = str(value or "").lower()
+    if text in ("yes", "true", "1"):
+        return True
+    if text in ("no", "false", "0"):
+        return False
+    return None
+
+
+def _incline_pct(value):
+    """Percent gradient from an `incline` tag, or None if it states no number.
+
+    OSM also allows `up` / `down`, which say a slope exists but not how steep;
+    those carry no number, so they yield None rather than a fabricated one.
+    """
+    text = str(value or "").strip().rstrip("%")
+    parsed = _to_float(text)
+    return abs(parsed) if parsed is not None else None
+
+
 _STREET_SPACE_NORMALIZERS = {
     "street_parking": _normalize_street_parking,
     "car_lanes": _normalize_car_lanes,
     "obstacles": _normalize_obstacles,
+    "parking_lots": _normalize_parking_lots,
+    "footways": _normalize_footways,
 }
 
 
@@ -621,6 +868,55 @@ def _line_length_m(geometry: dict):
         dy = (lat2 - lat1) * m_per_deg_lat
         total += math.hypot(dx, dy)
     return round(total, 1)
+
+
+def _polygon_area_m2(geometry: dict):
+    """Approximate the area of a Polygon / MultiPolygon in square metres.
+
+    Same local equirectangular approach as :func:`_line_length_m`, around the
+    ring's own mean latitude: accurate well inside a percent at car-park scale
+    and correct anywhere on earth, which a fixed constant would not be.
+    Interior rings (a building inside a car park, say) are subtracted.
+    """
+    gtype = geometry.get("type")
+    coords = geometry.get("coordinates") or []
+    if gtype == "MultiPolygon":
+        total = sum(
+            _polygon_area_m2({"type": "Polygon", "coordinates": poly}) or 0.0
+            for poly in coords
+        )
+        return round(total, 1)
+    if gtype != "Polygon" or not coords:
+        return None
+
+    lats = [c[1] for ring in coords for c in ring if len(c) >= 2]
+    if not lats:
+        return None
+    mean_lat_rad = math.radians(sum(lats) / len(lats))
+    m_per_deg_lat = 111_132.0
+    m_per_deg_lon = 111_320.0 * math.cos(mean_lat_rad)
+
+    area = 0.0
+    for index, ring in enumerate(coords):
+        projected = [
+            (c[0] * m_per_deg_lon, c[1] * m_per_deg_lat) for c in ring if len(c) >= 2
+        ]
+        ring_area = _shoelace_area(projected)
+        # The first ring is the outline; any further ring is a hole in it.
+        area += ring_area if index == 0 else -ring_area
+    return round(max(area, 0.0), 1)
+
+
+def _shoelace_area(ring):
+    """Absolute area of a projected ring. Winding order does not matter."""
+    if len(ring) < 3:
+        return 0.0
+    total = 0.0
+    for i in range(len(ring)):
+        x1, y1 = ring[i]
+        x2, y2 = ring[(i + 1) % len(ring)]
+        total += x1 * y2 - x2 * y1
+    return abs(total) / 2.0
 
 
 def _osm_element_to_feature(el: dict):

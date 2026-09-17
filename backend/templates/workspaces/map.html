@@ -788,6 +788,16 @@ const LAYER_STYLE = {
   street_parking:         { color: "#a855f7", geom: "line" },
   car_lanes:              { color: "#6b7280", geom: "line" },
   obstacles:              { color: "#b91c1c", geom: "point", point: "dot" },
+  // Pedestrian space and off-street parking — the two halves of the question
+  // "who gets the room?". parking_lots deliberately shares the exact colour of
+  // `parking`: they are the same real-world thing drawn two ways, a pin versus
+  // a footprint, and a workspace normally runs one or the other.
+  // Footways and crossings take the cyan/sky end, which nothing linear is
+  // using. Note ev_charging sits nearby at cyan-600: it draws as a glyph badge
+  // and footways as a line, so shape separates them where hue is close.
+  parking_lots:           { color: "#7c3aed", geom: "area" },
+  footways:               { color: "#0e7490", geom: "line" },
+  pedestrian_crossings:   { color: "#0284c7", geom: "point", point: "dot" },
   ev_charging:            { color: "#0891b2", geom: "point", point: "icon", icon: "charger" },
   public_buildings:       { color: "#b45309", geom: "point", point: "icon", icon: "building" },
   districts:              { color: "#64748b", geom: "area" },

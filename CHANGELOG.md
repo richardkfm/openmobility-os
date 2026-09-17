@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Sidewalks, footpaths and off-street car parks can now be put on the map.**
+  Two new OpenStreetMap layers: `footways` collects pedestrian space under both
+  of the ways OSM records it — a footway mapped as its own line, and a
+  `sidewalk` tag carried on the street itself — because which one a city uses is
+  a local habit, and reading only one of them would leave half the world's
+  cities looking as though nobody walks there. `parking_lots` collects car parks
+  with their footprint, so a lot's area is known rather than just its location;
+  the existing lighter `parking` layer is unchanged for anyone who only wants a
+  pin. Pedestrian crossings, which could already be pulled in, now have a proper
+  layer name instead of showing up as "Custom".
+
+  Both new layers are heavy — they pull every car park, and every street
+  carrying a sidewalk tag, with full geometry — so nothing syncs them on your
+  behalf. Add them from the data hub when you want them.
+
+  Where OSM says a street was surveyed and has **no** pavement, that is recorded
+  as a finding in its own right, kept apart from a street nobody has mapped yet.
+  The two look the same on a blank map and mean opposite things, and a later
+  walkability reading that ran them together would mark most of an unmapped city
+  as hostile on no evidence at all. For the same reason a pavement's width is
+  only ever reported when OSM states it: unlike a carriageway, there is nothing
+  sensible to infer it from, so the platform says it does not know.
+
 ### Changed
 - **A geographic mismatch in an accident import is now an error, not a
   warning.** When clipping an Unfallatlas file to the workspace left *no* rows

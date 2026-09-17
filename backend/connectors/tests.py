@@ -2716,3 +2716,349 @@ class StreetSpaceTemplateTests(TestCase):
         enum = OSMOverpassConnector.config_schema["template"]["enum"]
         for name in ("street_parking", "car_lanes", "obstacles"):
             self.assertIn(name, enum)
+
+
+class PedestrianAndParkingTemplateTests(TestCase):
+    """Contract tests for the two layers behind the parking-vs-walking view."""
+
+    def test_the_templates_exist_and_use_the_bbox_placeholder(self):
+        from connectors.osm_connector import OVERPASS_TEMPLATES
+
+        for name in ("parking_lots", "footways"):
+            self.assertIn(name, OVERPASS_TEMPLATES)
+            self.assertIn("{bbox}", OVERPASS_TEMPLATES[name])
+
+    def test_templates_are_offered_in_the_config_schema(self):
+        from connectors.osm_connector import OSMOverpassConnector
+
+        enum = OSMOverpassConnector.config_schema["template"]["enum"]
+        for name in ("parking_lots", "footways"):
+            self.assertIn(name, enum)
+
+    def test_the_workspace_bbox_is_substituted(self):
+        from connectors.osm_connector import OSMOverpassConnector
+
+        # Same workspace stub pattern as the other template tests in this file.
+        @dataclass
+        class _Bnds:
+            extent: tuple = (12.295, 51.236, 12.549, 51.443)
+
+        @dataclass
+        class _Ws:
+            bounds: _Bnds = None
+
+        ws = _Ws(bounds=_Bnds())
+        connector = OSMOverpassConnector()
+        for name in ("parking_lots", "footways"):
+            query = connector._build_query({"template": name}, ws)
+            self.assertIn("51.236,12.295,51.443,12.549", query)
+            self.assertNotIn("{bbox}", query)
+
+    def test_parking_lots_asks_for_geometry_not_just_a_centre_point(self):
+        """The whole reason this template exists next to `parking` is that a
+        lot's area is needed to estimate how many cars it holds. `out center`
+        would give a pin and no footprint, silently making that impossible."""
+        from connectors.osm_connector import OVERPASS_TEMPLATES
+
+        query = OVERPASS_TEMPLATES["parking_lots"]
+        self.assertIn("out geom", query)
+        self.assertNotIn("out center", query)
+
+    def test_parking_lots_does_not_replace_the_lighter_parking_template(self):
+        """`parking` stays a cheap point layer. Turning it into polygons would
+        make every workspace that already synced it pay for full rings."""
+        from connectors.osm_connector import OVERPASS_TEMPLATES
+
+        self.assertIn("parking", OVERPASS_TEMPLATES)
+        self.assertIn("out center", OVERPASS_TEMPLATES["parking"])
+
+    def test_footways_collects_both_osm_sidewalk_schemes(self):
+        """OSM maps pedestrian space either as its own way or as a tag on the
+        carriageway, and which one a city uses is a local habit. Collecting one
+        scheme only would blank out half the cities on earth."""
+        from connectors.osm_connector import OVERPASS_TEMPLATES
+
+        query = OVERPASS_TEMPLATES["footways"]
+        self.assertIn("footway", query)
+        self.assertIn("pedestrian", query)
+        self.assertIn("steps", query)
+        for side in ("sidewalk:both", "sidewalk:left", "sidewalk:right"):
+            self.assertIn(side, query)
+
+    def test_both_templates_have_a_normalizer(self):
+        from connectors.osm_connector import _STREET_SPACE_NORMALIZERS
+
+        for name in ("parking_lots", "footways"):
+            self.assertIn(name, _STREET_SPACE_NORMALIZERS)
+
+
+class ParkingLotNormalizerTests(TestCase):
+    def setUp(self):
+        from connectors import osm_connector
+
+        self.osm = osm_connector
+
+    def _lot(self, tags, *, width_m=100.0, height_m=50.0):
+        """A rectangular car park of a known size, near Leipzig."""
+        import math
+
+        d_lat = height_m / 111_132.0
+        d_lon = width_m / (111_320.0 * math.cos(math.radians(51.34)))
+        lon, lat = 12.37, 51.34
+        ring = [
+            [lon, lat],
+            [lon + d_lon, lat],
+            [lon + d_lon, lat + d_lat],
+            [lon, lat + d_lat],
+            [lon, lat],
+        ]
+        return {
+            "type": "Feature",
+            "geometry": {"type": "Polygon", "coordinates": [ring]},
+            "properties": dict(tags),
+        }
+
+    def test_area_is_computed_from_the_footprint(self):
+        feat = self._lot({"amenity": "parking"}, width_m=100.0, height_m=50.0)
+        self.osm._normalize_parking_lots(feat)
+        self.assertAlmostEqual(feat["properties"]["area_m2"], 5000.0, delta=25.0)
+
+    def test_a_tagged_capacity_is_kept_and_marked_as_tagged(self):
+        feat = self._lot({"amenity": "parking", "capacity": "120"})
+        self.osm._normalize_parking_lots(feat)
+        props = feat["properties"]
+        self.assertEqual(props["capacity"], 120)
+        self.assertEqual(props["capacity_source"], "tagged")
+
+    def test_capacity_is_never_guessed_from_the_area(self):
+        """Square metres per space depends on the layout standard in force,
+        which is a per-workspace measures parameter. Baking a default in here
+        would silently ignore that override — the same boundary the kerbside
+        parking normaliser keeps."""
+        feat = self._lot({"amenity": "parking"})
+        self.osm._normalize_parking_lots(feat)
+        props = feat["properties"]
+        self.assertIsNone(props["capacity"])
+        self.assertEqual(props["capacity_source"], "unknown")
+        self.assertGreater(props["area_m2"], 0)
+
+    def test_access_is_classified_so_private_lots_can_be_filtered_out(self):
+        cases = {
+            "yes": "public",
+            "public": "public",
+            "permissive": "public",
+            "customers": "customers",
+            "private": "private",
+            "no": "private",
+        }
+        for tag, expected in cases.items():
+            with self.subTest(access=tag):
+                feat = self._lot({"amenity": "parking", "access": tag})
+                self.osm._normalize_parking_lots(feat)
+                self.assertEqual(feat["properties"]["access_class"], expected)
+
+    def test_an_untagged_access_is_unknown_not_assumed_public(self):
+        feat = self._lot({"amenity": "parking"})
+        self.osm._normalize_parking_lots(feat)
+        self.assertEqual(feat["properties"]["access_class"], "unknown")
+
+    def test_form_fee_and_levels_are_read(self):
+        feat = self._lot(
+            {
+                "amenity": "parking",
+                "parking": "multi-storey",
+                "fee": "yes",
+                "parking:levels": "4",
+            }
+        )
+        self.osm._normalize_parking_lots(feat)
+        props = feat["properties"]
+        self.assertEqual(props["parking_form"], "multi-storey")
+        self.assertIs(props["fee"], True)
+        self.assertEqual(props["levels"], 4)
+
+    def test_an_unstated_fee_is_none_rather_than_false(self):
+        feat = self._lot({"amenity": "parking"})
+        self.osm._normalize_parking_lots(feat)
+        self.assertIsNone(feat["properties"]["fee"])
+
+    def test_an_interior_ring_is_subtracted_from_the_area(self):
+        feat = self._lot({"amenity": "parking"}, width_m=100.0, height_m=100.0)
+        outer = feat["geometry"]["coordinates"][0]
+        lon0, lat0 = outer[0]
+        lon1, lat1 = outer[2]
+        # A hole covering the middle quarter of the lot.
+        hole = [
+            [lon0 + (lon1 - lon0) * 0.25, lat0 + (lat1 - lat0) * 0.25],
+            [lon0 + (lon1 - lon0) * 0.75, lat0 + (lat1 - lat0) * 0.25],
+            [lon0 + (lon1 - lon0) * 0.75, lat0 + (lat1 - lat0) * 0.75],
+            [lon0 + (lon1 - lon0) * 0.25, lat0 + (lat1 - lat0) * 0.75],
+        ]
+        feat["geometry"]["coordinates"].append(hole)
+        self.osm._normalize_parking_lots(feat)
+        # 10 000 m² outer minus a 50 m x 50 m hole.
+        self.assertAlmostEqual(feat["properties"]["area_m2"], 7500.0, delta=50.0)
+
+
+class FootwayNormalizerTests(TestCase):
+    """Pedestrian space is mapped two ways in OSM, and the difference between
+    "surveyed, none here" and "nobody has looked" is the whole ballgame for a
+    walkability reading — so both are pinned down here."""
+
+    def setUp(self):
+        from connectors import osm_connector
+
+        self.osm = osm_connector
+
+    def _way(self, tags):
+        return {
+            "type": "Feature",
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [[12.37, 51.34], [12.3714, 51.34]],
+            },
+            "properties": dict(tags),
+        }
+
+    def _normalized(self, tags):
+        feat = self._way(tags)
+        self.osm._normalize_footways(feat)
+        return feat["properties"]
+
+    # --- the three states of footway_present ---
+
+    def test_a_tagged_sidewalk_is_present(self):
+        props = self._normalized({"highway": "residential", "sidewalk": "both"})
+        self.assertIs(props["footway_present"], True)
+        self.assertEqual(props["sides"], "both")
+        self.assertEqual(props["foot_scheme"], "street_tag")
+
+    def test_a_surveyed_absence_is_false(self):
+        props = self._normalized({"highway": "residential", "sidewalk": "no"})
+        self.assertIs(props["footway_present"], False)
+        self.assertEqual(props["sides"], "none")
+
+    def test_silence_is_none_and_not_an_absence(self):
+        """An untagged street is not a street without pavements. Collapsing
+        these two would mark most of an unmapped city as hostile to walk in,
+        which the data does not say."""
+        props = self._normalized({"highway": "residential"})
+        self.assertIsNone(props["footway_present"])
+        self.assertEqual(props["sides"], "unknown")
+
+    def test_one_side_tagged_yes_and_the_other_no(self):
+        props = self._normalized(
+            {"highway": "residential", "sidewalk:left": "yes", "sidewalk:right": "no"}
+        )
+        self.assertIs(props["footway_present"], True)
+        self.assertEqual(props["sides"], "left")
+
+    def test_an_unrecognised_sidewalk_value_stays_unknown(self):
+        """A tag we do not understand is not evidence that there is no
+        pavement. Reading it as an absence would invent a finding out of our
+        own ignorance."""
+        props = self._normalized({"highway": "residential", "sidewalk": "wibble"})
+        self.assertIsNone(props["footway_present"])
+        self.assertEqual(props["sides"], "unknown")
+
+    def test_shared_space_is_flagged(self):
+        """On a living street or a pedestrian street people on foot may use the
+        full width, so "no pavement" there means something else entirely."""
+        self.assertTrue(self._normalized({"highway": "living_street"})["shared_space"])
+        self.assertTrue(self._normalized({"highway": "pedestrian"})["shared_space"])
+        self.assertFalse(self._normalized({"highway": "residential"})["shared_space"])
+        self.assertFalse(self._normalized({"highway": "footway"})["shared_space"])
+
+    def test_a_separately_mapped_sidewalk_is_absent_from_the_carriageway(self):
+        """`sidewalk=separate` means the footway exists but is its own way —
+        which arrives through the other half of the query, so counting it here
+        as well would double it."""
+        props = self._normalized({"highway": "residential", "sidewalk": "separate"})
+        self.assertIs(props["footway_present"], False)
+
+    # --- separate ways ---
+
+    def test_a_footway_way_is_read_as_its_own_pedestrian_space(self):
+        props = self._normalized({"highway": "footway", "width": "2.5"})
+        self.assertEqual(props["foot_scheme"], "separate_way")
+        self.assertIs(props["footway_present"], True)
+        self.assertEqual(props["width_m"], 2.5)
+        self.assertEqual(props["width_source"], "tagged")
+
+    def test_a_way_closed_to_people_on_foot_is_a_surveyed_absence(self):
+        props = self._normalized({"highway": "footway", "foot": "no"})
+        self.assertIs(props["footway_present"], False)
+
+    def test_steps_are_flagged(self):
+        props = self._normalized({"highway": "steps", "step_count": "18"})
+        self.assertTrue(props["is_steps"])
+        self.assertEqual(props["step_count"], 18)
+
+    def test_a_pedestrian_street_is_pedestrian_space(self):
+        props = self._normalized({"highway": "pedestrian"})
+        self.assertIs(props["footway_present"], True)
+        self.assertEqual(props["foot_scheme"], "separate_way")
+
+    # --- widths are never invented ---
+
+    def test_width_source_is_never_estimated(self):
+        """A carriageway width can be inferred from a lane count. There is no
+        equivalent inference for a pavement, so this normaliser must only ever
+        report a tagged width or admit it does not know."""
+        for tags in (
+            {"highway": "footway"},
+            {"highway": "footway", "width": "2.5"},
+            {"highway": "residential", "sidewalk": "both"},
+            {"highway": "residential", "sidewalk": "no"},
+            {"highway": "residential"},
+            {"highway": "steps"},
+        ):
+            with self.subTest(tags=tags):
+                props = self._normalized(tags)
+                self.assertIn(props["width_source"], ("tagged", "unknown"))
+
+    def test_an_untagged_width_is_unknown(self):
+        props = self._normalized({"highway": "residential", "sidewalk": "both"})
+        self.assertIsNone(props["width_m"])
+        self.assertEqual(props["width_source"], "unknown")
+
+    def test_the_narrowest_stated_sidewalk_width_is_taken(self):
+        """The tightest pavement is what constrains a walk, so an average
+        would flatter a street with one wide side and one unusable one."""
+        props = self._normalized(
+            {
+                "highway": "residential",
+                "sidewalk": "both",
+                "sidewalk:left:width": "2.4",
+                "sidewalk:right:width": "1.2",
+            }
+        )
+        self.assertEqual(props["width_m"], 1.2)
+        self.assertEqual(props["width_source"], "tagged")
+
+    # --- other surface qualities ---
+
+    def test_lit_is_tri_state(self):
+        self.assertIs(self._normalized({"highway": "footway", "lit": "yes"})["lit"], True)
+        self.assertIs(self._normalized({"highway": "footway", "lit": "no"})["lit"], False)
+        self.assertIsNone(self._normalized({"highway": "footway"})["lit"])
+
+    def test_a_percent_incline_is_read_as_a_number(self):
+        self.assertEqual(
+            self._normalized({"highway": "footway", "incline": "8%"})["incline_pct"], 8.0
+        )
+        self.assertEqual(
+            self._normalized({"highway": "footway", "incline": "-5%"})["incline_pct"], 5.0
+        )
+
+    def test_a_direction_only_incline_states_no_number(self):
+        """`incline=up` says a slope exists but not how steep. Turning that
+        into a figure would be inventing one."""
+        self.assertIsNone(
+            self._normalized({"highway": "footway", "incline": "up"})["incline_pct"]
+        )
+
+    def test_length_is_measured(self):
+        props = self._normalized({"highway": "footway"})
+        self.assertIsNotNone(props["length_m"])
+        self.assertGreater(props["length_m"], 0)

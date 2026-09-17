@@ -164,14 +164,17 @@ class Command(BaseCommand):
                     DataSource.LayerKind.WATER_BODIES,
                     DataSource.LayerKind.SEALED_SURFACES,
                     # The street-space layers (street_parking, car_lanes,
-                    # obstacles) are deliberately NOT in this list. They are the
-                    # heaviest Overpass queries in the catalogue — car_lanes
+                    # obstacles) and the pedestrian-space ones (footways,
+                    # parking_lots) are deliberately NOT in this list. They are
+                    # the heaviest Overpass queries in the catalogue — car_lanes
                     # alone pulls every street in the bounding box with full
-                    # geometry — and syncing them on every container start
-                    # hammered Overpass and left the workspace carrying tens of
-                    # thousands of extra features nobody had asked for. The
-                    # sources are still seeded; run `sync` on them, or
-                    # `generate_area_plan`, when an area plan actually needs them.
+                    # geometry, and footways pulls every street carrying a
+                    # sidewalk tag on top of every path — and syncing them on
+                    # every container start hammered Overpass and left the
+                    # workspace carrying tens of thousands of extra features
+                    # nobody had asked for. The sources are still seeded; run
+                    # `sync` on them, or `generate_area_plan`, when a plan or a
+                    # map view actually needs them.
                 )
             ):
                 success, msg = _run_sync(source)
