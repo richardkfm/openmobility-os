@@ -415,6 +415,58 @@
             </div>
           </div>
           {% endif %}
+
+          {# Parked cars — the space the city gives to cars at rest #}
+          {% if has_parked_car_data %}
+          <div class="pt-2 border-t mt-2" x-data="parkedCars()" x-init="init()">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="toggle-parked-cars" @change="toggle($event.target.checked)">
+              <span>{% trans "Parked cars (estimated)" %}</span>
+            </label>
+            <div x-show="enabled" x-cloak class="mt-2 ml-5 flex flex-col gap-1.5">
+              <select x-model="include" @change="refresh()"
+                      class="text-xs w-full border rounded px-1.5 py-1 text-slate-700">
+                <option value="surveyed,modelled">{% trans "Surveyed and modelled" %}</option>
+                <option value="surveyed">{% trans "Surveyed only" %}</option>
+                <option value="modelled">{% trans "Modelled only" %}</option>
+              </select>
+              <select x-model="access" @change="refresh()"
+                      class="text-xs w-full border rounded px-1.5 py-1 text-slate-700">
+                <option value="">{% trans "Car parks: any access" %}</option>
+                <option value="public">{% trans "Car parks: public only" %}</option>
+                <option value="public,customers">{% trans "Car parks: public and customer" %}</option>
+              </select>
+              {# The two symbols differ on purpose: a solid car was surveyed, a
+                 dashed outline is our assumption. Never let them read alike. #}
+              <div class="flex items-center gap-3 text-xs text-slate-600">
+                <span class="flex items-center gap-1">
+                  <svg width="9" height="15" viewBox="0 0 14 24" aria-hidden="true">
+                    <rect x="1.5" y="1.5" width="11" height="21" rx="3" fill="#7c3aed"/>
+                  </svg>
+                  {% trans "Surveyed" %}
+                </span>
+                <span class="flex items-center gap-1">
+                  <svg width="9" height="15" viewBox="0 0 14 24" aria-hidden="true">
+                    <rect x="1.5" y="1.5" width="11" height="21" rx="3" fill="#ffffff"
+                          stroke="#7c3aed" stroke-width="1.8" stroke-dasharray="3 2"/>
+                  </svg>
+                  {% trans "Modelled" %}
+                </span>
+              </div>
+              <p class="text-xs text-slate-600" x-show="counts.total > 0" x-text="countsNote"></p>
+              <p class="text-xs text-amber-600" x-show="represents > 1" x-text="representsNote"></p>
+              <p class="text-xs text-slate-400" x-show="mode === 'density'">
+                {% trans "Zoom in to see individual cars." %}
+              </p>
+              <p class="text-xs text-amber-600" x-show="enabled && loaded && counts.total === 0">
+                {% trans "No parking data in this workspace yet — sync a kerbside or car-park layer." %}
+              </p>
+              <p class="text-xs text-slate-400">
+                {% trans "Capacity, not occupancy: how many cars fit, not how many are parked right now." %}
+              </p>
+            </div>
+          </div>
+          {% endif %}
         </div>
       </div>
 
@@ -719,6 +771,7 @@
                 <template x-if="row.shape === 'dotted'"><span class="inline-block w-4 h-1.5 rounded" :style="`background:repeating-linear-gradient(90deg,${row.color} 0 2px,transparent 2px 5px)`"></span></template>
                 <template x-if="row.shape === 'area'"><span class="inline-block w-3.5 h-3.5 rounded-sm border" :style="`background:${row.color}55;border-color:${row.color}`"></span></template>
                 <template x-if="row.shape === 'dot'"><span class="inline-block w-2.5 h-2.5 rounded-full" :style="`background:${row.color}`"></span></template>
+                <template x-if="row.shape === 'hollow'"><span class="inline-block w-2.5 h-2.5 rounded-full border-2" :style="`border-color:${row.color}`"></span></template>
                 <template x-if="row.shape === 'ramp'"><span class="inline-block w-4 h-2 rounded" :style="`background:${row.gradient}`"></span></template>
                 <template x-if="row.shape === 'dash'"><span class="inline-block w-4 h-1.5 rounded" style="background:repeating-linear-gradient(90deg,#fff 0 3px,transparent 3px 6px),#64748b"></span></template>
               </span>
@@ -1257,12 +1310,45 @@ function loadIconImage(imageId) {
   img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
 }
 
+// ─── Parked-car sprites ──────────────────────────────────────────────────────
+// The badge glyphs above are 44 px discs — far too heavy when a city-sized
+// workspace draws twenty thousand cars. These are plan-view car silhouettes at
+// a fraction of the size, and the two of them deliberately do not look alike:
+//
+//   car-surveyed  solid       OpenStreetMap records parking here.
+//   car-modelled  dashed hull we assumed it, because a residential street
+//                             usually has a kerb people park on.
+//
+// A viewer must be able to tell a survey from a guess at a glance, so the
+// difference is fill-versus-outline, not a shade of the same colour.
+const PARKED_CAR_COLOR = "#7c3aed";
+
+function carSvg(surveyed) {
+  const c = PARKED_CAR_COLOR;
+  const body = surveyed
+    ? '<rect x="2" y="2" width="10" height="20" rx="3" fill="' + c + '" stroke="#ffffff" stroke-width="1"/>'
+      + '<rect x="4" y="6" width="6" height="4" rx="1" fill="#ffffff" fill-opacity="0.65"/>'
+    : '<rect x="2" y="2" width="10" height="20" rx="3" fill="#ffffff" fill-opacity="0.75"'
+      + ' stroke="' + c + '" stroke-width="1.8" stroke-dasharray="3 2"/>';
+  return '<svg xmlns="http://www.w3.org/2000/svg" width="28" height="48" viewBox="0 0 14 24">'
+    + body + '</svg>';
+}
+
+function loadCarImage(imageId) {
+  if (map.hasImage(imageId)) return;
+  const img = new Image(28, 48);
+  img.onload = () => { if (!map.hasImage(imageId)) map.addImage(imageId, img, { pixelRatio: 2 }); };
+  img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(carSvg(imageId === "car-surveyed"));
+}
+
 // Register every glyph referenced by an active icon layer. Called on map.load.
 function registerMapIcons() {
   LAYER_KINDS.forEach(kind => {
     const s = LAYER_STYLE[kind];
     if (s && s.point === "icon" && s.icon) loadIconImage(iconName(kind));
   });
+  loadCarImage("car-surveyed");
+  loadCarImage("car-modelled");
 }
 
 function escHtml(s) {
@@ -1896,6 +1982,108 @@ map.on("load", () => {
     map.getCanvas().style.cursor = "";
     gapPopup.remove();
   });
+
+  // ── Parked cars ──
+  // Two sources, because the honest answer changes with zoom. Close in, one
+  // symbol is one car. Zoomed out, twenty thousand car symbols are a smear, so
+  // the estimate goes back onto the geometry it came from — the kerb keeps its
+  // street, the car park keeps its footprint — rather than being re-binned into
+  // an arbitrary grid that belongs to neither.
+  map.addSource("parked-cars", {
+    type: "geojson",
+    data: { type: "FeatureCollection", features: [] },
+  });
+  map.addSource("parked-cars-density", {
+    type: "geojson",
+    data: { type: "FeatureCollection", features: [] },
+  });
+
+  map.addLayer({
+    id: "parked-cars-density-fill",
+    type: "fill",
+    source: "parked-cars-density",
+    filter: ["==", ["geometry-type"], "Polygon"],
+    layout: { visibility: "none" },
+    paint: {
+      "fill-color": PARKED_CAR_COLOR,
+      "fill-opacity": [
+        "interpolate", ["linear"], ["coalesce", ["get", "cars_per_1000m2"], 0],
+        0, 0.15,
+        40, 0.55,
+        80, 0.8
+      ],
+    },
+  });
+  map.addLayer({
+    id: "parked-cars-density-line",
+    type: "line",
+    source: "parked-cars-density",
+    filter: ["==", ["geometry-type"], "LineString"],
+    layout: { visibility: "none", "line-cap": "round" },
+    paint: {
+      "line-color": PARKED_CAR_COLOR,
+      // Width carries the count: a kerb holding thirty cars per hundred metres
+      // draws thicker than one holding five.
+      "line-width": [
+        "interpolate", ["linear"], ["coalesce", ["get", "cars_per_100m"], 0],
+        0, 1,
+        10, 3,
+        30, 7
+      ],
+      // A modelled kerb is drawn fainter than a surveyed one, for the same
+      // reason the symbols differ: the map must never make a guess look like a
+      // measurement.
+      "line-opacity": ["match", ["get", "basis"], "modelled", 0.35, 0.75],
+    },
+  });
+  map.addLayer({
+    id: "parked-cars-symbol",
+    type: "symbol",
+    source: "parked-cars",
+    layout: {
+      visibility: "none",
+      "icon-image": ["match", ["get", "basis"], "modelled", "car-modelled", "car-surveyed"],
+      // Cars park bumper to bumper; hiding the ones that touch would empty out
+      // exactly the streets this layer exists to show.
+      "icon-allow-overlap": true,
+      "icon-ignore-placement": true,
+      "icon-size": [
+        "interpolate", ["linear"], ["zoom"],
+        14, 0.30,
+        17, 0.55,
+        19, 0.9
+      ],
+    },
+  });
+
+  const carPopup = new maplibregl.Popup({ closeButton: true });
+  map.on("click", "parked-cars-symbol", (e) => {
+    if (!e.features.length) return;
+    const p = e.features[0].properties;
+    const surveyed = p.basis !== "modelled";
+    const head = surveyed
+      ? "{% trans 'Parked car — surveyed' %}"
+      : "{% trans 'Parked car — modelled (assumed)' %}";
+    const where = p.origin === "lot"
+      ? "{% trans 'Off-street car park' %}"
+      : "{% trans 'Kerbside parking' %}";
+    const stands = Number(p.represents) > 1
+      ? `<div class="text-amber-600">${escHtml(p.represents)} {% trans "cars per symbol" %}</div>`
+      : "";
+    carPopup
+      .setLngLat(e.lngLat)
+      .setHTML(
+        `<div class="text-xs grid gap-0.5">` +
+        `<div class="font-semibold">${head}</div>` +
+        (p.name ? `<div>${escHtml(p.name)}</div>` : "") +
+        `<div class="text-slate-500">${where}</div>` +
+        stands +
+        `</div>`
+      )
+      .addTo(map);
+  });
+  map.on("mouseenter", "parked-cars-symbol", () => { map.getCanvas().style.cursor = "pointer"; });
+  map.on("mouseleave", "parked-cars-symbol", () => { map.getCanvas().style.cursor = ""; });
 
   document.querySelectorAll(".layer-toggle").forEach(checkbox => {
     checkbox.addEventListener("change", (e) => {
@@ -2681,6 +2869,140 @@ function mobilityGaps() {
   };
 }
 
+// ─── Parked cars (derived layer) ─────────────────────────────────────────────
+// Zoom decides which honest answer is on screen. Above PARKED_CAR_SYMBOL_ZOOM
+// each symbol is one car; below it the estimate goes back onto the kerb and the
+// car-park footprint it came from, because twenty thousand overlapping symbols
+// say nothing at city scale.
+const PARKED_CAR_SYMBOL_ZOOM = 14;
+
+function parkedCars() {
+  return {
+    enabled: false,
+    include: "surveyed,modelled",
+    access: "",
+    counts: { total: 0, surveyed: 0, modelled: 0 },
+    represents: 1,
+    mode: "symbols",
+    loaded: false,
+    _fetchTimer: null,
+    _fetched: {},
+
+    init() {
+      this.mode = map.getZoom() >= PARKED_CAR_SYMBOL_ZOOM ? "symbols" : "density";
+      map.on("zoomend", () => {
+        const next = map.getZoom() >= PARKED_CAR_SYMBOL_ZOOM ? "symbols" : "density";
+        if (next === this.mode) return;
+        this.mode = next;
+        if (!this.enabled) return;
+        this._applyVisibility();
+        this._fetch();
+      });
+      // A story view hides every layer on the map, this one included, so the
+      // checkbox has to follow — a panel claiming the cars are on while the
+      // map shows none of them is worse than no panel at all.
+      document.addEventListener("omos:storyview", () => this._syncFromMap());
+      document.addEventListener("omos:storyview-cleared", () => this._syncFromMap());
+    },
+
+    // Has map.on("load") run? The layers only exist from that point on, and a
+    // viewer can tick the box before it does.
+    _ready() {
+      return !!map.getLayer("parked-cars-symbol");
+    },
+
+    _syncFromMap() {
+      if (!this._ready()) return;
+      const visible = ["parked-cars-symbol", "parked-cars-density-line"].some(
+        id => map.getLayoutProperty(id, "visibility") === "visible"
+      );
+      this.enabled = visible;
+      const cb = document.getElementById("toggle-parked-cars");
+      if (cb) cb.checked = visible;
+    },
+
+    get countsNote() {
+      const t = "{% trans 'About %(total)s car spaces — %(surveyed)s surveyed, %(modelled)s modelled.' %}";
+      return t
+        .replace("%(total)s", (this.counts.total || 0).toLocaleString())
+        .replace("%(surveyed)s", (this.counts.surveyed || 0).toLocaleString())
+        .replace("%(modelled)s", (this.counts.modelled || 0).toLocaleString());
+    },
+
+    get representsNote() {
+      // A thinned map that claimed one symbol per car would be a lie, so this
+      // line is not optional decoration — it is what makes the drawing true.
+      const t = "{% trans 'Too many to draw one by one — each symbol stands for %(n)s cars.' %}";
+      return t.replace("%(n)s", this.represents);
+    },
+
+    toggle(checked) {
+      dismissStoryView();
+      this.enabled = checked;
+      if (this._ready()) {
+        this._applyVisibility();
+        if (checked) this._fetch();
+      } else {
+        // Ticked before the style finished loading; apply it once the layers
+        // are there, or the checkbox stays on over an empty map.
+        map.once("load", () => {
+          this._applyVisibility();
+          if (this.enabled) this._fetch();
+        });
+      }
+      document.dispatchEvent(new CustomEvent("omos:layerschanged"));
+    },
+
+    refresh() {
+      // The filters change what is counted, so a cached response for the old
+      // filter combination must not be reused.
+      this._fetched = {};
+      if (this.enabled) this._fetch();
+    },
+
+    _applyVisibility() {
+      const symbols = this.enabled && this.mode === "symbols";
+      const density = this.enabled && this.mode === "density";
+      const set = (id, on) => {
+        if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", on ? "visible" : "none");
+      };
+      set("parked-cars-symbol", symbols);
+      set("parked-cars-density-line", density);
+      set("parked-cars-density-fill", density);
+    },
+
+    _params() {
+      const params = new URLSearchParams();
+      if (this.include) params.set("include", this.include);
+      if (this.access) params.set("access", this.access);
+      if (this.mode === "density") params.set("format", "density");
+      return params;
+    },
+
+    _fetch() {
+      if (this._fetchTimer) clearTimeout(this._fetchTimer);
+      this._fetchTimer = setTimeout(() => {
+        const sourceId = this.mode === "density" ? "parked-cars-density" : "parked-cars";
+        const src = map.getSource(sourceId);
+        if (!src) return;
+        const params = this._params();
+        const key = sourceId + "?" + params.toString();
+        if (this._fetched[key]) return;
+        fetch(`/api/v1/workspaces/${WORKSPACE_SLUG}/parked-cars/?${params.toString()}`)
+          .then(r => r.json())
+          .then(fc => {
+            this._fetched[key] = true;
+            this.counts = fc.counts || { total: 0, surveyed: 0, modelled: 0 };
+            this.represents = fc.represents || 1;
+            this.loaded = true;
+            src.setData(fc);
+          })
+          .catch(() => {});
+      }, 200);
+    },
+  };
+}
+
 // ─── Saved views (localStorage) ──────────────────────────────────────────────
 
 function savedViews() {
@@ -2885,6 +3207,8 @@ function layerControls(kind) {
 // the same legend into the downloaded image.
 const MEASURES_LABEL = "{% trans "Measures" %}";
 const DISTRICTS_LABEL = "{% trans "District scores" %}";
+const PARKED_SURVEYED_LABEL = "{% trans "Parked cars (surveyed)" %}";
+const PARKED_MODELLED_LABEL = "{% trans "Parked cars (modelled)" %}";
 const BIKE_PROTECTED_LABEL = "{% trans "Protected (separated path / track)" %}";
 const BIKE_LANE_LABEL = "{% trans "Painted lane (on-street)" %}";
 const BIKE_NEW_PREFIX = "{% trans "Bike lane added after" %}";
@@ -2973,6 +3297,14 @@ function buildLegendRows() {
   if (mcb && mcb.checked) rows.push({ key: "_measures", label: MEASURES_LABEL, color: "#6366f1", shape: "dot", icon: "" });
   const dcb = document.getElementById("toggle-district-scores");
   if (dcb && dcb.checked) rows.push({ key: "_districts", label: DISTRICTS_LABEL, shape: "ramp", gradient: DISTRICT_GRADIENT, icon: "" });
+  // Two rows, not one. The exported PNG carries this legend, and a published
+  // screenshot showing car symbols without saying which of them were surveyed
+  // and which were assumed is exactly the claim this feature must not make.
+  const pcb = document.getElementById("toggle-parked-cars");
+  if (pcb && pcb.checked) {
+    rows.push({ key: "_parked_surveyed", label: PARKED_SURVEYED_LABEL, color: PARKED_CAR_COLOR, shape: "dot", icon: "" });
+    rows.push({ key: "_parked_modelled", label: PARKED_MODELLED_LABEL, color: PARKED_CAR_COLOR, shape: "hollow", icon: "" });
+  }
   return rows;
 }
 
@@ -3037,6 +3369,15 @@ function _drawLegendSwatch(ctx, row, x, cy, w, pr) {
     ctx.strokeStyle = color;
     ctx.lineWidth = pr;
     ctx.strokeRect(x + (w - s) / 2, cy - s / 2, s, s);
+  } else if (row.shape === "hollow") {
+    // An unfilled ring, mirroring the dashed car symbol: outline means we
+    // assumed it. The exported image has to keep that distinction, or the
+    // screenshot says more than the data does.
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.8 * pr;
+    ctx.beginPath();
+    ctx.arc(x + w / 2, cy, 4 * pr, 0, Math.PI * 2);
+    ctx.stroke();
   } else {
     ctx.fillStyle = color;
     ctx.beginPath();

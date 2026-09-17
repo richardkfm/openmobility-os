@@ -8,6 +8,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **The map can now fill the city with the cars it stores.** A new "Parked cars
+  (estimated)" layer turns kerbside parking and off-street car parks into
+  individual car symbols, so the space given over to cars at rest is something
+  you can count rather than something you assert.
+
+  A survey and a guess never look alike on it. Where OpenStreetMap records
+  parking, the cars are drawn solid and counted as *surveyed*. Where it says
+  nothing about a residential street, they are drawn as a dashed outline and
+  counted separately as *modelled* — and a street that was surveyed and found to
+  have no parking is left empty, because evidence beats an assumption. You can
+  show either half on its own, and filter car parks by who may use them.
+
+  Zoom out far enough and the individual symbols give way to a density view
+  drawn on the kerbs and footprints the estimate came from, rather than a grid
+  that belongs to neither. Where a city holds more cars than a browser can draw,
+  the layer thins itself and says in the panel how many cars each remaining
+  symbol stands for.
+
+  It reports **capacity, not occupancy**: how many cars fit, not how many are
+  parked right now. Every number behind it — bay length, square metres per space
+  in a car park, how much of a kerb driveways and junctions eat, which street
+  classes get a modelled kerb — is listed with its assumptions and can be
+  replaced with your own jurisdiction's standard, and the shared bay geometry is
+  the same one the rebuild plans price parking removal with, so one design
+  standard drives both.
 - **Sidewalks, footpaths and off-street car parks can now be put on the map.**
   Two new OpenStreetMap layers: `footways` collects pedestrian space under both
   of the ways OSM records it — a footway mapped as its own line, and a
@@ -32,6 +57,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   sensible to infer it from, so the platform says it does not know.
 
 ### Changed
+- **Pages and map data now travel compressed.** Responses are gzipped, which
+  matters most for the map: a city-sized workspace's parked-car layer is several
+  megabytes of very repetitive GeoJSON, and compression takes it to a few
+  percent of that. Nothing to configure — it applies to every response, and
+  self-hosters behind their own reverse proxy lose nothing by having it on in
+  both places.
 - **A geographic mismatch in an accident import is now an error, not a
   warning.** When clipping an Unfallatlas file to the workspace left *no* rows
   at all, the connector used to import the whole file instead and note it in a

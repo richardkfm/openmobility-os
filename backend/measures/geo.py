@@ -15,7 +15,7 @@ different modules need the same few primitives.
 
 from __future__ import annotations
 
-from math import atan2, pi
+from math import atan2, cos, hypot, pi, radians
 
 from pyproj import Transformer
 
@@ -115,3 +115,46 @@ def longest_edge_bearing(ring_xy) -> float:
             best_len2 = length2
             best = atan2(dy, dx)
     return best % pi
+
+
+def line_length_m(geometry) -> float | None:
+    """Length of a GeoJSON ``LineString`` / ``MultiLineString`` in metres.
+
+    Works straight off lon/lat, using a local equirectangular approximation
+    around the line's own mean latitude. That is accurate to well under a
+    percent at street scale and correct anywhere on Earth, which a fixed
+    degrees-to-metres constant would not be — and it saves projecting a whole
+    city's street network just to measure it.
+
+    Returns ``None`` for anything that is not a line, so a caller can tell "zero
+    metres long" from "not a line at all".
+
+    (``connectors/osm_connector.py`` keeps its own copy of this on purpose: a
+    connector must not import from the measures app.)
+    """
+    if not isinstance(geometry, dict):
+        return None
+    gtype = geometry.get("type")
+    coords = geometry.get("coordinates") or []
+    if gtype == "MultiLineString":
+        parts = [
+            line_length_m({"type": "LineString", "coordinates": part}) for part in coords
+        ]
+        known = [p for p in parts if p is not None]
+        return round(sum(known), 1) if known else None
+    if gtype != "LineString" or len(coords) < 2:
+        return None
+    lats = [c[1] for c in coords if len(c) >= 2]
+    if not lats:
+        return None
+    mean_lat_rad = radians(sum(lats) / len(lats))
+    m_per_deg_lat = 111_132.0
+    m_per_deg_lon = 111_320.0 * cos(mean_lat_rad)
+    total = 0.0
+    for a, b in zip(coords, coords[1:]):
+        if len(a) < 2 or len(b) < 2:
+            continue
+        dx = (b[0] - a[0]) * m_per_deg_lon
+        dy = (b[1] - a[1]) * m_per_deg_lat
+        total += hypot(dx, dy)
+    return round(total, 1)

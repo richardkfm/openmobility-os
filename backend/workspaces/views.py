@@ -101,6 +101,20 @@ def workspace_map(request, workspace_slug: str):
     has_cooling_green_data = "green_areas" in kind_values and any(
         k in kind_values for k in ("trees", "heat_corridors")
     )
+    # Parked-car estimate. Kerbside tags and car-park polygons are the surveyed
+    # half; a plain street network is enough on its own, because the modelled
+    # half works off street classes — and a workspace seeing only modelled cars
+    # is being told, correctly, that nobody has surveyed its parking yet.
+    has_parked_car_data = any(
+        k in kind_values
+        for k in (
+            "street_parking",
+            "parking_lots",
+            "streets_with_speed",
+            "streets",
+            "car_lanes",
+        )
+    )
     has_districts = ws.districts.exists()
 
     # Indicators this workspace can actually measure, for the target form in the
@@ -136,6 +150,7 @@ def workspace_map(request, workspace_slug: str):
             "has_urban_heat_data": has_urban_heat_data,
             "has_flood_water_data": has_flood_water_data,
             "has_cooling_green_data": has_cooling_green_data,
+            "has_parked_car_data": has_parked_car_data,
             "has_districts": has_districts,
             "area_indicators": area_indicators,
             "measure_categories": Measure.Category.choices,

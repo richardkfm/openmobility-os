@@ -14,6 +14,8 @@ from goals.indicators import label_for as indicator_label
 from datasets.mobility_gaps import compute_gap_grid
 from datasets.models import DataSource, MobilitySnapshot, NormalizedFeatureSet
 from measures.accident_density import compute_density_lines
+from measures import parking_estimate
+from measures import street_space
 from measures.models import MeasureScore
 from measures.scoring import compute_priority_score
 
@@ -81,6 +83,85 @@ def accident_density_view(request, workspace_slug: str):
         severities=_csv_param(request, "severity"),
         modes=_csv_param(request, "modes"),
     )
+    return JsonResponse(fc)
+
+
+@require_GET
+@cache_page(300)
+def parked_cars_view(request, workspace_slug: str):
+    """Estimated parked cars — the space the city gives to cars at rest.
+
+    Fills kerbside parking and off-street car parks with individual car
+    positions, so a claim about how much room parking takes can be counted
+    rather than asserted. Surveyed and modelled cars are returned in the same
+    collection but are labelled apart on every feature and counted apart in
+    ``counts``: a guess is never passed off as a survey.
+
+    Query parameters (all optional):
+        ``include``  — comma list of ``surveyed`` / ``modelled``; default both.
+        ``access``   — comma list of car-park access classes
+                       (``public``, ``customers``, ``private``, ``unknown``);
+                       default all. Kerbside parking is public by definition
+                       and is unaffected by this filter.
+        ``format``   — ``symbols`` (default) draws one point per car;
+                       ``density`` keeps the source geometry and reports cars
+                       per 100 m of kerb / per 1000 m2 of car park, for zoom
+                       levels where individual symbols mean nothing.
+
+    Above ``MAX_SYMBOLS`` points the symbol output is thinned and every
+    remaining point carries how many cars it stands for, with the same figure
+    repeated at collection level so the legend can say so. A thinned map that
+    claims one symbol per car would be a lie.
+    """
+    ws = get_active_workspace(workspace_slug)
+
+    kerb = _features_for_kind(ws, "street_parking")
+    lots = _features_for_kind(ws, "parking_lots")
+    # Whichever street network this workspace has synced. `streets_with_speed`
+    # and `streets` are the light, auto-synced ones; `car_lanes` is the heavy
+    # street-space layer and is only reached for if neither is present.
+    streets = (
+        _features_for_kind(ws, "streets_with_speed")
+        or _features_for_kind(ws, "streets")
+        or _features_for_kind(ws, "car_lanes")
+    )
+
+    include = _csv_param(request, "include") or list(parking_estimate.BASES)
+    include = [
+        v for v in include if v in parking_estimate.BASES
+    ] or list(parking_estimate.BASES)
+    access = _csv_param(request, "access")
+    if access:
+        access = [v for v in access if v in parking_estimate.ACCESS_CLASSES] or None
+
+    params = parking_estimate.params_for(ws)
+    street_params = street_space.params_for(ws)
+
+    if (request.GET.get("format") or "").strip() == "density":
+        fc = parking_estimate.build_parking_density(
+            kerb_features=kerb,
+            lot_features=lots,
+            street_features=streets,
+            params=params,
+            street_params=street_params,
+            include=include,
+            access=access,
+        )
+        fc["format"] = "density"
+        return JsonResponse(fc)
+
+    center = ws.center
+    fc = parking_estimate.build_parked_cars(
+        center_lonlat=(center.x, center.y) if center else (0.0, 0.0),
+        kerb_features=kerb,
+        lot_features=lots,
+        street_features=streets,
+        params=params,
+        street_params=street_params,
+        include=include,
+        access=access,
+    )
+    fc["format"] = "symbols"
     return JsonResponse(fc)
 
 
