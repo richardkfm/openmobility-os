@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from math import floor
 
-from pyproj import Transformer
+from measures.geo import make_projector
 
 # Same weights the rest of the codebase uses (measures.rules.safety,
 # the map heatmap). Kept local to avoid a hard cross-module import, but
@@ -36,20 +36,9 @@ DEFAULT_MIN_SCORE = 3
 # --------------------------------------------------------------------------- #
 # Geometry helpers
 # --------------------------------------------------------------------------- #
-def _make_projector(center_lonlat):
-    """Return a (lon, lat) → (x, y) metres transformer centred on the workspace.
-
-    Uses an azimuthal-equidistant projection anchored at the workspace centre
-    so distances near that centre are in true metres regardless of country —
-    no hard-coded UTM zone, no Germany assumption.
-    """
-    lon, lat = center_lonlat
-    aeqd = (
-        f"+proj=aeqd +lat_0={lat} +lon_0={lon} +x_0=0 +y_0=0 "
-        "+datum=WGS84 +units=m +no_defs"
-    )
-    transformer = Transformer.from_crs("EPSG:4326", aeqd, always_xy=True)
-    return transformer.transform
+# The projection lives in measures.geo, which several modules share. Kept under
+# the old private name so existing callers here read unchanged.
+_make_projector = make_projector
 
 
 def _iter_linestrings(geometry):
