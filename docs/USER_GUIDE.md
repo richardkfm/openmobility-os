@@ -168,6 +168,42 @@ standard display look (so a custom per-layer display mode never undermines the
 preset), and manually changing layers afterwards dismisses the "reading the
 map" key — your changes are kept, the stale explanation is not.
 
+**Parked cars (estimated):**
+
+Toggle "Parked cars (estimated)" in the layer panel to fill the city with the
+cars it stores. Kerbside parking and off-street car parks are turned into
+individual car symbols, so the space given over to cars at rest becomes
+something you can count rather than something you assert.
+
+The layer is deliberately two-tone, and the distinction is the point:
+
+- A **solid car** is *surveyed* — OpenStreetMap records parking on that kerb, or
+  the car park carries a `capacity` tag. The count still comes from bay
+  geometry, because OSM almost never says how many bays a street has.
+- A **dashed outline** is *modelled* — nobody has surveyed that street, so the
+  estimate assumes a residential street has a kerb people park on. Which street
+  classes get one is a parameter, and a street surveyed as having *no* parking
+  is never filled in: evidence beats an assumption.
+
+The panel counts the two separately and lets you show either alone, and filter
+car parks by who may use them (public, customer, private). Below zoom 14 the
+individual symbols give way to a density view drawn on the kerbs and footprints
+the estimate came from — a kerb keeps its street, a car park keeps its
+footprint, and nothing is re-binned into an arbitrary grid. Where a workspace
+holds more cars than a browser can draw, the output is thinned and the panel
+says how many cars each remaining symbol stands for.
+
+The layer reports **capacity, not occupancy**: how many cars fit, not how many
+are parked right now. Every number behind it — bay length by orientation,
+square metres per space by car-park type, the share of kerb lost to driveways
+and junctions, which street classes are modelled — is a documented parameter a
+workspace overrides via `Workspace.settings["parking_estimate"]` (bay geometry
+comes from `Workspace.settings["street_space"]`, shared with the rebuild plans
+so one design standard drives both). The endpoint is
+`/api/v1/workspaces/<slug>/parked-cars/` (cached for 5 minutes), which accepts
+`include=surveyed,modelled`, `access=public,customers`, and
+`format=symbols|density`.
+
 **Measure Pipeline (status-coded measures):**
 
 Toggle "Measures" in the layer panel to see all interventions colour-coded by

@@ -7,6 +7,7 @@ from maps.views import (
     area_plan_view,
     district_scores_view,
     focus_areas_view,
+    parked_cars_view,
     shared_mobility_gaps_view,
     workspace_layer,
     workspace_measures_geojson,
@@ -42,6 +43,11 @@ urlpatterns = [
         "workspaces/<slug:workspace_slug>/district-scores/",
         district_scores_view,
         name="api_district_scores",
+    ),
+    path(
+        "workspaces/<slug:workspace_slug>/parked-cars/",
+        parked_cars_view,
+        name="api_parked_cars",
     ),
     path(
         "workspaces/<slug:workspace_slug>/shared-mobility-gaps/",

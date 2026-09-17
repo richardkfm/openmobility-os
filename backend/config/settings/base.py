@@ -110,6 +110,19 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    # Compress responses. The map API returns large GeoJSON payloads — the
+    # parked-car layer alone can reach several megabytes of highly repetitive
+    # JSON for a city-sized workspace, which gzip takes down to a few percent of
+    # that. Must stay first: Django requires it ahead of any middleware that
+    # reads or writes the response body.
+    #
+    # Compressing a response that mixes a secret with attacker-controlled input
+    # is the BREACH attack. Django mitigates it by randomising the CSRF token on
+    # every request, which is why this is the standard Django arrangement. It
+    # leaves WhiteNoise below alone: this middleware skips any response that
+    # already carries a Content-Encoding, which is what WhiteNoise sets when it
+    # serves a pre-compressed static file.
+    "django.middleware.gzip.GZipMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",

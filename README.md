@@ -3,7 +3,7 @@
 
 # OpenMobility OS
 
-**Version:** 0.50.0 (pre-release) — see [CHANGELOG.md](CHANGELOG.md)
+**Version:** 0.51.0 (pre-release) — see [CHANGELOG.md](CHANGELOG.md)
 **License:** See [LICENSE](LICENSE)
 
 > The open, free, self-hostable operating system between open mobility data
@@ -158,6 +158,18 @@ four demo workspaces: **Leipzig**, **Utrecht**, **Musterstadt**, and **Muster-La
   plan reports how many people are still expected to be harmed rather than hiding
   it behind a percentage. See [docs/AREA_TARGETS.md](docs/AREA_TARGETS.md)
 - **Interactive maps** — MapLibre GL JS with configurable tile sources
+- **Parked cars, made visible** — a map layer that fills kerbside parking and
+  off-street car parks with one symbol per car, so the space a city gives to
+  cars at rest can be counted instead of asserted. Where OpenStreetMap records
+  parking the cars are drawn solid and counted as *surveyed*; where it is silent
+  on a residential street they are drawn as a dashed outline and counted
+  separately as *modelled*, and a street surveyed as having no parking is never
+  filled in. Zoomed out, the estimate falls back to a density view on the kerbs
+  and footprints it came from; where a city has too many cars to draw one by
+  one, the legend says how many each symbol stands for. It reports **capacity,
+  not occupancy** — how many cars fit, not how many are there now — and every
+  number behind it (bay length, square metres per space, which street classes
+  get a modelled kerb) is a parameter a workspace can override
 - **Pedestrian space and off-street parking on the map** — sidewalks, footpaths,
   pedestrian streets and steps come in from OpenStreetMap under either of the two
   ways it records them (a footway mapped as its own line, or a `sidewalk` tag on

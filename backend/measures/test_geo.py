@@ -121,3 +121,71 @@ class LongestEdgeBearingTests(TestCase):
     def test_a_degenerate_ring_has_no_bearing(self):
         self.assertEqual(geo.longest_edge_bearing([]), 0.0)
         self.assertEqual(geo.longest_edge_bearing([(0.0, 0.0)]), 0.0)
+
+
+class LineLengthTests(TestCase):
+    def test_a_known_east_west_line_measures_its_own_length(self):
+        for lon, lat in CENTRES:
+            with self.subTest(centre=(lon, lat)):
+                m_per_deg_lon = 111_320.0 * math.cos(math.radians(lat))
+                geom = {
+                    "type": "LineString",
+                    "coordinates": [[lon, lat], [lon + 500.0 / m_per_deg_lon, lat]],
+                }
+                self.assertAlmostEqual(geo.line_length_m(geom), 500.0, delta=1.0)
+
+    def test_a_north_south_line_measures_its_own_length(self):
+        for lon, lat in CENTRES:
+            with self.subTest(centre=(lon, lat)):
+                geom = {
+                    "type": "LineString",
+                    "coordinates": [[lon, lat], [lon, lat + 500.0 / 111_132.0]],
+                }
+                self.assertAlmostEqual(geo.line_length_m(geom), 500.0, delta=1.0)
+
+    def test_segments_add_up(self):
+        lon, lat = CENTRES[0]
+        step = 100.0 / 111_132.0
+        geom = {
+            "type": "LineString",
+            "coordinates": [[lon, lat], [lon, lat + step], [lon, lat + 2 * step]],
+        }
+        self.assertAlmostEqual(geo.line_length_m(geom), 200.0, delta=1.0)
+
+    def test_a_multilinestring_sums_its_parts(self):
+        lon, lat = CENTRES[0]
+        step = 100.0 / 111_132.0
+        geom = {
+            "type": "MultiLineString",
+            "coordinates": [
+                [[lon, lat], [lon, lat + step]],
+                [[lon + 0.01, lat], [lon + 0.01, lat + step]],
+            ],
+        }
+        self.assertAlmostEqual(geo.line_length_m(geom), 200.0, delta=1.0)
+
+    def test_it_agrees_with_the_projector_at_every_scale_it_is_used_on(self):
+        # The equirectangular shortcut exists to avoid projecting a whole street
+        # network; it is only worth having if it matches the projection it
+        # replaces. What is left is a small scale bias from the fixed
+        # degrees-to-metres constants, not a drift that grows with distance —
+        # so the same relative bound has to hold for a single street segment
+        # and for a span across a whole city.
+        for lon, lat in CENTRES:
+            for d_lon, d_lat in ((0.004, 0.002), (0.1, 0.05)):
+                with self.subTest(centre=(lon, lat), span=(d_lon, d_lat)):
+                    end = (lon + d_lon, lat + d_lat)
+                    geom = {"type": "LineString", "coordinates": [[lon, lat], list(end)]}
+                    x, y = geo.make_projector((lon, lat))(*end)
+                    projected = math.hypot(x, y)
+                    self.assertAlmostEqual(
+                        geo.line_length_m(geom), projected, delta=projected * 0.003
+                    )
+
+    def test_a_non_line_is_none_rather_than_zero(self):
+        # "Not a line at all" and "zero metres long" are different answers, and
+        # a caller that conflates them models cars onto a point.
+        self.assertIsNone(geo.line_length_m({"type": "Point", "coordinates": [1, 2]}))
+        self.assertIsNone(geo.line_length_m({"type": "LineString", "coordinates": []}))
+        self.assertIsNone(geo.line_length_m({}))
+        self.assertIsNone(geo.line_length_m(None))
