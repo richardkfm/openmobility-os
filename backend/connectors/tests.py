@@ -2969,12 +2969,40 @@ class FootwayNormalizerTests(TestCase):
         self.assertFalse(self._normalized({"highway": "residential"})["shared_space"])
         self.assertFalse(self._normalized({"highway": "footway"})["shared_space"])
 
-    def test_a_separately_mapped_sidewalk_is_absent_from_the_carriageway(self):
-        """`sidewalk=separate` means the footway exists but is its own way —
-        which arrives through the other half of the query, so counting it here
-        as well would double it."""
+    def test_a_separately_mapped_sidewalk_is_a_pointer_not_an_absence(self):
+        """`sidewalk=separate` means the pavement exists and is mapped as its
+        own way. Reading it as "surveyed, none here" would mark the streets in
+        the best-mapped cities on Earth as having no pavement at all."""
         props = self._normalized({"highway": "residential", "sidewalk": "separate"})
-        self.assertIs(props["footway_present"], False)
+        self.assertIsNone(props["footway_present"])
+        self.assertEqual(props["sides"], "separate")
+
+    def test_separate_is_kept_distinct_from_silence(self):
+        """Both read as None, but only one of them says where to look."""
+        separate = self._normalized({"highway": "residential", "sidewalk": "separate"})
+        silent = self._normalized({"highway": "residential"})
+        self.assertIsNone(separate["footway_present"])
+        self.assertIsNone(silent["footway_present"])
+        self.assertNotEqual(separate["sides"], silent["sides"])
+        self.assertEqual(silent["sides"], "unknown")
+
+    def test_separate_on_one_side_outranks_no_on_the_other(self):
+        """One side mapped separately still means there is a pavement to find,
+        so the street must not come out as a surveyed absence."""
+        props = self._normalized(
+            {"highway": "residential", "sidewalk:left": "no", "sidewalk:right": "separate"}
+        )
+        self.assertIsNone(props["footway_present"])
+        self.assertEqual(props["sides"], "separate")
+
+    def test_a_surveyed_side_still_wins_over_separate(self):
+        """If one side is tagged as actually present, that is a reading, and a
+        reading beats a pointer."""
+        props = self._normalized(
+            {"highway": "residential", "sidewalk:left": "yes", "sidewalk:right": "separate"}
+        )
+        self.assertIs(props["footway_present"], True)
+        self.assertEqual(props["sides"], "left")
 
     # --- separate ways ---
 
@@ -3062,3 +3090,296 @@ class FootwayNormalizerTests(TestCase):
         props = self._normalized({"highway": "footway"})
         self.assertIsNotNone(props["length_m"])
         self.assertGreater(props["length_m"], 0)
+
+
+class MaxspeedParserTests(TestCase):
+    """OSM records a speed limit in whatever the local law and local habit
+    produce. Nothing downstream can compare those as strings, and nothing here
+    may quietly assume one country's numbers."""
+
+    def setUp(self):
+        from connectors import osm_connector
+
+        self.parse = osm_connector._maxspeed_kmh
+
+    def test_a_bare_number_is_kilometres_per_hour(self):
+        self.assertEqual(self.parse("30"), (30.0, "tagged"))
+        self.assertEqual(self.parse(50), (50.0, "tagged"))
+
+    def test_miles_per_hour_are_converted(self):
+        self.assertEqual(self.parse("30 mph"), (48.3, "tagged"))
+        self.assertEqual(self.parse("30mph"), (48.3, "tagged"))
+        self.assertEqual(self.parse("20 MPH"), (32.2, "tagged"))
+
+    def test_walk_is_a_named_speed_but_still_a_survey(self):
+        kmh, source = self.parse("walk")
+        self.assertEqual(kmh, 7.0)
+        self.assertEqual(source, "tagged_walk")
+
+    def test_unlimited_is_never_zero(self):
+        """`maxspeed=none` is an unrestricted road. Reading it as 0 km/h would
+        score an autobahn as the calmest street in the city."""
+        kmh, source = self.parse("none")
+        self.assertIsNone(kmh)
+        self.assertEqual(source, "unlimited")
+
+    def test_an_implicit_zone_is_never_resolved_to_a_number(self):
+        """What `urban` means is a question of national law. A table of country
+        defaults in core code is exactly the coupling this project forbids, so
+        the zone is preserved and the number is left to the workspace."""
+        for value in ("DE:urban", "NZ:urban", "GB:nsl_single", "FR:rural"):
+            with self.subTest(value=value):
+                kmh, source = self.parse(value)
+                self.assertIsNone(kmh)
+                self.assertEqual(source, "implicit")
+
+    def test_no_country_is_privileged_over_another(self):
+        """The German and the New Zealand zone must be treated identically —
+        if one of them ever resolves to a number, this feature has a home city."""
+        self.assertEqual(self.parse("DE:urban"), self.parse("NZ:urban"))
+
+    def test_nonsense_is_unparsed_not_guessed(self):
+        for value in ("fast", "signals", "-10", "0"):
+            with self.subTest(value=value):
+                kmh, source = self.parse(value)
+                self.assertIsNone(kmh)
+                self.assertEqual(source, "unparsed")
+
+    def test_absence_is_unknown(self):
+        for value in (None, "", "   "):
+            with self.subTest(value=value):
+                self.assertEqual(self.parse(value), (None, "unknown"))
+
+
+class StreetsWithSpeedNormalizerTests(TestCase):
+    """The speed layer had no normaliser at all, so `maxspeed` reached every
+    consumer as a raw string."""
+
+    def setUp(self):
+        from connectors import osm_connector
+
+        self.osm = osm_connector
+
+    def _normalized(self, tags):
+        feat = {
+            "type": "Feature",
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [[12.37, 51.34], [12.3714, 51.34]],
+            },
+            "properties": dict(tags),
+        }
+        self.osm._normalize_streets_with_speed(feat)
+        return feat["properties"]
+
+    def test_it_exposes_a_comparable_number(self):
+        props = self._normalized({"highway": "residential", "maxspeed": "30"})
+        self.assertEqual(props["maxspeed_kmh"], 30.0)
+        self.assertEqual(props["maxspeed_source"], "tagged")
+        self.assertIsNone(props["maxspeed_zone"])
+        self.assertEqual(props["maxspeed_raw"], "30")
+
+    def test_an_mph_city_is_readable(self):
+        props = self._normalized({"highway": "residential", "maxspeed": "20 mph"})
+        self.assertEqual(props["maxspeed_kmh"], 32.2)
+        self.assertEqual(props["maxspeed_source"], "tagged")
+
+    def test_an_implicit_zone_keeps_its_zone_and_states_no_number(self):
+        props = self._normalized({"highway": "residential", "maxspeed": "DE:urban"})
+        self.assertIsNone(props["maxspeed_kmh"])
+        self.assertEqual(props["maxspeed_source"], "implicit")
+        self.assertEqual(props["maxspeed_zone"], "de:urban")
+
+    def test_the_raw_value_always_survives(self):
+        """Whatever we failed to parse, a human must still be able to see it."""
+        props = self._normalized({"highway": "residential", "maxspeed": "at:urban"})
+        self.assertEqual(props["maxspeed_raw"], "at:urban")
+
+    def test_an_untagged_street_is_unknown_not_zero(self):
+        props = self._normalized({"highway": "residential"})
+        self.assertIsNone(props["maxspeed_kmh"])
+        self.assertEqual(props["maxspeed_source"], "unknown")
+        self.assertIsNone(props["maxspeed_raw"])
+
+    def test_it_also_normalises_the_street_basics(self):
+        props = self._normalized(
+            {"highway": "Residential", "maxspeed": "30", "lanes": "2", "oneway": "yes"}
+        )
+        self.assertEqual(props["highway"], "residential")
+        self.assertEqual(props["lanes"], 2)
+        self.assertIs(props["oneway"], True)
+        self.assertGreater(props["length_m"], 0)
+
+
+class PedestrianCrossingTemplateTests(TestCase):
+    """The crossings template asked Overpass for `out tags`, which prints ids
+    and tags without node coordinates — so every crossing was dropped by the
+    element converter and the layer stored nothing."""
+
+    def test_the_template_asks_for_geometry(self):
+        from connectors.osm_connector import OVERPASS_TEMPLATES
+
+        tpl = OVERPASS_TEMPLATES["pedestrian_crossings"]
+        self.assertIn("out geom", tpl)
+
+    def test_a_crossing_node_survives_the_element_converter(self):
+        from connectors.osm_connector import _osm_element_to_feature
+
+        feat = _osm_element_to_feature(
+            {
+                "type": "node",
+                "id": 1,
+                "lat": 51.34,
+                "lon": 12.37,
+                "tags": {"highway": "crossing", "crossing": "traffic_signals"},
+            }
+        )
+        self.assertIsNotNone(feat)
+        self.assertEqual(feat["geometry"]["type"], "Point")
+
+    def test_a_crossing_without_coordinates_is_dropped(self):
+        """The failure mode the template fix exists to prevent — recorded so a
+        future `out tags` cannot creep back in unnoticed."""
+        from connectors.osm_connector import _osm_element_to_feature
+
+        self.assertIsNone(
+            _osm_element_to_feature(
+                {"type": "node", "id": 1, "tags": {"highway": "crossing"}}
+            )
+        )
+
+
+class PedestrianCrossingNormalizerTests(TestCase):
+    """A crossing is three-state about its markings and its kerb for the same
+    reason a footway is three-state about its existence."""
+
+    def setUp(self):
+        from connectors import osm_connector
+
+        self.osm = osm_connector
+
+    def _normalized(self, tags):
+        feat = {
+            "type": "Feature",
+            "geometry": {"type": "Point", "coordinates": [12.37, 51.34]},
+            "properties": dict(tags),
+        }
+        self.osm._normalize_pedestrian_crossings(feat)
+        return feat["properties"]
+
+    def test_a_signalised_crossing(self):
+        props = self._normalized({"highway": "crossing", "crossing": "traffic_signals"})
+        self.assertEqual(props["crossing_kind"], "traffic_signals")
+        self.assertIs(props["has_signals"], True)
+
+    def test_the_current_signals_subkey_is_read(self):
+        props = self._normalized({"highway": "crossing", "crossing:signals": "yes"})
+        self.assertIs(props["has_signals"], True)
+        self.assertEqual(props["crossing_kind"], "traffic_signals")
+
+    def test_a_marked_crossing(self):
+        props = self._normalized(
+            {"highway": "crossing", "crossing": "marked", "crossing:markings": "zebra"}
+        )
+        self.assertEqual(props["crossing_kind"], "marked")
+        self.assertIs(props["has_signals"], False)
+
+    def test_an_unmarked_crossing_is_a_survey_not_a_gap(self):
+        props = self._normalized({"highway": "crossing", "crossing:markings": "no"})
+        self.assertEqual(props["crossing_kind"], "unmarked")
+
+    def test_a_level_crossing(self):
+        props = self._normalized({"railway": "level_crossing"})
+        self.assertEqual(props["crossing_kind"], "level_crossing")
+
+    def test_an_untagged_crossing_says_unknown(self):
+        props = self._normalized({"highway": "crossing"})
+        self.assertEqual(props["crossing_kind"], "unknown")
+        self.assertIsNone(props["has_signals"])
+
+    def test_tactile_paving_is_three_state(self):
+        self.assertIs(
+            self._normalized({"highway": "crossing", "tactile_paving": "yes"})[
+                "tactile_paving"
+            ],
+            True,
+        )
+        self.assertIs(
+            self._normalized({"highway": "crossing", "tactile_paving": "no"})[
+                "tactile_paving"
+            ],
+            False,
+        )
+        self.assertIsNone(self._normalized({"highway": "crossing"})["tactile_paving"])
+
+    def test_a_surface_marked_crossing_is_marked(self):
+        """`crossing:markings=surface` is a crossing marked by a change of
+        paving rather than paint. It is a marking, not the absence of one."""
+        props = self._normalized({"highway": "crossing", "crossing:markings": "surface"})
+        self.assertEqual(props["crossing_kind"], "marked")
+
+    def test_signals_outrank_missing_paint(self):
+        """A signalised crossing with no paint is still a signalised crossing."""
+        props = self._normalized(
+            {
+                "highway": "crossing",
+                "crossing": "traffic_signals",
+                "crossing:markings": "no",
+            }
+        )
+        self.assertEqual(props["crossing_kind"], "traffic_signals")
+
+    def test_a_kerb_value_we_do_not_recognise_is_not_invented(self):
+        self.assertEqual(
+            self._normalized({"highway": "crossing", "kerb": "flush"})["kerb"], "flush"
+        )
+        self.assertIsNone(
+            self._normalized({"highway": "crossing", "kerb": "rolled"})["kerb"]
+        )
+
+
+class ObstacleAffectsTests(TestCase):
+    """`affects="walking"` has been a documented value since the area-targets
+    doc was written, but nothing ever emitted it."""
+
+    def setUp(self):
+        from connectors import osm_connector
+
+        self.osm = osm_connector
+
+    def _normalized(self, tags):
+        feat = {
+            "type": "Feature",
+            "geometry": {"type": "Point", "coordinates": [12.37, 51.34]},
+            "properties": dict(tags),
+        }
+        self.osm._normalize_obstacles(feat)
+        return feat["properties"]
+
+    def test_a_step_over_barrier_affects_walking(self):
+        for barrier in ("kissing_gate", "stile"):
+            with self.subTest(barrier=barrier):
+                props = self._normalized({"barrier": barrier})
+                self.assertEqual(props["obstacle_type"], "barrier")
+                self.assertEqual(props["affects"], "walking")
+
+    def test_an_ordinary_barrier_still_affects_both(self):
+        props = self._normalized({"barrier": "bollard"})
+        self.assertEqual(props["affects"], "both")
+
+    def test_tram_tracks_are_still_a_cycling_problem(self):
+        self.assertEqual(self._normalized({"railway": "tram"})["affects"], "cycling")
+
+    def test_affects_never_leaves_its_documented_domain(self):
+        for tags in (
+            {"barrier": "stile"},
+            {"barrier": "bollard"},
+            {"railway": "tram"},
+            {"highway": "construction"},
+            {"bridge": "yes"},
+            {},
+        ):
+            with self.subTest(tags=tags):
+                self.assertIn(
+                    self._normalized(tags)["affects"], ("cycling", "walking", "both")
+                )

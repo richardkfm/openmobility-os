@@ -188,6 +188,11 @@ OVERPASS_TEMPLATES: dict[str, str] = {
     """,
     # Pedestrian crossings — pull both standalone crossing nodes and crossings
     # tagged on the highway. Important input for school-route safety scoring.
+    #
+    # `out geom tags` and not `out tags`: Overpass's `tags` verbosity prints ids
+    # and tags *without* node coordinates, and a crossing with no coordinates is
+    # dropped on the floor by _osm_element_to_feature. The layer looked healthy
+    # and stored nothing.
     "pedestrian_crossings": """
         [out:json][timeout:60];
         (
@@ -195,7 +200,7 @@ OVERPASS_TEMPLATES: dict[str, str] = {
           node["crossing"]({bbox});
           node["railway"="crossing"]({bbox});
         );
-        out tags;
+        out geom tags;
     """,
     # ── Street-space layers ──────────────────────────────────────────────
     # A redesign has to take its room from somewhere. These three templates
@@ -590,6 +595,12 @@ _OBSTACLE_RULES = (
     ("highway", "construction", "construction", "both"),
 )
 
+# Barriers you have to climb over or squeeze through. They obstruct a person on
+# foot — and a wheelchair or a pushchair absolutely — while a cyclist dismounts
+# and carries on. `affects="walking"` has been a documented value since the
+# area-targets doc was written; these are the features that finally emit it.
+_WALKING_BARRIERS = {"kissing_gate", "stile"}
+
 
 def _normalize_obstacles(feat: dict) -> None:
     """Tag each obstacle with a stable type and who it affects."""
@@ -606,7 +617,9 @@ def _normalize_obstacles(feat: dict) -> None:
         elif props.get("tunnel") == "yes":
             obstacle_type, affects = "tunnel", "both"
         elif props.get("barrier"):
-            obstacle_type, affects = "barrier", "both"
+            barrier = str(props.get("barrier")).lower()
+            obstacle_type = "barrier"
+            affects = "walking" if barrier in _WALKING_BARRIERS else "both"
         else:
             obstacle_type, affects = "narrow_section", "both"
     props["obstacle_type"] = obstacle_type
@@ -679,11 +692,16 @@ def _normalize_parking_lots(feat: dict) -> None:
 
 
 # Values of `sidewalk` / `sidewalk:<side>` that mean "surveyed, and there is
-# none here". A separately mapped sidewalk is tagged `separate` and is counted
-# as absence on the carriageway, because the footway itself arrives as its own
-# feature through the other half of the query.
-_SIDEWALK_ABSENT = {"no", "none", "separate"}
+# none here".
+_SIDEWALK_ABSENT = {"no", "none"}
 _SIDEWALK_PRESENT = {"yes", "both", "left", "right"}
+
+# `separate` is neither. It means the pavement exists and is mapped as a way of
+# its own, so the carriageway carries no evidence about its quality — only a
+# pointer to where that evidence lives. Reading it as an absence would mark the
+# streets in the best-mapped cities on Earth as having no pavement at all, which
+# is the single worst thing a walkability score could say.
+_SIDEWALK_SEPARATE = {"separate"}
 
 # Highway values that are pedestrian space in their own right, where asking
 # "does it have a sidewalk?" is the wrong question.
@@ -704,6 +722,10 @@ def _normalize_footways(feat: dict) -> None:
     ``None`` means OSM is silent. Collapsing the last two would turn every
     unmapped street into a hostile one, which is a claim the data does not
     support — a surveyed absence is evidence, silence is not.
+
+    ``sidewalk=separate`` is a fourth case and reads as ``None`` with
+    ``sides="separate"``: the pavement exists, it is simply mapped as a way of
+    its own, so this feature holds a pointer rather than a reading.
 
     ``width_source`` is likewise only ever "tagged" or "unknown". A carriageway
     width can be estimated from a lane count; there is no equivalent inference
@@ -755,6 +777,7 @@ def _normalize_street_sidewalk(props: dict) -> None:
 
     present_sides = set()
     surveyed = False
+    separate = False
 
     # Only a value we actually recognise counts as a survey. An unexpected one
     # is not evidence that there is no pavement — it is evidence that we do not
@@ -765,6 +788,8 @@ def _normalize_street_sidewalk(props: dict) -> None:
         present_sides.update(("left", "right") if combined in ("yes", "both") else [combined])
     elif combined in _SIDEWALK_ABSENT:
         surveyed = True
+    elif combined in _SIDEWALK_SEPARATE:
+        separate = True
 
     for side in ("both", "left", "right"):
         value = str(props.get(f"sidewalk:{side}") or "").lower()
@@ -773,16 +798,25 @@ def _normalize_street_sidewalk(props: dict) -> None:
             present_sides.update(("left", "right") if side == "both" else [side])
         elif value in _SIDEWALK_ABSENT:
             surveyed = True
+        elif value in _SIDEWALK_SEPARATE:
+            separate = True
 
-    if not surveyed:
-        props["footway_present"] = None
-        props["sides"] = "unknown"
-    elif present_sides:
+    if present_sides:
         props["footway_present"] = True
         props["sides"] = "both" if len(present_sides) == 2 else next(iter(present_sides))
-    else:
+    elif separate:
+        # A pointer, not a reading — and it outranks a `no` on the other side,
+        # because one side being mapped separately still means a pavement is
+        # there to find. `None` keeps the street out of every "surveyed" count;
+        # `sides` carries the pointer so a scorer knows to go looking for it.
+        props["footway_present"] = None
+        props["sides"] = "separate"
+    elif surveyed:
         props["footway_present"] = False
         props["sides"] = "none"
+    else:
+        props["footway_present"] = None
+        props["sides"] = "unknown"
 
     # Sidewalk widths hang off the side they describe; take the narrowest
     # stated one, since the tightest pavement is what constrains a walk.
@@ -798,6 +832,130 @@ def _normalize_street_sidewalk(props: dict) -> None:
             widths.append(width)
     props["width_m"] = min(widths) if widths else None
     props["width_source"] = "tagged" if widths else "unknown"
+
+
+_KERB_VALUES = {"flush", "lowered", "raised", "no"}
+
+
+def _normalize_pedestrian_crossings(feat: dict) -> None:
+    """Normalise a crossing node into what a walk actually depends on.
+
+    Three-state throughout, for the same reason ``_normalize_footways`` is:
+    ``crossing:markings=no`` is a survey saying the paint is not there, while
+    an absent tag says only that nobody looked. A scorer that treats those
+    alike punishes the unmapped and the unsafe identically.
+    """
+    props = feat["properties"]
+
+    crossing = str(props.get("crossing") or "").lower()
+    markings = str(props.get("crossing:markings") or "").lower()
+    signals = str(props.get("crossing:signals") or "").lower()
+    railway = str(props.get("railway") or "").lower()
+
+    has_signals = _yes_no(signals)
+    if has_signals is None:
+        if crossing == "traffic_signals" or props.get("traffic_signals"):
+            has_signals = True
+        elif crossing in ("uncontrolled", "marked", "unmarked", "zebra"):
+            # A crossing surveyed as one of these kinds is surveyed as not
+            # signalised — that is evidence, not silence.
+            has_signals = False
+    props["has_signals"] = has_signals
+
+    if railway in ("crossing", "level_crossing"):
+        kind = "level_crossing"
+    elif has_signals:
+        kind = "traffic_signals"
+    elif markings == "no" or crossing == "unmarked":
+        kind = "unmarked"
+    elif markings or crossing in ("marked", "zebra", "uncontrolled"):
+        # Any other markings value is a marking, `surface` (a change of paving
+        # rather than paint) included.
+        kind = "marked"
+    elif str(props.get("crossing:island") or "").lower() == "yes":
+        kind = "island"
+    else:
+        kind = "unknown"
+    props["crossing_kind"] = kind
+
+    props["island"] = _yes_no(props.get("crossing:island"))
+    props["tactile_paving"] = _yes_no(props.get("tactile_paving"))
+    kerb = str(props.get("kerb") or "").lower()
+    props["kerb"] = kerb if kerb in _KERB_VALUES else None
+    props["crossing_ref"] = props.get("crossing_ref") or None
+
+
+# ─── Speed limits ────────────────────────────────────────────────────────────
+
+# OSM records a speed limit in whatever the local law and local habit produce:
+# a bare number in km/h, a number in mph, the word `walk`, the word `none`, or a
+# country-coded zone like `DE:urban`. Nothing downstream can compare those as
+# strings, so they are parsed once, here.
+_MPH_TO_KMH = 1.609344
+
+# The speed of a walking pace, which is what `maxspeed=walk` means. It is a
+# named speed rather than a measured one, so it gets its own source value.
+_WALK_KMH = 7.0
+
+
+def _maxspeed_kmh(value):
+    """Parse an OSM `maxspeed` value into ``(km/h, source)``.
+
+    ``source`` is the honesty flag:
+
+    ``"tagged"``      — a real number, converted to km/h if it was in mph
+    ``"tagged_walk"`` — ``maxspeed=walk``; a named speed, but still a survey
+    ``"unlimited"``   — ``maxspeed=none``; **km/h is None, never 0**, or an
+                        unrestricted road would score as the calmest street
+                        in the city
+    ``"implicit"``    — a zone like ``DE:urban``; see below
+    ``"unparsed"``    — something we do not recognise
+    ``"unknown"``     — the tag is absent
+
+    An implicit zone is deliberately **not** resolved to a number here. What
+    ``urban`` means is a question of national law, and a table of country
+    defaults baked into core code is exactly the coupling this project forbids.
+    The zone is preserved instead, and a workspace supplies its own numbers.
+    """
+    text = str(value or "").strip().lower()
+    if not text:
+        return None, "unknown"
+    if text == "none":
+        return None, "unlimited"
+    if text == "walk":
+        return _WALK_KMH, "tagged_walk"
+
+    if "mph" in text:
+        number = _to_float(text.replace("mph", " ").strip())
+        if number is not None and number > 0:
+            return round(number * _MPH_TO_KMH, 1), "tagged"
+        return None, "unparsed"
+
+    if ":" in text:
+        # A country-coded zone, e.g. "de:urban", "nz:rural", "gb:nsl_single".
+        return None, "implicit"
+
+    number = _to_float(text)
+    if number is not None and number > 0:
+        return round(number, 1), "tagged"
+    return None, "unparsed"
+
+
+def _normalize_streets_with_speed(feat: dict) -> None:
+    """Normalise a speed-limited street so its limit can actually be compared."""
+    props = feat["properties"]
+    raw = props.get("maxspeed")
+    kmh, source = _maxspeed_kmh(raw)
+
+    props["maxspeed_raw"] = str(raw) if raw not in (None, "") else None
+    props["maxspeed_kmh"] = kmh
+    props["maxspeed_source"] = source
+    props["maxspeed_zone"] = props["maxspeed_raw"].lower() if source == "implicit" else None
+
+    props["highway"] = str(props.get("highway") or "").lower() or None
+    props["lanes"] = _to_int(props.get("lanes"))
+    props["oneway"] = str(props.get("oneway") or "").lower() in ("yes", "1", "true")
+    props["length_m"] = _line_length_m(feat.get("geometry") or {})
 
 
 def _yes_no(value):
@@ -827,6 +985,8 @@ _STREET_SPACE_NORMALIZERS = {
     "obstacles": _normalize_obstacles,
     "parking_lots": _normalize_parking_lots,
     "footways": _normalize_footways,
+    "pedestrian_crossings": _normalize_pedestrian_crossings,
+    "streets_with_speed": _normalize_streets_with_speed,
 }
 
 

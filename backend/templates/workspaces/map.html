@@ -1637,17 +1637,36 @@ function addGeoJsonLayer(id, url, color) {
           // as "speed-limit map" rather than "another generic streets layer".
           let linePaint;
           if (id === "streets_with_speed") {
+            // Prefer the normalised km/h value: it is the only reading that
+            // survives a city tagging in mph. The string match below is kept as
+            // the fallback for workspaces synced before the normaliser existed
+            // — their features have no maxspeed_kmh and must keep rendering.
             linePaint = {
               "line-width": 2.5,
               "line-opacity": 0.9,
+              // `coalesce`, not `has`: an implicit zone like DE:urban carries
+              // the key with a null value, and feeding null to interpolate
+              // throws. A zero here means "no number", and falls through.
               "line-color": [
-                "match",
-                ["to-string", ["coalesce", ["get", "maxspeed"], "unknown"]],
-                ["10", "20", "30"], "#16a34a",
-                ["40", "50"],       "#f97316",
-                ["60", "70"],       "#dc2626",
-                ["80", "100", "120"], "#7f1d1d",
-                /* default */       "#94a3b8",
+                "case",
+                [">", ["coalesce", ["get", "maxspeed_kmh"], 0], 0],
+                [
+                  "interpolate", ["linear"], ["coalesce", ["get", "maxspeed_kmh"], 0],
+                  20,  "#16a34a",
+                  30,  "#16a34a",
+                  50,  "#f97316",
+                  70,  "#dc2626",
+                  100, "#7f1d1d"
+                ],
+                [
+                  "match",
+                  ["to-string", ["coalesce", ["get", "maxspeed"], "unknown"]],
+                  ["10", "20", "30"], "#16a34a",
+                  ["40", "50"],       "#f97316",
+                  ["60", "70"],       "#dc2626",
+                  ["80", "100", "120"], "#7f1d1d",
+                  /* default */       "#94a3b8",
+                ],
               ],
             };
           } else if (id === "dedicated_bike_network") {
