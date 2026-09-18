@@ -3,7 +3,7 @@
 
 # OpenMobility OS
 
-**Version:** 0.52.0 (pre-release) — see [CHANGELOG.md](CHANGELOG.md)
+**Version:** 0.53.0 (pre-release) — see [CHANGELOG.md](CHANGELOG.md)
 **License:** See [LICENSE](LICENSE)
 
 > The open, free, self-hostable operating system between open mobility data
@@ -170,6 +170,19 @@ four demo workspaces: **Leipzig**, **Utrecht**, **Musterstadt**, and **Muster-La
   not occupancy** — how many cars fit, not how many are there now — and every
   number behind it (bay length, square metres per space, which street classes
   get a modelled kerb) is a parameter a workspace can override
+- **A walking score for every street** — each street is rated *comfortable*,
+  *usable*, *tight*, *hostile* or *not enough data* from ten inputs: how
+  separated the pavement is, how fast and wide the traffic is, whether there are
+  crossings, whether cars park on the kerb, and how wide, lit, step-free and
+  well-surfaced the walk is. A factor the data cannot speak to is dropped from
+  the average and named on the street — never scored as a middling value — and a
+  street whose known inputs fall below the coverage threshold gets no rating at
+  all rather than a guessed one. A pavement mapped as its own line is matched to
+  its street by proximity, but a street surveyed as having *no* pavement is never
+  overridden by a line that happens to run nearby. Every weight and threshold is
+  a parameter a workspace can override, and all of them are printed on the
+  workspace's Methodology page. Available at
+  `/api/v1/workspaces/<slug>/walkability/`
 - **Pedestrian space and off-street parking on the map** — sidewalks, footpaths,
   pedestrian streets and steps come in from OpenStreetMap under either of the two
   ways it records them (a footway mapped as its own line, or a `sidewalk` tag on

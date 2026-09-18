@@ -9,6 +9,7 @@ from maps.views import (
     focus_areas_view,
     parked_cars_view,
     shared_mobility_gaps_view,
+    walkability_view,
     workspace_layer,
     workspace_measures_geojson,
 )
@@ -48,6 +49,11 @@ urlpatterns = [
         "workspaces/<slug:workspace_slug>/parked-cars/",
         parked_cars_view,
         name="api_parked_cars",
+    ),
+    path(
+        "workspaces/<slug:workspace_slug>/walkability/",
+        walkability_view,
+        name="api_walkability",
     ),
     path(
         "workspaces/<slug:workspace_slug>/shared-mobility-gaps/",

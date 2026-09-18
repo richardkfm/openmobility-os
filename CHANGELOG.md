@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Every street now carries a walking score.** A new
+  `/api/v1/workspaces/<slug>/walkability/` endpoint rates each street
+  *comfortable*, *usable*, *tight*, *hostile* or *not enough data*, from how
+  separated the pavement is, how fast and how wide the traffic is, whether there
+  are crossings to use, whether cars park on the kerb, and how wide, lit,
+  step-free and well-surfaced the walk is. Each street comes back with the
+  reading in words, how much of the picture is actually known, and a list naming
+  every input the data could not speak to.
+- **A factor nobody has surveyed is never scored as average.** It is dropped
+  from the calculation and named on the street instead, and a street whose known
+  inputs fall below the coverage threshold is reported as *not enough data*
+  rather than being given a rating built on the remainder. The gap in the map is
+  usually the most useful thing it can tell you.
+- **A pavement mapped as its own line is matched to the street it belongs to**,
+  so cities that map pedestrian space properly are no longer penalised for it.
+  The match only runs where the street either points at a separate pavement or
+  says nothing — a street surveyed as having *no* pavement is never overridden by
+  a footway that happens to run nearby, and a street matched by proximity is
+  marked as such and rated less confidently.
+- **A street's width can be read as a split between parked cars and people on
+  foot** via `?mode=space_split`, for the streets where both widths are actually
+  recorded. The endpoint reports how much of the network that covers, so a
+  sparse answer cannot pass for a complete one.
+- **Every number behind the walking score, and behind the parked-car estimates,
+  is now printed on the workspace's Methodology page** — the weights, the
+  thresholds, the widths and the speeds — each one overridable per workspace.
+  The parked-car figures had been overridable since they shipped but were never
+  shown anywhere.
+- Speed limits recorded as a national zone rather than a number stay unresolved
+  unless a workspace supplies its own values, so an un-configured workspace
+  reports those streets as unknown instead of assuming one country's rules.
+
 ### Fixed
 - **The pedestrian crossings layer synced nothing.** Its OpenStreetMap query
   asked for tags without coordinates, so every crossing it found was thrown away

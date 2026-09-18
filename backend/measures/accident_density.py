@@ -19,9 +19,7 @@ minor×1) so the score means the same thing here as in the measures engine.
 
 from __future__ import annotations
 
-from math import floor
-
-from measures.geo import make_projector
+from measures.geo import SegmentGrid, iter_linestrings, make_projector, seg_dist2
 
 # Same weights the rest of the codebase uses (measures.rules.safety,
 # the map heatmap). Kept local to avoid a hard cross-module import, but
@@ -36,22 +34,13 @@ DEFAULT_MIN_SCORE = 3
 # --------------------------------------------------------------------------- #
 # Geometry helpers
 # --------------------------------------------------------------------------- #
-# The projection lives in measures.geo, which several modules share. Kept under
-# the old private name so existing callers here read unchanged.
+# The projection, the segment index and the point-to-segment primitive all live
+# in measures.geo, which several modules share. Kept under the old private names
+# so existing callers here read unchanged.
 _make_projector = make_projector
-
-
-def _iter_linestrings(geometry):
-    """Yield coordinate lists for LineString / MultiLineString geometries."""
-    if not geometry:
-        return
-    gtype = geometry.get("type")
-    coords = geometry.get("coordinates") or []
-    if gtype == "LineString":
-        yield coords
-    elif gtype == "MultiLineString":
-        for line in coords:
-            yield line
+_iter_linestrings = iter_linestrings
+_seg_dist2 = seg_dist2
+_SegmentGrid = SegmentGrid
 
 
 def _point_coords(geometry):
@@ -61,68 +50,6 @@ def _point_coords(geometry):
     if len(coords) < 2:
         return None
     return coords[0], coords[1]
-
-
-def _seg_dist2(px, py, x1, y1, x2, y2):
-    """Squared distance from point (px,py) to segment (x1,y1)-(x2,y2)."""
-    dx = x2 - x1
-    dy = y2 - y1
-    if dx == 0.0 and dy == 0.0:
-        return (px - x1) ** 2 + (py - y1) ** 2
-    t = ((px - x1) * dx + (py - y1) * dy) / (dx * dx + dy * dy)
-    if t < 0.0:
-        t = 0.0
-    elif t > 1.0:
-        t = 1.0
-    cx = x1 + t * dx
-    cy = y1 + t * dy
-    return (px - cx) ** 2 + (py - cy) ** 2
-
-
-# --------------------------------------------------------------------------- #
-# Grid spatial index
-# --------------------------------------------------------------------------- #
-class _SegmentGrid:
-    """Uniform grid index over projected line segments for nearest-segment search.
-
-    Each segment is registered into every cell its bounding box — inflated by
-    the snap radius — touches. A query point therefore only has to look at the
-    single cell it falls in: any segment within ``snap_m`` of the point is
-    guaranteed to have been registered there.
-    """
-
-    def __init__(self, snap_m):
-        self.cell = max(snap_m * 2.0, 50.0)
-        self.snap_m = snap_m
-        self.cells: dict[tuple[int, int], list] = {}
-
-    def _key(self, x, y):
-        return (floor(x / self.cell), floor(y / self.cell))
-
-    def add_segment(self, ref, x1, y1, x2, y2):
-        pad = self.snap_m
-        min_cx = floor((min(x1, x2) - pad) / self.cell)
-        max_cx = floor((max(x1, x2) + pad) / self.cell)
-        min_cy = floor((min(y1, y2) - pad) / self.cell)
-        max_cy = floor((max(y1, y2) + pad) / self.cell)
-        seg = (ref, x1, y1, x2, y2)
-        for cx in range(min_cx, max_cx + 1):
-            for cy in range(min_cy, max_cy + 1):
-                self.cells.setdefault((cx, cy), []).append(seg)
-
-    def nearest(self, px, py):
-        """Return (ref, distance_m) of the nearest segment, or (None, inf)."""
-        candidates = self.cells.get(self._key(px, py))
-        if not candidates:
-            return None, float("inf")
-        best_ref = None
-        best_d2 = float("inf")
-        for ref, x1, y1, x2, y2 in candidates:
-            d2 = _seg_dist2(px, py, x1, y1, x2, y2)
-            if d2 < best_d2:
-                best_d2 = d2
-                best_ref = ref
-        return best_ref, best_d2 ** 0.5
 
 
 # --------------------------------------------------------------------------- #
