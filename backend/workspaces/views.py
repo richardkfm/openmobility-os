@@ -14,7 +14,9 @@ from measures.accident_kpis import compute_accident_kpis
 from measures.models import Measure, MeasureScore
 from measures.scoring import compute_priority_score
 from measures.effects import factors_for as effect_factors_for
+from measures.parking_estimate import params_for as parking_estimate_params_for
 from measures.street_space import params_for as street_space_params_for
+from measures.walkability import params_for as walkability_params_for
 from measures.transit_kpis import compute_transit_kpis
 
 from .views_areas import area_indicator_options
@@ -243,6 +245,12 @@ def workspace_methodology(request, workspace_slug: str):
             # parameter a plan in this workspace uses, with its source.
             "effect_factors": effect_factors_for(ws),
             "street_space_params": street_space_params_for(ws),
+            # The parked-car and walkability catalogues are overridable per
+            # workspace, so principle 3 requires them on this page too — a
+            # number a workspace can change is a number a reader must be able
+            # to look up.
+            "parking_estimate_params": parking_estimate_params_for(ws),
+            "walkability_params": walkability_params_for(ws),
             "page_title": _("Methodology — %(name)s") % {"name": ws.name},
         },
     )

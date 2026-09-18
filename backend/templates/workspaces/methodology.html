@@ -152,6 +152,106 @@
     </div>
   </section>
 
+  {% comment %}
+    Parking vs Walking — the same transparency rule as the block above. Both
+    catalogues are overridable per workspace, so a reader must be able to look
+    up the numbers behind a car symbol or a walking class.
+  {% endcomment %}
+  <section>
+    <h2 class="text-lg font-semibold mb-2">{% trans "Parked cars and walkability" %}</h2>
+    <div class="rounded-lg border bg-white p-5 text-sm flex flex-col gap-4">
+
+      <div>
+        <h3 class="text-xs uppercase tracking-wide text-slate-500 mb-2">{% trans "Parked-car estimates" %}</h3>
+        <p class="text-xs text-slate-600 leading-relaxed">
+          {% blocktrans trimmed with per_space=parking_estimate_params.lot_area_per_space_m2.surface coverage=parking_estimate_params.kerb_coverage_factor minimum=parking_estimate_params.min_modelled_length_m %}
+            An off-street car park is assumed to use {{ per_space }} m² per space, including
+            that space's share of the aisles and ramps. Along a kerb, driveways and junctions
+            are assumed to take a share of the length, leaving {{ coverage }} of it usable, and
+            nothing shorter than {{ minimum }} m is modelled at all. Where OpenStreetMap records
+            parking the cars are marked surveyed; on an untagged residential street they are
+            marked modelled and counted separately.
+          {% endblocktrans %}
+        </p>
+        <p class="text-xs text-slate-600 leading-relaxed mt-2">
+          {% blocktrans trimmed with rate=parking_estimate_params.occupancy_rate %}
+            The layer reports capacity, not occupancy: the assumed occupancy rate is
+            {{ rate }}. “How many cars fit here” is a countable claim about geometry;
+            “how many are here right now” would be a second layer of fiction.
+          {% endblocktrans %}
+        </p>
+        {% if parking_estimate_params.needs_review %}
+        <p class="text-xs text-amber-700 mt-2">{% trans "These figures are plausible planning defaults that no maintainer has checked against a named standard." %}</p>
+        {% endif %}
+      </div>
+
+      <div>
+        <h3 class="text-xs uppercase tracking-wide text-slate-500 mb-2">{% trans "Walking score — how a street gets its class" %}</h3>
+        <p class="text-xs text-slate-600 leading-relaxed mb-3">
+          {% blocktrans trimmed with coverage=walkability_params.min_coverage %}
+            Each street is scored on two components, safety and comfort, from the factors
+            below. A factor the data cannot speak to is dropped from the average and named
+            on the street — it is never scored as a middling value. Where less than
+            {{ coverage }} of the weight is known, no class is given at all and the street
+            reads “not enough data”.
+          {% endblocktrans %}
+        </p>
+        <table class="w-full text-xs">
+          <thead class="text-slate-500 text-left border-b">
+            <tr>
+              <th class="py-1.5 pr-3">{% trans "Factor" %}</th>
+              <th class="py-1.5 pr-3">{% trans "Component" %}</th>
+              <th class="py-1.5">{% trans "Weight" %}</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y">
+            {% for key, weight in walkability_params.weights_safety.items %}
+            <tr>
+              <td class="py-1.5 pr-3 font-medium">{{ key }}</td>
+              <td class="py-1.5 pr-3 text-slate-500">{% trans "Safety" %}</td>
+              <td class="py-1.5">{{ weight }}</td>
+            </tr>
+            {% endfor %}
+            {% for key, weight in walkability_params.weights_comfort.items %}
+            <tr>
+              <td class="py-1.5 pr-3 font-medium">{{ key }}</td>
+              <td class="py-1.5 pr-3 text-slate-500">{% trans "Comfort" %}</td>
+              <td class="py-1.5">{{ weight }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        <p class="text-xs text-slate-600 leading-relaxed mt-3">
+          {% blocktrans trimmed with safety=walkability_params.headline_weights.safety comfort=walkability_params.headline_weights.comfort comfortable=walkability_params.class_thresholds.comfortable usable=walkability_params.class_thresholds.usable tight=walkability_params.class_thresholds.tight %}
+            The two components are combined {{ safety }} safety to {{ comfort }} comfort.
+            A street scoring {{ comfortable }} or more is comfortable, {{ usable }} or more
+            usable, {{ tight }} or more tight, and anything below that hostile.
+          {% endblocktrans %}
+        </p>
+        <p class="text-xs text-slate-600 leading-relaxed mt-2">
+          {% blocktrans trimmed with comfortable=walkability_params.comfortable_width_m minimum=walkability_params.minimum_width_m fast=walkability_params.speed_hostile_kmh calm=walkability_params.speed_comfort_kmh %}
+            A pavement of {{ comfortable }} m or wider counts as comfortable and one of
+            {{ minimum }} m or narrower as nominal — but only where the width is actually
+            tagged, because there is no way to infer one. Traffic at {{ calm }} km/h or less
+            scores full marks and {{ fast }} km/h or more scores none.
+          {% endblocktrans %}
+        </p>
+        {% if not walkability_params.implicit_maxspeed_kmh %}
+        <p class="text-xs text-slate-600 leading-relaxed mt-2">
+          {% blocktrans trimmed %}
+            Speed limits recorded as a national zone rather than a number are left
+            unresolved: what a zone means is a question of local law, so this workspace
+            reports those streets as unknown until it supplies its own values.
+          {% endblocktrans %}
+        </p>
+        {% endif %}
+        {% if walkability_params.needs_review %}
+        <p class="text-xs text-amber-700 mt-2">{% trans "These weights are plausible planning defaults that no maintainer has checked against a named standard." %}</p>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+
   <a href="{% url 'methodology' %}" class="text-sm text-slate-600 hover:underline">{% trans "→ Global methodology" %}</a>
 </div>
 {% endblock %}

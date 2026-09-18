@@ -16,6 +16,7 @@ from datasets.models import DataSource, MobilitySnapshot, NormalizedFeatureSet
 from measures.accident_density import compute_density_lines
 from measures import parking_estimate
 from measures import street_space
+from measures import walkability
 from measures.models import MeasureScore
 from measures.scoring import compute_priority_score
 
@@ -30,6 +31,22 @@ def _features_for_kind(ws, layer_kind):
         fc = fs.feature_collection or {}
         features.extend(fc.get("features") or [])
     return features
+
+
+def _synced_features_for_kind(ws, layer_kind):
+    """Features for a layer kind, or ``None`` when the workspace has not synced it.
+
+    ``_features_for_kind`` cannot tell "no source configured" from "a source
+    that returned nothing", and for the walking score that difference decides
+    whether a factor is silence or a reading. Checking for an enabled source
+    first is what keeps the two apart.
+    """
+    exists = NormalizedFeatureSet.objects.filter(
+        workspace=ws, layer_kind=layer_kind, source__is_enabled=True
+    ).exists()
+    if not exists:
+        return None
+    return _features_for_kind(ws, layer_kind)
 
 
 def _csv_param(request, name):
@@ -162,6 +179,64 @@ def parked_cars_view(request, workspace_slug: str):
         access=access,
     )
     fc["format"] = "symbols"
+    return JsonResponse(fc)
+
+
+@require_GET
+@cache_page(300)
+def walkability_view(request, workspace_slug: str):
+    """Every street scored for walking, with the working shown.
+
+    Each street comes back with a named class — comfortable, usable, tight,
+    hostile, or ``unknown`` — plus the two component bands the popup reads out,
+    the coverage the class rests on, and a ``unknowns`` list naming every factor
+    the data could not speak to. The 0-100 numbers travel with it because
+    CLAUDE.md principle 3 requires the calculation to be auditable; the map
+    never draws them.
+
+    A workspace with only a street network still gets a full collection back,
+    every street classed ``unknown``. That is the honest answer and an argument
+    for syncing the pedestrian layers — an error would just hide the gap.
+
+    Query parameters (all optional):
+        ``mode``     — ``classes`` (default) or ``space_split``, which reports
+                       how each street's width divides between parked cars and
+                       people on foot.
+        ``classes``  — comma list of classes to return. The collection's
+                       ``counts`` still describe the whole network, so a legend
+                       can say how much the filter is hiding.
+    """
+    ws = get_active_workspace(workspace_slug)
+
+    # The same street-network fallback chain the parked-car view uses, so both
+    # halves of the Parking vs Walking view describe the same streets.
+    streets = (
+        _features_for_kind(ws, "streets_with_speed")
+        or _features_for_kind(ws, "streets")
+        or _features_for_kind(ws, "car_lanes")
+    )
+
+    mode = (request.GET.get("mode") or "").strip() or "classes"
+    wanted = _csv_param(request, "classes")
+    if wanted:
+        valid = (*walkability.WALK_CLASSES, walkability.UNKNOWN_CLASS)
+        wanted = [c for c in wanted if c in valid] or None
+
+    center = ws.center
+    fc = walkability.build_walkability(
+        center_lonlat=(center.x, center.y) if center else (0.0, 0.0),
+        street_features=streets,
+        # `None` where the layer is not synced at all — the scorer reads that
+        # as silence rather than as a surveyed absence.
+        footway_features=_synced_features_for_kind(ws, "footways"),
+        crossing_features=_synced_features_for_kind(ws, "pedestrian_crossings"),
+        obstacle_features=_synced_features_for_kind(ws, "obstacles"),
+        parking_features=_synced_features_for_kind(ws, "street_parking"),
+        params=walkability.params_for(ws),
+        street_params=street_space.params_for(ws),
+        mode=mode,
+        classes=wanted,
+    )
     return JsonResponse(fc)
 
 
