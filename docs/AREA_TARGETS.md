@@ -137,7 +137,47 @@ Normalised properties:
 // obstacles (Point | LineString)
 {"obstacle_type": "tram_track|level_crossing|bus_stop_in_lane|barrier|bridge|tunnel|narrow_section|construction",
  "affects": "cycling|walking|both", "note": "…"}
+
+// streets_with_speed (LineString)
+{"maxspeed_kmh": 30.0, "maxspeed_source": "tagged|tagged_walk|implicit|unlimited|unparsed|unknown",
+ "maxspeed_zone": "de:urban", "maxspeed_raw": "DE:urban",
+ "highway": "residential", "lanes": 2, "oneway": false, "length_m": 210.0}
+
+// footways (LineString) — pedestrian space, under either OSM scheme
+{"foot_scheme": "separate_way|street_tag",
+ "footway_present": true,            // true | false | null — see below
+ "sides": "both|left|right|none|separate|unknown",
+ "width_m": 2.4, "width_source": "tagged|unknown",
+ "foot_access": "designated|yes|permissive|no|unknown",
+ "shared_space": false, "surface": "asphalt", "smoothness": "good",
+ "lit": true, "tactile_paving": null, "incline_pct": 4.0,
+ "is_steps": false, "step_count": null, "highway": "residential",
+ "length_m": 210.0}
+
+// pedestrian_crossings (Point)
+{"crossing_kind": "traffic_signals|marked|unmarked|island|level_crossing|unknown",
+ "has_signals": true, "island": null, "tactile_paving": true,
+ "kerb": "flush|lowered|raised|no|null", "crossing_ref": "zebra"}
 ```
+
+**Speed limits are parsed once, not compared as strings.** OSM records a limit
+in whatever the local law and local habit produce: a bare number in km/h, a
+number in mph, the word `walk`, the word `none`, or a country-coded zone like
+`DE:urban`. `maxspeed_kmh` is the comparable number and `maxspeed_source` says
+where it came from. Two values deliberately carry **no** number: `none` is an
+unrestricted road (reading it as 0 km/h would score an autobahn as the calmest
+street in the city), and an implicit zone is a question of national law, so the
+zone is preserved in `maxspeed_zone` and the numbers come from your workspace
+settings rather than from a table of one country's defaults baked into the code.
+
+**`footway_present` has three states, and `sidewalk=separate` is a fourth
+thing.** `true` means a pavement is recorded, `false` means the street was
+surveyed and has none, and `null` means nobody has looked — a surveyed absence
+is evidence, silence is not. `sidewalk=separate` reads as `null` with
+`sides: "separate"`: the pavement exists and is mapped as a way of its own, so
+the street carries a pointer rather than a reading. `width_source` is only ever
+`"tagged"` or `"unknown"` — a carriageway width can be estimated from a lane
+count, but there is no equivalent inference for a pavement, so none is invented.
 
 `width_source` is the honesty flag. `"tagged"` means OSM states a width;
 `"estimated"` means it can only be derived from the lane count; `"unknown"` means

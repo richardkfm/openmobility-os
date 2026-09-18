@@ -3,7 +3,7 @@
 
 # OpenMobility OS
 
-**Version:** 0.51.0 (pre-release) — see [CHANGELOG.md](CHANGELOG.md)
+**Version:** 0.52.0 (pre-release) — see [CHANGELOG.md](CHANGELOG.md)
 **License:** See [LICENSE](LICENSE)
 
 > The open, free, self-hostable operating system between open mobility data
@@ -211,7 +211,12 @@ four demo workspaces: **Leipzig**, **Utrecht**, **Musterstadt**, and **Muster-La
     `footways`) plus a custom-query escape hatch.
     The last five are the heavy ones — they pull every street or car park in
     the bounding box with its full geometry — so they are never synced for you:
-    add them from the data hub when you want them
+    add them from the data hub when you want them.
+    `pedestrian_crossings` and `streets_with_speed` now arrive normalized:
+    crossings carry whether they are signalised, marked, dropped-kerb and
+    tactile, and a speed limit is parsed into a comparable figure whatever
+    the local tagging habit (km/h, mph, or a national zone such as `DE:urban`,
+    whose value you set per workspace rather than the software guessing it)
   - Static GTFS zip (transit stops, routes, coverage) — enriches stops with
     average headway, night service, and barrier-free status from the schedule
   - **GBFS shared mobility** — reads any operator's GBFS auto-discovery feed

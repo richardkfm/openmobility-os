@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **The pedestrian crossings layer synced nothing.** Its OpenStreetMap query
+  asked for tags without coordinates, so every crossing it found was thrown away
+  before it reached the map. The layer had looked healthy and stored an empty
+  set. It now returns the crossings it finds, each one carrying whether it is
+  signalised, whether it is marked, whether the kerb is dropped and whether it
+  has tactile paving.
+- **Speed limits were unreadable outside a handful of countries.** A street
+  tagged `20 mph` or `DE:urban` fell through to "unknown" and drew grey, so the
+  speed-limit map was quietly blank for every city that does not tag a bare
+  number in km/h. Limits are now parsed once into a comparable figure, with mph
+  converted. Two cases still carry no number on purpose: an unrestricted road,
+  because calling it 0 km/h would rank an autobahn as the calmest street in
+  town, and a national zone such as `DE:urban`, because what *urban* means is a
+  question of local law — the zone is kept and your workspace supplies the
+  number, rather than the software assuming one country's rules apply
+  everywhere.
+- **A street whose pavement is mapped separately was recorded as having no
+  pavement.** OpenStreetMap writes `sidewalk=separate` to say "the footway is
+  here, drawn as its own line". That was being read as a survey finding no
+  footway at all — which would have condemned exactly the cities that map
+  pedestrian space best. It now reads as what it is: a pointer, not a verdict.
+- Physical obstacles that block a person on foot but not a cyclist — kissing
+  gates and stiles — are now labelled as affecting walking, a category the
+  documentation has described since it was written but nothing ever produced.
+
 ### Added
 - **The map can now fill the city with the cars it stores.** A new "Parked cars
   (estimated)" layer turns kerbside parking and off-street car parks into
