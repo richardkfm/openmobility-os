@@ -8,6 +8,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Walking quality is now on the map.** A new **Walking quality** layer draws
+  every street in one of five named bands — comfortable, usable, tight, hostile,
+  or not enough data — with a popup that reads the rating out in words, says how
+  safe and how comfortable the street is, and names every input the score could
+  not see. **No number is drawn over a street**: the 0–100 values are an opt-in
+  checkbox away and appear only in the popup, because a score printed on a map
+  claims a precision the underlying survey data cannot carry.
+- **Streets nobody has surveyed are drawn, in their own pale grey, with their
+  own legend row.** Hiding them would let a city with no pedestrian data pass
+  for a city with nothing wrong. A street whose rating rests on thin data, or on
+  a pavement matched by nearness, is drawn faint — confidence you can see.
+- **A second map mode colours each street by who gets its width**, from all
+  parked cars to all pedestrian space, for the streets where both widths are
+  actually recorded; the panel says what share of the network that is.
+- **A "Parking vs walking" story view** brings both halves up together with the
+  pedestrian layers underneath, so the cars a street stores can be read against
+  what the same street is like on foot.
+- New guide [docs/PARKING_AND_WALKING.md](docs/PARKING_AND_WALKING.md) covering
+  both halves: what each layer claims, the ten factors and their weights, the
+  class thresholds, the per-workspace overrides, the API and the limits.
 - **Every street now carries a walking score.** A new
   `/api/v1/workspaces/<slug>/walkability/` endpoint rates each street
   *comfortable*, *usable*, *tight*, *hostile* or *not enough data*, from how
@@ -41,6 +61,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   reports those streets as unknown instead of assuming one country's rules.
 
 ### Fixed
+- Saved views no longer lose the **Parked cars** and **Availability gaps**
+  overlays. Loading a view restored them on the map but left their checkboxes
+  unticked and their data unloaded, so the panel and the map disagreed.
 - **The pedestrian crossings layer synced nothing.** Its OpenStreetMap query
   asked for tags without coordinates, so every crossing it found was thrown away
   before it reached the map. The layer had looked healthy and stored an empty

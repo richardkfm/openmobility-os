@@ -33,7 +33,7 @@
       actually render. The active view's plain-language key + a Clear button
       replace the list while one is on.
       {% endcomment %}
-      {% if has_cycling_gap_data or has_safe_school_data or has_traffic_safety_data or has_urban_heat_data or has_flood_water_data or has_cooling_green_data %}
+      {% if has_cycling_gap_data or has_safe_school_data or has_traffic_safety_data or has_urban_heat_data or has_flood_water_data or has_cooling_green_data or has_walkability_data %}
       <div class="rounded-lg border bg-white p-4 text-sm"
            x-data="{ active: null, reading: '', open: window.matchMedia('(min-width: 1024px)').matches }"
            @omos:storyview.document="active = $event.detail.key; reading = $event.detail.reading; open = true"
@@ -120,6 +120,19 @@
               {% trans "Cooling green network" %}
             </button>
             <p class="text-xs text-slate-400 mt-1.5">{% trans "Parks, trees and fresh-air corridors relative to where people live." %}</p>
+          </div>
+          {% endif %}
+          {% if has_walkability_data %}
+          <div>
+            <button @click="activateStoryView('parking_vs_walking')"
+                    class="w-full text-left px-3 py-2 rounded-lg bg-slate-50 hover:bg-slate-100 border transition-colors flex items-center gap-2">
+              <span class="flex -space-x-0.5 shrink-0">
+                <span class="inline-block w-3 h-3 rounded-full bg-violet-600 border border-white"></span>
+                <span class="inline-block w-3 h-3 rounded-full bg-green-700 border border-white"></span>
+              </span>
+              {% trans "Parking vs walking" %}
+            </button>
+            <p class="text-xs text-slate-400 mt-1.5">{% trans "The cars a street stores against what the same street is like on foot." %}</p>
           </div>
           {% endif %}
         </div>
@@ -463,6 +476,56 @@
               </p>
               <p class="text-xs text-slate-400">
                 {% trans "Capacity, not occupancy: how many cars fit, not how many are parked right now." %}
+              </p>
+            </div>
+          </div>
+          {% endif %}
+
+          {# Walking quality — the other half of the same street #}
+          {% if has_walkability_data %}
+          <div class="pt-2 border-t mt-2" x-data="walkability()" x-init="init()">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="toggle-walkability" @change="toggle($event.target.checked)">
+              <span>{% trans "Walking quality" %}</span>
+            </label>
+            <div x-show="enabled" x-cloak class="mt-2 ml-5 flex flex-col gap-1.5">
+              <select x-model="mode" @change="setMode($event.target.value)"
+                      class="text-xs w-full border rounded px-1.5 py-1 text-slate-700">
+                <option value="classes">{% trans "Quality for people on foot" %}</option>
+                <option value="space_split">{% trans "Who gets the space" %}</option>
+              </select>
+              {# The class strip is the key to the colours, in the order a
+                 street improves — and "not enough data" is one of the five,
+                 never a hidden sixth state. #}
+              <div x-show="mode === 'classes'" class="grid gap-1">
+                <template x-for="row in classRows" :key="row.key">
+                  <span class="flex items-center gap-1.5 text-xs text-slate-600">
+                    <span class="inline-block w-4 h-1 rounded shrink-0" :style="`background:${row.color}`"></span>
+                    <span x-text="row.label"></span>
+                  </span>
+                </template>
+              </div>
+              <div x-show="mode === 'space_split'" class="flex flex-col gap-1">
+                <div class="h-1.5 rounded" style="background:linear-gradient(90deg,#7c3aed,#e2e8f0,#15803d)"></div>
+                <div class="flex justify-between text-xs text-slate-500">
+                  <span>{% trans "Parked cars" %}</span><span>{% trans "People on foot" %}</span>
+                </div>
+                <p class="text-xs text-slate-500" x-show="loaded" x-text="spaceNote"></p>
+              </div>
+              <p class="text-xs text-slate-600" x-show="loaded && streets > 0" x-text="classedNote"></p>
+              <label class="flex items-center gap-2 text-xs text-slate-600 cursor-pointer">
+                {# Off by default and popup-only when on. A 0-100 number drawn
+                   over a street claims a precision that banded inputs cannot
+                   carry — but hiding it entirely would make the class a black
+                   box, which principle 3 forbids. #}
+                <input type="checkbox" x-model="showScores" @change="setShowScores($event.target.checked)">
+                {% trans "Show numeric scores (in popups)" %}
+              </label>
+              <p class="text-xs text-amber-600" x-show="loaded && !layersUsed.footways">
+                {% trans "No footway layer is synced, so comfort is unknown and most streets stay grey. Sync footways to give them a class." %}
+              </p>
+              <p class="text-xs text-slate-400">
+                {% trans "A faint line means the class rests on thin data. Grey is a gap in the survey, not a bad street." %}
               </p>
             </div>
           </div>
@@ -922,10 +985,12 @@ const STYLE_KEY = `omos-style-${WORKSPACE_SLUG}`;
 function loadStyleState() {
   try {
     const s = JSON.parse(localStorage.getItem(STYLE_KEY) || "{}");
-    return { layers: s.layers || {} };
-  } catch (_) { return { layers: {} }; }
+    // Whitelisted, not spread: anything not named here is dropped on every
+    // reload, which is how a setting silently stops persisting.
+    return { layers: s.layers || {}, walkability: s.walkability || {} };
+  } catch (_) { return { layers: {}, walkability: {} }; }
 }
-// layers: { <kind>: { mode, opacity } }
+// layers: { <kind>: { mode, opacity } } · walkability: { mode, showScores }
 const layerStyleState = loadStyleState();
 function persistStyleState() {
   try { localStorage.setItem(STYLE_KEY, JSON.stringify(layerStyleState)); } catch (_) {}
@@ -1349,6 +1414,111 @@ function registerMapIcons() {
   });
   loadCarImage("car-surveyed");
   loadCarImage("car-modelled");
+}
+
+// ─── Walking quality ─────────────────────────────────────────────────────────
+// The API scores every street 0-100 and then bands it. The map reads the band
+// and never the number: banded inputs cannot carry the precision a printed
+// score implies, and a city-sized network of numbers is noise before it is
+// information. The numbers stay one click away in the popup, and always in the
+// API, because principle 3 requires the calculation to be auditable.
+//
+// "Not enough data" is one of the five classes, drawn in its own pale grey and
+// listed in the legend. Dropping those streets would let a city nobody has
+// surveyed pass for a city with nothing wrong.
+const WALK_CLASS_ORDER = ["comfortable", "usable", "tight", "hostile", "unknown"];
+const WALK_CLASS_COLORS = {
+  comfortable: "#15803d",
+  usable: "#84cc16",
+  tight: "#f59e0b",
+  hostile: "#dc2626",
+  unknown: "#cbd5e1",
+};
+const WALK_CLASS_LABELS = {
+  comfortable: "{% trans "Comfortable on foot" %}",
+  usable: "{% trans "Usable on foot" %}",
+  tight: "{% trans "Tight on foot" %}",
+  hostile: "{% trans "Hostile on foot" %}",
+  unknown: "{% trans "Not enough data" %}",
+};
+const WALK_BAND_LABELS = {
+  good: "{% trans "good" %}",
+  fair: "{% trans "fair" %}",
+  poor: "{% trans "poor" %}",
+  unknown: "{% trans "unknown" %}",
+};
+// Named for the popup line that says what the score could not see. The keys are
+// the factor names the API returns in `unknowns`.
+const WALK_FACTOR_LABELS = {
+  footway_separation: "{% trans "pavement" %}",
+  traffic_speed: "{% trans "traffic speed" %}",
+  lane_count: "{% trans "traffic lanes" %}",
+  crossings: "{% trans "crossings" %}",
+  obstacles: "{% trans "obstacles" %}",
+  footway_width: "{% trans "footway width" %}",
+  kerb_parking: "{% trans "kerbside parking" %}",
+  step_free: "{% trans "step-free access" %}",
+  surface: "{% trans "surface" %}",
+  lit: "{% trans "lighting" %}",
+};
+// The space-split ramp deliberately reuses the parked-car purple at one end, so
+// the two halves of the Parking vs Walking view rhyme rather than compete.
+const WALK_SPACE_GRADIENT = "linear-gradient(90deg,#7c3aed,#e2e8f0,#15803d)";
+const WALK_SPACE_LABEL = "{% trans "Street space: parked cars ↔ people on foot" %}";
+const WALK_UNKNOWN_SPACE_LABEL = "{% trans "Widths not tagged" %}";
+
+// Mode + the numeric-score opt-in live outside the Alpine component because the
+// popup handler and the legend builder both read them, exactly as accidentsState
+// carries the accident view mode.
+const walkabilityState = { mode: "classes", showScores: false };
+
+// Colour by class name, not by score — the class is what the legend explains.
+function walkClassColorExpr() {
+  return [
+    "match", ["get", "walk_class"],
+    "comfortable", WALK_CLASS_COLORS.comfortable,
+    "usable", WALK_CLASS_COLORS.usable,
+    "tight", WALK_CLASS_COLORS.tight,
+    "hostile", WALK_CLASS_COLORS.hostile,
+    WALK_CLASS_COLORS.unknown,
+  ];
+}
+
+// A street whose widths are not both tagged has no balance at all. `space_balance`
+// arrives as null there, and null coalesced to 0 would draw it as a perfectly
+// even split — the one reading the data does not support — so it is tested for
+// and sent to the same grey as an unclassed street.
+function walkSpaceColorExpr() {
+  return [
+    "case",
+    ["==", ["typeof", ["get", "space_balance"]], "number"],
+    [
+      "interpolate", ["linear"], ["to-number", ["get", "space_balance"]],
+      -1, "#7c3aed",
+      0, "#e2e8f0",
+      1, WALK_CLASS_COLORS.comfortable,
+    ],
+    WALK_CLASS_COLORS.unknown,
+  ];
+}
+
+// Confidence is carried by opacity: a class resting on thin data, or on a
+// pavement matched by nearness rather than by id, literally looks faint.
+const WALK_CONFIDENCE_OPACITY = [
+  "match", ["get", "confidence"],
+  "high", 0.95,
+  "medium", 0.6,
+  0.35,
+];
+
+function walkOpacityExpr(mode) {
+  if (mode !== "space_split") return WALK_CONFIDENCE_OPACITY;
+  return [
+    "case",
+    ["==", ["typeof", ["get", "space_balance"]], "number"],
+    WALK_CONFIDENCE_OPACITY,
+    0.3,
+  ];
 }
 
 function escHtml(s) {
@@ -2002,6 +2172,102 @@ map.on("load", () => {
     gapPopup.remove();
   });
 
+  // ── Walking quality ──
+  // Added before the parked cars so it draws underneath them: the street's
+  // quality for people on foot is the ground the argument stands on, and the
+  // cars the city stores on that street sit on top of it.
+  map.addSource("walkability", {
+    type: "geojson",
+    data: { type: "FeatureCollection", features: [] },
+  });
+  map.addLayer({
+    id: "walkability-line",
+    type: "line",
+    source: "walkability",
+    layout: { visibility: "none", "line-cap": "round" },
+    paint: {
+      "line-color": walkClassColorExpr(),
+      // Thinner than parked-cars-density-line at every zoom, so the two read
+      // as two layers when stacked rather than as one fat smear. Unclassed
+      // streets are drawn thinnest: present, visibly a gap, never shouting.
+      "line-width": [
+        "interpolate", ["linear"], ["zoom"],
+        11, ["case", ["==", ["get", "walk_class"], "unknown"], 0.8, 1.6],
+        16, ["case", ["==", ["get", "walk_class"], "unknown"], 1.5, 4],
+      ],
+      "line-opacity": walkOpacityExpr("classes"),
+    },
+  });
+
+  // A colour with no explanation is a black box, which is what the accident
+  // density popup exists to avoid — this one follows it. It reads in words;
+  // the 0-100 numbers appear only when the viewer asks for them.
+  const walkPopup = new maplibregl.Popup({ closeButton: true });
+  map.on("click", "walkability-line", (e) => {
+    if (!e.features.length) return;
+    const p = e.features[0].properties;
+    const cls = WALK_CLASS_LABELS[p.walk_class] || WALK_CLASS_LABELS.unknown;
+    const bandLabel = (k) => WALK_BAND_LABELS[k] || WALK_BAND_LABELS.unknown;
+    const rows = [];
+
+    rows.push(`<div class="font-semibold">${escHtml(cls)}</div>`);
+    if (p.name) rows.push(`<div>${escHtml(p.name)}</div>`);
+
+    const bands = "{% trans 'Safety: %(safety)s · Comfort: %(comfort)s' %}"
+      .replace("%(safety)s", bandLabel(p.safety_band))
+      .replace("%(comfort)s", bandLabel(p.comfort_band));
+    rows.push(`<div class="text-slate-600">${escHtml(bands)}</div>`);
+
+    if (walkabilityState.mode === "space_split") {
+      if (typeof p.space_balance === "number") {
+        const split = "{% trans 'Pavement %(foot)s m · parked cars %(cars)s m' %}"
+          .replace("%(foot)s", p.footway_width_total_m)
+          .replace("%(cars)s", p.parking_width_m);
+        rows.push(`<div class="text-slate-600">${escHtml(split)}</div>`);
+      } else {
+        rows.push(`<div class="text-slate-500">${escHtml(WALK_UNKNOWN_SPACE_LABEL)}</div>`);
+      }
+    }
+
+    // What the score could not see. Naming it is the point: an unclassed street
+    // is a survey gap someone can go and close, not a verdict on the street.
+    // MapLibre hands array properties back as JSON strings, so the list has to
+    // be read either way depending on how the feature reached the popup.
+    let unknowns = p.unknowns;
+    if (typeof unknowns === "string") {
+      try { unknowns = JSON.parse(unknowns); } catch (_) { unknowns = []; }
+    }
+    if (!Array.isArray(unknowns)) unknowns = [];
+    if (unknowns.length) {
+      const names = unknowns.map(k => WALK_FACTOR_LABELS[k] || k).join(", ");
+      const t = "{% trans 'Not enough data on: %(list)s' %}".replace("%(list)s", names);
+      rows.push(`<div class="text-slate-500">${escHtml(t)}</div>`);
+    }
+
+    if (p.footway_match === "proximity") {
+      rows.push(
+        `<div class="text-amber-600">{% trans "Pavement matched by nearness — it may belong to the parallel street." %}</div>`
+      );
+    }
+
+    if (walkabilityState.showScores) {
+      const fmt = (v) => (v === null || v === undefined || v === "" ? "—" : v);
+      const t = "{% trans 'Score %(score)s · safety %(safety)s · comfort %(comfort)s · coverage %(coverage)s' %}"
+        .replace("%(score)s", fmt(p.score))
+        .replace("%(safety)s", fmt(p.safety))
+        .replace("%(comfort)s", fmt(p.comfort))
+        .replace("%(coverage)s", fmt(p.coverage));
+      rows.push(`<div class="text-slate-400">${escHtml(t)}</div>`);
+    }
+
+    walkPopup
+      .setLngLat(e.lngLat)
+      .setHTML(`<div class="text-xs grid gap-0.5">${rows.join("")}</div>`)
+      .addTo(map);
+  });
+  map.on("mouseenter", "walkability-line", () => { map.getCanvas().style.cursor = "pointer"; });
+  map.on("mouseleave", "walkability-line", () => { map.getCanvas().style.cursor = ""; });
+
   // ── Parked cars ──
   // Two sources, because the honest answer changes with zoom. Close in, one
   // symbol is one car. Zoomed out, twenty thousand car symbols are a smear, so
@@ -2628,6 +2894,15 @@ const STORY_VIEWS = {
     accidentModes: [],
     reading: "{% trans "Green areas, tree dots and rose fresh-air corridors are the city's network of cool refuges; the population grid underneath shows where people actually live. Densely populated cells with no green space or corridor within easy reach are the gaps to close with new parks, street trees and protected ventilation paths." %}",
   },
+  parking_vs_walking: {
+    layers: ["footways", "pedestrian_crossings", "street_parking"],
+    accidents: null,
+    accidentModes: [],
+    // Derived overlays are not layer kinds, so they come on through the
+    // registry rather than through a `.layer-toggle` checkbox.
+    derived: ["walkability", "parked-cars"],
+    reading: "{% trans "Purple cars are the space the city gives to cars at rest — solid where OpenStreetMap records parking, dashed outline where we assumed it. Underneath, each street is coloured by what it is like on foot: green is comfortable, amber is tight, red is hostile, and pale grey means nobody has surveyed enough of it to say. A street thick with cars and drawn red or amber is one where the kerb is winning; a pale grey street is a survey gap to close before the argument can be made at all." %}",
+  },
 };
 
 let _storyActive = null;
@@ -2675,6 +2950,16 @@ function activateStoryView(key) {
     const acb = document.querySelector('.layer-toggle[data-layer="accidents"]');
     if (acb) acb.checked = true;
   }
+
+  // Derived overlays. The blanket sweep above hid them, and no checkbox can
+  // bring one back, so the registry does it — before the event is dispatched,
+  // so each component's _syncFromMap() sees its layers already visible and
+  // leaves the box ticked rather than immediately unticking itself.
+  Object.entries(DERIVED_LAYERS).forEach(([dkey, d]) => {
+    const wanted = (cfg.derived || []).includes(dkey);
+    if (wanted) { if (d.activate) d.activate(); }
+    else if (d.deactivate) d.deactivate();
+  });
 
   _storyActive = key;
   document.dispatchEvent(new CustomEvent("omos:storyview", { detail: {
@@ -2849,15 +3134,41 @@ function mobilityGaps() {
     samples: 0,
     _fetchTimer: null,
 
-    init() {},
+    init() {
+      // A story view hides every layer, this one included, so the checkbox has
+      // to follow the map rather than keep claiming the overlay is on.
+      document.addEventListener("omos:storyview", () => this._syncFromMap());
+      document.addEventListener("omos:storyview-cleared", () => this._syncFromMap());
+      registerDerivedLayer("mobility-gaps", {
+        activate: () => this._setEnabled(true),
+        deactivate: () => this._setEnabled(false),
+        sync: () => { this._syncFromMap(); if (this.enabled) this._fetch(); },
+      });
+    },
+
+    _setEnabled(on) {
+      this.enabled = on;
+      const vis = on ? "visible" : "none";
+      ["mobility-gaps-fill", "mobility-gaps-outline"].forEach(id => {
+        if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", vis);
+      });
+      if (on) this._fetch();
+      const cb = document.getElementById("toggle-mobility-gaps");
+      if (cb) cb.checked = on;
+    },
+
+    // A saved view or a story view moves the layer without touching the panel,
+    // so the panel has to be able to read the map back.
+    _syncFromMap() {
+      if (!map.getLayer("mobility-gaps-fill")) return;
+      this.enabled = map.getLayoutProperty("mobility-gaps-fill", "visibility") === "visible";
+      const cb = document.getElementById("toggle-mobility-gaps");
+      if (cb) cb.checked = this.enabled;
+    },
 
     toggle(checked) {
       dismissStoryView();
-      this.enabled = checked;
-      const vis = checked ? "visible" : "none";
-      if (map.getLayer("mobility-gaps-fill")) map.setLayoutProperty("mobility-gaps-fill", "visibility", vis);
-      if (map.getLayer("mobility-gaps-outline")) map.setLayoutProperty("mobility-gaps-outline", "visibility", vis);
-      if (checked) this._fetch();
+      this._setEnabled(checked);
       document.dispatchEvent(new CustomEvent("omos:layerschanged"));
     },
 
@@ -2886,6 +3197,26 @@ function mobilityGaps() {
       }, 200);
     },
   };
+}
+
+// ─── Derived-layer registry ──────────────────────────────────────────────────
+// A derived overlay — parked cars, walking quality, availability gaps — is
+// computed by an endpoint rather than synced as a layer kind, so it has no
+// `.layer-toggle` checkbox. Every sweep that walks that selector therefore
+// cannot see it: a story view switches the overlays off and has no way to
+// switch one back on, and a saved view restores the map but leaves the panels
+// claiming the opposite of what is drawn.
+//
+// Each component registers itself here from init(), and the sweeps go through
+// the registry instead of the selector.
+//
+//   activate()   show it and load its data, without dismissing a story view
+//   deactivate() hide it
+//   sync()       read the map back and make the panel agree with it
+const DERIVED_LAYERS = {};
+function registerDerivedLayer(key, api) { DERIVED_LAYERS[key] = api; }
+function syncDerivedLayers() {
+  Object.values(DERIVED_LAYERS).forEach(d => { if (d.sync) d.sync(); });
 }
 
 // ─── Parked cars (derived layer) ─────────────────────────────────────────────
@@ -2922,6 +3253,31 @@ function parkedCars() {
       // map shows none of them is worse than no panel at all.
       document.addEventListener("omos:storyview", () => this._syncFromMap());
       document.addEventListener("omos:storyview-cleared", () => this._syncFromMap());
+      registerDerivedLayer("parked-cars", {
+        activate: () => this._setEnabled(true),
+        deactivate: () => this._setEnabled(false),
+        sync: () => { this._syncFromMap(); if (this.enabled) this._fetch(); },
+      });
+    },
+
+    // The body of toggle() without dismissStoryView(), so a story view can
+    // switch the overlay on without immediately dismissing itself.
+    _setEnabled(on) {
+      this.enabled = on;
+      if (this._ready()) {
+        this._applyVisibility();
+        if (on) this._fetch();
+      } else if (on) {
+        // Switched on before the style finished loading. Nothing to defer when
+        // switching off — the layers start hidden — and deferring anyway would
+        // pile up one-shot load handlers every time a story view sweeps past.
+        map.once("load", () => {
+          this._applyVisibility();
+          if (this.enabled) this._fetch();
+        });
+      }
+      const cb = document.getElementById("toggle-parked-cars");
+      if (cb) cb.checked = on;
     },
 
     // Has map.on("load") run? The layers only exist from that point on, and a
@@ -2957,18 +3313,9 @@ function parkedCars() {
 
     toggle(checked) {
       dismissStoryView();
-      this.enabled = checked;
-      if (this._ready()) {
-        this._applyVisibility();
-        if (checked) this._fetch();
-      } else {
-        // Ticked before the style finished loading; apply it once the layers
-        // are there, or the checkbox stays on over an empty map.
-        map.once("load", () => {
-          this._applyVisibility();
-          if (this.enabled) this._fetch();
-        });
-      }
+      // _setEnabled defers through map.once("load") when the style is not
+      // ready, or a box ticked early would stay on over an empty map.
+      this._setEnabled(checked);
       document.dispatchEvent(new CustomEvent("omos:layerschanged"));
     },
 
@@ -3013,6 +3360,181 @@ function parkedCars() {
             this._fetched[key] = true;
             this.counts = fc.counts || { total: 0, surveyed: 0, modelled: 0 };
             this.represents = fc.represents || 1;
+            this.loaded = true;
+            src.setData(fc);
+          })
+          .catch(() => {});
+      }, 200);
+    },
+  };
+}
+
+// ─── Walking quality (derived layer) ─────────────────────────────────────────
+// One line layer, two readings of the same request. `classes` colours a street
+// by how good it is on foot; `space_split` colours the same street by who its
+// width belongs to. Every street carries both readings in the one response, so
+// switching mode repaints what is already on screen rather than fetching again.
+function walkability() {
+  return {
+    enabled: false,
+    mode: "classes",
+    showScores: false,
+    counts: {},
+    streets: 0,
+    spaceCoverage: 0,
+    layersUsed: { footways: true },
+    loaded: false,
+    _fetchTimer: null,
+    _fetched: {},
+
+    init() {
+      // Mode and the numeric opt-in persist with the other viewer choices, in
+      // the same localStorage key. loadStyleState() whitelists its top-level
+      // keys, so `walkability` had to be named there or this would silently
+      // reset on every reload.
+      const saved = layerStyleState.walkability || {};
+      if (saved.mode === "space_split") this.mode = "space_split";
+      this.showScores = !!saved.showScores;
+      walkabilityState.mode = this.mode;
+      walkabilityState.showScores = this.showScores;
+
+      document.addEventListener("omos:storyview", () => this._restore());
+      document.addEventListener("omos:storyview-cleared", () => this._restore());
+      registerDerivedLayer("walkability", {
+        activate: () => this._setEnabled(true),
+        deactivate: () => this._setEnabled(false),
+        sync: () => this._restore(),
+      });
+    },
+
+    _ready() {
+      return !!map.getLayer("walkability-line");
+    },
+
+    _syncFromMap() {
+      if (!this._ready()) return;
+      const visible = map.getLayoutProperty("walkability-line", "visibility") === "visible";
+      this.enabled = visible;
+      const cb = document.getElementById("toggle-walkability");
+      if (cb) cb.checked = visible;
+    },
+
+    // Read the map back, then make sure what it shows is actually this panel's
+    // mode and actually has data behind it. A saved view restores visibility
+    // without touching either, so syncing the checkbox alone would leave the
+    // layer painted in the wrong mode over an empty source.
+    _restore() {
+      this._syncFromMap();
+      if (!this.enabled) return;
+      this._applyPaint();
+      this._fetch();
+    },
+
+    get classRows() {
+      return WALK_CLASS_ORDER.map(key => ({
+        key,
+        color: WALK_CLASS_COLORS[key],
+        label: WALK_CLASS_LABELS[key],
+      }));
+    },
+
+    get classedNote() {
+      // Says how much of the network the colours actually describe. A legend
+      // without this reads as though the grey streets were a rounding error.
+      const total = this.streets || 0;
+      const unknown = (this.counts && this.counts.unknown) || 0;
+      const t = "{% trans '%(classed)s of %(total)s streets have enough data for a class.' %}";
+      return t
+        .replace("%(classed)s", (total - unknown).toLocaleString())
+        .replace("%(total)s", total.toLocaleString());
+    },
+
+    get spaceNote() {
+      const t = "{% trans 'Both widths are tagged on %(pct)s% of streets — the rest stay grey.' %}";
+      return t.replace("%(pct)s", Math.round((this.spaceCoverage || 0) * 100));
+    },
+
+    _setEnabled(on) {
+      this.enabled = on;
+      if (this._ready()) {
+        this._applyVisibility();
+        if (on) this._fetch();
+      } else if (on) {
+        // Switched on before the style finished loading. Nothing to defer when
+        // switching off — the layers start hidden — and deferring anyway would
+        // pile up one-shot load handlers every time a story view sweeps past.
+        map.once("load", () => {
+          this._applyVisibility();
+          if (this.enabled) this._fetch();
+        });
+      }
+      const cb = document.getElementById("toggle-walkability");
+      if (cb) cb.checked = on;
+    },
+
+    toggle(checked) {
+      dismissStoryView();
+      this._setEnabled(checked);
+      document.dispatchEvent(new CustomEvent("omos:layerschanged"));
+    },
+
+    setMode(mode) {
+      this.mode = mode === "space_split" ? "space_split" : "classes";
+      walkabilityState.mode = this.mode;
+      this._persist();
+      this._applyPaint();
+      // No refetch: both modes read the same features — every street carries
+      // its class and its space balance — so the mode is a repaint. The call
+      // below only covers a mode changed before the first load landed.
+      if (this.enabled) this._fetch();
+      // The legend key changes with the mode — five class rows or one ramp.
+      document.dispatchEvent(new CustomEvent("omos:layerschanged"));
+    },
+
+    setShowScores(on) {
+      this.showScores = !!on;
+      walkabilityState.showScores = this.showScores;
+      this._persist();
+    },
+
+    _persist() {
+      layerStyleState.walkability = { mode: this.mode, showScores: this.showScores };
+      persistStyleState();
+    },
+
+    _applyPaint() {
+      if (!this._ready()) return;
+      map.setPaintProperty(
+        "walkability-line", "line-color",
+        this.mode === "space_split" ? walkSpaceColorExpr() : walkClassColorExpr()
+      );
+      map.setPaintProperty("walkability-line", "line-opacity", walkOpacityExpr(this.mode));
+    },
+
+    _applyVisibility() {
+      if (!map.getLayer("walkability-line")) return;
+      this._applyPaint();
+      map.setLayoutProperty("walkability-line", "visibility", this.enabled ? "visible" : "none");
+    },
+
+    _fetch() {
+      if (this._fetchTimer) clearTimeout(this._fetchTimer);
+      this._fetchTimer = setTimeout(() => {
+        const src = map.getSource("walkability");
+        if (!src) return;
+        // The endpoint's `mode` only labels the collection it returns, so the
+        // map asks for it once and repaints. Fetching per mode would pull the
+        // same features twice.
+        const key = "all";
+        if (this._fetched[key]) return;
+        fetch(`/api/v1/workspaces/${WORKSPACE_SLUG}/walkability/`)
+          .then(r => r.json())
+          .then(fc => {
+            this._fetched[key] = true;
+            this.counts = fc.counts || {};
+            this.streets = fc.streets || 0;
+            this.spaceCoverage = fc.space_split_coverage || 0;
+            this.layersUsed = fc.layers_used || {};
             this.loaded = true;
             src.setData(fc);
           })
@@ -3103,6 +3625,10 @@ function savedViews() {
         const on = (v.layerVisibility["district-scores-fill"] || "none") === "visible";
         districtCb.checked = on;
       }
+      // Derived overlays have no `.layer-toggle` checkbox for the sweep above
+      // to find. Their visibility was restored with everything else; this makes
+      // their panels agree with it and reloads the data they need.
+      syncDerivedLayers();
       document.dispatchEvent(new CustomEvent("omos:layerschanged"));
     },
 
@@ -3323,6 +3849,20 @@ function buildLegendRows() {
   if (pcb && pcb.checked) {
     rows.push({ key: "_parked_surveyed", label: PARKED_SURVEYED_LABEL, color: PARKED_CAR_COLOR, shape: "dot", icon: "" });
     rows.push({ key: "_parked_modelled", label: PARKED_MODELLED_LABEL, color: PARKED_CAR_COLOR, shape: "hollow", icon: "" });
+  }
+  // Walking quality keys itself differently per mode: five named classes, or
+  // one diverging ramp. "Not enough data" is a row of its own in both, because
+  // a legend that omitted it would let the grey streets read as unremarkable.
+  const wcb = document.getElementById("toggle-walkability");
+  if (wcb && wcb.checked) {
+    if (walkabilityState.mode === "space_split") {
+      rows.push({ key: "_walk_space", label: WALK_SPACE_LABEL, shape: "ramp", gradient: WALK_SPACE_GRADIENT, icon: "" });
+      rows.push({ key: "_walk_space_unknown", label: WALK_UNKNOWN_SPACE_LABEL, color: WALK_CLASS_COLORS.unknown, shape: "line", icon: "" });
+    } else {
+      WALK_CLASS_ORDER.forEach(cls => {
+        rows.push({ key: "_walk_" + cls, label: WALK_CLASS_LABELS[cls], color: WALK_CLASS_COLORS[cls], shape: "line", icon: "" });
+      });
+    }
   }
   return rows;
 }

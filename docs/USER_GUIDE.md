@@ -204,6 +204,33 @@ so one design standard drives both). The endpoint is
 `include=surveyed,modelled`, `access=public,customers`, and
 `format=symbols|density`.
 
+**Walking quality:**
+
+Toggle "Walking quality" to colour the same streets by what they are like on
+foot: dark green *comfortable*, lime *usable*, amber *tight*, red *hostile*, and
+pale grey *not enough data*. Clicking a street explains the colour in words — how
+safe and how comfortable it is, and which inputs the score could not see.
+
+Three things this layer does on purpose:
+
+- **It draws no numbers.** The classes are thresholds on an auditable 0–100
+  score, but a score printed over a street claims a precision that OpenStreetMap
+  tagging cannot carry. Tick "Show numeric scores" and the figures appear in the
+  popup, nowhere else. They are always in the API.
+- **It draws the gaps.** A street with too little data is not hidden; it gets its
+  own grey and its own legend row, because a map that quietly dropped those
+  streets would let an unmapped city look like a healthy one.
+- **It shows its confidence.** A class resting on thin data, or on a pavement
+  matched by nearness rather than by id, is drawn fainter.
+
+The second mode, "Who gets the space", colours each street by how its width
+divides between parked cars and people on foot. It needs both widths tagged, so
+it describes a minority of streets in most cities and the panel says which
+share. The **Parking vs walking** story view brings both halves up together.
+
+Full reference, including the ten factors, their weights and the per-workspace
+overrides: [PARKING_AND_WALKING.md](PARKING_AND_WALKING.md).
+
 **Measure Pipeline (status-coded measures):**
 
 Toggle "Measures" in the layer panel to see all interventions colour-coded by

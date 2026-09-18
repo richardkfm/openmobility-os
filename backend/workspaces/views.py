@@ -117,6 +117,16 @@ def workspace_map(request, workspace_slug: str):
             "car_lanes",
         )
     )
+    # Walking quality needs a street network to draw on, plus at least one
+    # pedestrian-space layer. Footways deliberately are not required on their
+    # own: with none synced the score honestly reports "not enough data" for
+    # most streets, and seeing that gap is the argument for syncing the layer.
+    has_walkability_data = any(
+        k in kind_values for k in ("streets_with_speed", "streets", "car_lanes")
+    ) and any(
+        k in kind_values
+        for k in ("footways", "pedestrian_crossings", "street_parking")
+    )
     has_districts = ws.districts.exists()
 
     # Indicators this workspace can actually measure, for the target form in the
@@ -153,6 +163,7 @@ def workspace_map(request, workspace_slug: str):
             "has_flood_water_data": has_flood_water_data,
             "has_cooling_green_data": has_cooling_green_data,
             "has_parked_car_data": has_parked_car_data,
+            "has_walkability_data": has_walkability_data,
             "has_districts": has_districts,
             "area_indicators": area_indicators,
             "measure_categories": Measure.Category.choices,

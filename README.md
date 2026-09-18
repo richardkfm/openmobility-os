@@ -3,7 +3,7 @@
 
 # OpenMobility OS
 
-**Version:** 0.53.0 (pre-release) — see [CHANGELOG.md](CHANGELOG.md)
+**Version:** 0.54.0 (pre-release) — see [CHANGELOG.md](CHANGELOG.md)
 **License:** See [LICENSE](LICENSE)
 
 > The open, free, self-hostable operating system between open mobility data
@@ -169,7 +169,8 @@ four demo workspaces: **Leipzig**, **Utrecht**, **Musterstadt**, and **Muster-La
   one, the legend says how many each symbol stands for. It reports **capacity,
   not occupancy** — how many cars fit, not how many are there now — and every
   number behind it (bay length, square metres per space, which street classes
-  get a modelled kerb) is a parameter a workspace can override
+  get a modelled kerb) is a parameter a workspace can override. See
+  [docs/PARKING_AND_WALKING.md](docs/PARKING_AND_WALKING.md)
 - **A walking score for every street** — each street is rated *comfortable*,
   *usable*, *tight*, *hostile* or *not enough data* from ten inputs: how
   separated the pavement is, how fast and wide the traffic is, whether there are
@@ -181,8 +182,14 @@ four demo workspaces: **Leipzig**, **Utrecht**, **Musterstadt**, and **Muster-La
   its street by proximity, but a street surveyed as having *no* pavement is never
   overridden by a line that happens to run nearby. Every weight and threshold is
   a parameter a workspace can override, and all of them are printed on the
-  workspace's Methodology page. Available at
-  `/api/v1/workspaces/<slug>/walkability/`
+  workspace's Methodology page. On the map it is a coloured line in five named
+  bands, faint where the rating rests on thin data and pale grey where there is
+  not enough of it — **no number is ever drawn over a street**, and the 0–100
+  values appear only in a popup, only if you ask for them. A second mode colours
+  the same streets by how their width splits between parked cars and people on
+  foot. The **Parking vs walking** story view brings both halves up together.
+  Available at `/api/v1/workspaces/<slug>/walkability/`; see
+  [docs/PARKING_AND_WALKING.md](docs/PARKING_AND_WALKING.md)
 - **Pedestrian space and off-street parking on the map** — sidewalks, footpaths,
   pedestrian streets and steps come in from OpenStreetMap under either of the two
   ways it records them (a footway mapped as its own line, or a `sidewalk` tag on
@@ -367,6 +374,9 @@ back here.
 - [docs/AREA_TARGETS.md](docs/AREA_TARGETS.md) — setting a goal for an area of
   the city, the space budget behind a rebuild proposal, and why targets for
   road deaths are always zero
+- [docs/PARKING_AND_WALKING.md](docs/PARKING_AND_WALKING.md) — the parked-car
+  layer and the walking score: what each one claims, the ten factors and their
+  weights, the class thresholds, the per-workspace overrides and the API
 - [docs/SHARED_MOBILITY.md](docs/SHARED_MOBILITY.md) — connecting GBFS feeds
   (bikes/scooters/cars) and running availability gap analysis over time
 - [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — production hosting: reverse proxy,
