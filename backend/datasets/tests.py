@@ -8,6 +8,7 @@ from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
+from connectors.base import FetchResult
 from datasets.models import DataSource
 from datasets.readiness import (
     layer_provenance_map,
@@ -50,7 +51,12 @@ class SyncAuditLoggingTests(TestCase):
                 }
             ],
         }
-        mock_result = mock.Mock(feature_collection=mock_features, record_count=1)
+        # The real dataclass, not a bare Mock. `_run_sync` reads
+        # `result.warnings`, and an unspecced Mock auto-creates that attribute
+        # as another Mock — truthy but not iterable — so the sync blew up on
+        # `list(...)` inside the code under test. Using FetchResult means this
+        # test tracks the actual contract and picks up new fields honestly.
+        mock_result = FetchResult(feature_collection=mock_features, record_count=1)
 
         with mock.patch(
             "datasets.views.get_connector"
