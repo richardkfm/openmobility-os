@@ -60,6 +60,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   unless a workspace supplies its own values, so an un-configured workspace
   reports those streets as unknown instead of assuming one country's rules.
 
+### Changed
+- **Restarting the server no longer re-downloads map data it already has.**
+  Demo seeding runs on every container start, and it used to re-fetch every
+  OpenStreetMap layer each time. A restart therefore spent minutes on network
+  calls before the site came back up, and the repeated requests were often
+  throttled or timed out — emptying layers that had loaded perfectly well the
+  first time. Layers already stored are now left alone, and a layer holding
+  nothing is still retried. Locally shipped demo data is still reloaded every
+  time, so an upgrade picks up corrected demo files. Run
+  `seed_demo --resync` to refresh the OpenStreetMap layers on purpose.
+
 ### Fixed
 - Saved views no longer lose the **Parked cars** and **Availability gaps**
   overlays. Loading a view restored them on the map but left their checkboxes

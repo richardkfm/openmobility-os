@@ -450,6 +450,13 @@ docker compose exec web python manage.py sync_datasources
 > infrastructure gap analysis need a street network to snap onto. Run
 > `seed_demo --no-network` to skip the Overpass calls for a fully offline boot
 > (the Density lines toggle then stays hidden until you sync a streets layer).
+>
+> **Only the first run downloads them.** An Overpass layer that already holds
+> features is left alone on later runs, so restarting the container does not
+> re-fetch data it has — which keeps restarts quick and avoids being throttled
+> by the shared Overpass API. A layer that stored nothing is retried. Use
+> `seed_demo --resync` to refresh stored layers deliberately. Manual demo data
+> is reloaded every run, so upgrades pick up corrected demo files.
 > For a full demo of the cyclist-gap workflow, also import accident data
 > (`seed_unfallatlas`) and generate measures (`generate_measures`).
 

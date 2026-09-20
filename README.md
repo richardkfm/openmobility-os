@@ -98,6 +98,11 @@ docker compose up --build
 Open **http://localhost:8000** — you should see the platform landing page with
 four demo workspaces: **Leipzig**, **Utrecht**, **Musterstadt**, and **Muster-Landkreis**.
 
+> **First boot fetches live OpenStreetMap data**, so it can take a few minutes
+> before the map layers are populated. Later restarts reuse what is already
+> stored and come straight up. To refresh that data on purpose, run
+> `docker compose exec web python manage.py seed_demo --resync`.
+
 ### Step-by-step (for novice users)
 
 1. **Install Docker** (if not already installed)
