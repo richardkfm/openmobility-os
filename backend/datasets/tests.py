@@ -81,8 +81,11 @@ class SyncAuditLoggingTests(TestCase):
         # Django convention of not having two empty values for a string field.
         # The old assertIsNone could not have passed against this model.
         self.assertEqual(log_entry.error_message, "")
-        self.assertIsNotNone(log_entry.duration_ms)
-        self.assertGreater(log_entry.duration_ms, 0)
+        # Recorded, not timed. duration_ms is int((time.time() - start) * 1000)
+        # and a sync whose connector is mocked can finish inside a millisecond,
+        # so asserting > 0 is a coin flip on how quick the database round trip
+        # was. What this test is about is that a duration gets written at all.
+        self.assertIsInstance(log_entry.duration_ms, int)
 
     def test_sync_error_creates_audit_log_entry(self):
         """Failed sync creates log entry with status=error."""
