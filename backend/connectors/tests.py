@@ -2014,7 +2014,11 @@ class UnfallatlasMfdzLayoutTests(TestCase):
                 {"url": "http://example/u.csv", "clip_to_workspace": False}
             )
         self.assertTrue(result.success, result.message)
-        self.assertIn("required columns detected", result.message)
+        # "required columns detected" has never been part of this connector's
+        # message — the assertion was written against wording that does not
+        # exist. What proves the MFDZ layout was understood is that both rows
+        # were read through the renamed columns, not merely that nothing threw.
+        self.assertIn("2 rows parsed", result.message)
 
     def test_test_connection_reports_aliases_when_columns_missing(self):
         from connectors.unfallat_connector import UnfallatlasConnector

@@ -860,7 +860,12 @@ class MapGapOverlayContextTests(TestCase):
         resp = Client().get(reverse("workspace_map", kwargs={"workspace_slug": "overlay-city"}))
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(list(resp.context["mobility_gap_sources"]), [])
-        self.assertNotContains(resp, "toggle-mobility-gaps")
+        # Match the checkbox itself, not the panel script, which calls
+        # getElementById("toggle-mobility-gaps") unconditionally. A bare
+        # substring search hits those two calls whether or not the overlay is
+        # offered — which made the negative case fail and, worse, made the
+        # positive case below pass even when the checkbox was absent.
+        self.assertNotContains(resp, 'id="toggle-mobility-gaps"')
 
     def test_overlay_appears_with_snapshots(self):
         from datasets.models import MobilitySnapshot
@@ -878,4 +883,4 @@ class MapGapOverlayContextTests(TestCase):
         resp = Client().get(reverse("workspace_map", kwargs={"workspace_slug": "overlay-city"}))
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(len(resp.context["mobility_gap_sources"]), 1)
-        self.assertContains(resp, "toggle-mobility-gaps")
+        self.assertContains(resp, 'id="toggle-mobility-gaps"')
