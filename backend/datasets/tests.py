@@ -76,7 +76,11 @@ class SyncAuditLoggingTests(TestCase):
         log_entry = ConnectorAuditLog.objects.get(datasource=source)
         self.assertEqual(log_entry.status, ConnectorAuditLog.Status.SUCCESS)
         self.assertEqual(log_entry.feature_count, 1)
-        self.assertIsNone(log_entry.error_message)
+        # `error_message` is a TextField(blank=True) with no null=True, so it
+        # is "" when there is nothing to report and can never be None — the
+        # Django convention of not having two empty values for a string field.
+        # The old assertIsNone could not have passed against this model.
+        self.assertEqual(log_entry.error_message, "")
         self.assertIsNotNone(log_entry.duration_ms)
         self.assertGreater(log_entry.duration_ms, 0)
 
