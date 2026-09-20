@@ -6,6 +6,7 @@ behaviour for the Unfallatlas connector.
 """
 
 import io
+import json
 import zipfile
 from dataclasses import dataclass
 from unittest import TestCase, mock
@@ -453,7 +454,7 @@ class UnfallatlasBboxTests(TestCase):
             bounds=_Bounds(extent=(12.295, 51.236, 12.549, 51.443))
         )
         self.patcher = mock.patch(
-            "connectors.unfallat_connector.requests.get",
+            "requests.get",
             return_value=_FakeResponse(UNFALLATLAS_CSV.encode("utf-8")),
         )
         self.patcher.start()
@@ -525,6 +526,12 @@ class _JsonResponse:
         self.status_code = status_code
         self.text = str(payload)
         self.headers = {"Content-Type": content_type}
+        # The GeoJSON and CSV connectors read the body as bytes through
+        # `_http.fetch_bytes`, which uses `response.content`. A real
+        # `requests.Response` always carries it, so this stand-in must too —
+        # without it the delegating connectors fail on the response object
+        # rather than on anything the test is actually asserting.
+        self.content = json.dumps(payload).encode()
 
     def raise_for_status(self):
         if self.status_code >= 400:
@@ -587,9 +594,9 @@ class CKANConnectorTests(TestCase):
     def test_resolves_geojson_resource_by_preference_and_delegates(self):
         from connectors.ckan_connector import CKANConnector
 
-        # Note: connectors.ckan_connector.requests and
-        # connectors.geojson_connector.requests refer to the same module object,
-        # so we patch once and dispatch by URL.
+        # CKAN resolves a resource and then hands the URL to the GeoJSON
+        # connector, so two fetches happen in one call. Both end up at the same
+        # `requests.get`, so one patch covers them and dispatches by URL.
         seen = []
 
         def dispatch(url, params=None, timeout=None, headers=None):
@@ -839,7 +846,7 @@ class MobilithekConnectorTests(TestCase):
         from connectors.mobilithek_connector import MobilithekConnector
 
         with mock.patch(
-            "connectors.geojson_connector.requests.get",
+            "requests.get",
             return_value=_JsonResponse(STATIONS_GEOJSON),
         ):
             result = MobilithekConnector().fetch(
@@ -896,7 +903,7 @@ class MobilithekConnectorTests(TestCase):
             return _JsonResponse(STATIONS_GEOJSON)
 
         with mock.patch(
-            "connectors.geojson_connector.requests.get", side_effect=fake_get
+            "requests.get", side_effect=fake_get
         ):
             result = MobilithekConnector().fetch(
                 {
@@ -926,7 +933,7 @@ class MobilithekConnectorTests(TestCase):
             return _JsonResponse(STATIONS_GEOJSON)
 
         with mock.patch(
-            "connectors.geojson_connector.requests.get", side_effect=fake_get
+            "requests.get", side_effect=fake_get
         ):
             MobilithekConnector().fetch(
                 {
@@ -1003,7 +1010,7 @@ class GermanPresetsTests(TestCase):
         from connectors.german_presets import BNetzAChargingConnector
 
         with mock.patch(
-            "connectors.csv_connector.requests.get",
+            "requests.get",
             return_value=self._csv_response(self.BNETZA_CSV),
         ):
             result = BNetzAChargingConnector().fetch(
