@@ -6,7 +6,9 @@ Covers the `seed_unfallatlas` command end-to-end without hitting the network.
 from __future__ import annotations
 
 import json
+import tempfile
 from io import StringIO
+from pathlib import Path
 from unittest import mock
 
 from django.contrib.gis.geos import Point, Polygon
@@ -15,7 +17,7 @@ from django.core.management.base import CommandError
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
-from datasets.models import DataSource
+from datasets.models import DataSource, NormalizedFeatureSet
 from workspaces.management.commands.seed_unfallatlas import (
     _disable_demo_accidents,
     _parse_years,
@@ -516,3 +518,91 @@ class FocusAreaApiTests(TestCase):
             f"/api/v1/workspaces/{self.ws.slug}/focus-areas/nope/plan/"
         )
         self.assertEqual(response.status_code, 404)
+
+
+class SeedDemoOverpassResyncTests(TestCase):
+    """`seed_demo` must not re-fetch an Overpass layer it has already stored.
+
+    This command runs on every container start, so the cost of getting it wrong
+    is not theoretical: the restart spends minutes on network calls before the
+    web server can bind — the site is down for that whole window — and the
+    repeated requests draw 429s and 504s from a shared public API, emptying
+    layers that had synced perfectly well the first time.
+
+    The config is written to a temporary REPO_ROOT rather than read from
+    `config/workspaces/`, so the test states its own fixture and stays true if
+    the shipped demo workspaces change. No network: `_run_sync` is patched.
+    """
+
+    CONFIG = """
+slug: testville
+name: Testville
+data_sources:
+  - name: Streets
+    source_type: osm_overpass
+    layer_kind: streets
+    config:
+      template: streets
+"""
+
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.root = Path(tmp.name)
+        workspaces_dir = self.root / "config" / "workspaces"
+        workspaces_dir.mkdir(parents=True)
+        (workspaces_dir / "testville.yaml").write_text(self.CONFIG)
+
+    @staticmethod
+    def _fake_sync(source, records=7):
+        """Stand in for a successful Overpass fetch, storing what it 'found'."""
+        NormalizedFeatureSet.objects.update_or_create(
+            source=source,
+            defaults={
+                "workspace": source.workspace,
+                "layer_kind": source.layer_kind,
+                "feature_collection": {"type": "FeatureCollection", "features": []},
+                "record_count": records,
+            },
+        )
+        return True, f"{records} records"
+
+    def _seed(self, **options):
+        out = StringIO()
+        with override_settings(REPO_ROOT=self.root):
+            with mock.patch(
+                "workspaces.management.commands.seed_demo._run_sync",
+                side_effect=self._fake_sync,
+            ) as sync:
+                call_command("seed_demo", stdout=out, **options)
+        return sync, out.getvalue()
+
+    def test_first_seed_fetches_the_source(self):
+        sync, _ = self._seed()
+        self.assertEqual(sync.call_count, 1)
+        self.assertEqual(NormalizedFeatureSet.objects.get().record_count, 7)
+
+    def test_second_seed_leaves_a_stored_layer_alone(self):
+        self._seed()
+        sync, output = self._seed()
+        self.assertEqual(sync.call_count, 0)
+        self.assertIn("skipped", output)
+        self.assertIn("7 features already present", output)
+
+    def test_resync_refetches_deliberately(self):
+        self._seed()
+        sync, _ = self._seed(resync=True)
+        self.assertEqual(sync.call_count, 1)
+
+    def test_a_layer_that_stored_nothing_is_retried(self):
+        """Zero features is a failed sync, not a cached answer worth keeping."""
+        self._seed()
+        NormalizedFeatureSet.objects.update(record_count=0)
+        sync, _ = self._seed()
+        self.assertEqual(sync.call_count, 1)
+
+    def test_no_network_still_skips_everything(self):
+        sync, _ = self._seed(no_network=True)
+        self.assertEqual(sync.call_count, 0)
+        self.assertFalse(NormalizedFeatureSet.objects.exists())
+

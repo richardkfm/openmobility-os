@@ -13,12 +13,27 @@ from django.conf import settings
 from django.contrib.gis.geos import GEOSGeometry, MultiPolygon, Point, Polygon
 from django.core.management.base import BaseCommand
 
-from datasets.models import DataSource
+from datasets.models import DataSource, NormalizedFeatureSet
 from datasets.views import _run_sync
 from goals.indicators import is_vision_zero
 from goals.models import AreaTarget, WorkspaceGoal
 from measures.models import Measure, MeasureScore
 from workspaces.models import FocusArea, Workspace
+
+
+def _synced_record_count(source) -> int:
+    """How many features this source already holds; 0 if it has never synced.
+
+    Reads the count column rather than the stored ``feature_collection``, so
+    asking the question never pulls a multi-megabyte GeoJSON blob out of the
+    database.
+    """
+    return (
+        NormalizedFeatureSet.objects.filter(source=source)
+        .values_list("record_count", flat=True)
+        .first()
+        or 0
+    )
 
 
 class Command(BaseCommand):
@@ -36,6 +51,15 @@ class Command(BaseCommand):
             help=(
                 "Skip syncing network-backed (OSM Overpass) sources. Use for "
                 "fully offline seeding; manual demo data is still loaded."
+            ),
+        )
+        parser.add_argument(
+            "--resync",
+            action="store_true",
+            help=(
+                "Re-fetch network-backed sources that already hold features. "
+                "Without this they are left as they are, so repeated seeding "
+                "stays cheap and does not hammer the Overpass API."
             ),
         )
 
@@ -138,7 +162,10 @@ class Command(BaseCommand):
                 },
             )
             # Auto-sync offline (manual) sources so their data is immediately
-            # available on the map without a manual sync step.
+            # available on the map without a manual sync step. These are read
+            # from files shipped with the release, so they are free to repeat
+            # and are deliberately NOT skipped when data already exists: that
+            # is what lets an upgrade pick up corrected demo fixtures.
             if source.source_type == DataSource.SourceType.MANUAL:
                 success, msg = _run_sync(source)
                 style = self.style.SUCCESS if success else self.style.WARNING
@@ -177,9 +204,26 @@ class Command(BaseCommand):
                     # map view actually needs them.
                 )
             ):
-                success, msg = _run_sync(source)
-                style = self.style.SUCCESS if success else self.style.WARNING
-                self.stdout.write(style(f"     sync {source.name}: {msg}"))
+                # Overpass is a shared, rate-limited public service and this
+                # command runs on every container start. Re-fetching a layer
+                # already sitting in the database bought nothing and cost a
+                # great deal: the restart spent minutes on network calls before
+                # gunicorn could bind — during which the site is down — and the
+                # repeated requests earned 429s and 504s that wiped out layers
+                # which had synced perfectly well the first time. So a source
+                # that already holds features is left alone. `--resync` asks
+                # for the refresh deliberately, and a source that synced zero
+                # features is retried, because nothing is not data.
+                already = 0 if options.get("resync") else _synced_record_count(source)
+                if already:
+                    self.stdout.write(
+                        f"     sync {source.name}: skipped, {already} features "
+                        f"already present (--resync to refresh)"
+                    )
+                else:
+                    success, msg = _run_sync(source)
+                    style = self.style.SUCCESS if success else self.style.WARNING
+                    self.stdout.write(style(f"     sync {source.name}: {msg}"))
 
         # Optional focus areas with their targets. Generic loader — a config
         # without this block seeds exactly as before. Plans are not built here
