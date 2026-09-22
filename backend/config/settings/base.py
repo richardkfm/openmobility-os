@@ -213,6 +213,13 @@ REST_FRAMEWORK = {
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+# --- Testing ---
+# Discovery starts at the working directory, and `backend/` is not a package,
+# so a bare `python manage.py test` from the repo root found zero tests and
+# exited 0 — CI included. This runner points discovery at BACKEND_DIR when no
+# test labels are given. See core/test_runner.py.
+TEST_RUNNER = "core.test_runner.BackendDiscoverRunner"
+
 # GDAL — auto-detect path for common Linux library locations
 
 GDAL_LIBRARY_PATH = env("GDAL_LIBRARY_PATH", default=None)

@@ -8,6 +8,7 @@ from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
+from connectors.base import FetchResult
 from datasets.models import DataSource
 from datasets.readiness import (
     layer_provenance_map,
@@ -50,7 +51,12 @@ class SyncAuditLoggingTests(TestCase):
                 }
             ],
         }
-        mock_result = mock.Mock(feature_collection=mock_features, record_count=1)
+        # The real dataclass, not a bare Mock. `_run_sync` reads
+        # `result.warnings`, and an unspecced Mock auto-creates that attribute
+        # as another Mock — truthy but not iterable — so the sync blew up on
+        # `list(...)` inside the code under test. Using FetchResult means this
+        # test tracks the actual contract and picks up new fields honestly.
+        mock_result = FetchResult(feature_collection=mock_features, record_count=1)
 
         with mock.patch(
             "datasets.views.get_connector"
@@ -70,9 +76,16 @@ class SyncAuditLoggingTests(TestCase):
         log_entry = ConnectorAuditLog.objects.get(datasource=source)
         self.assertEqual(log_entry.status, ConnectorAuditLog.Status.SUCCESS)
         self.assertEqual(log_entry.feature_count, 1)
-        self.assertIsNone(log_entry.error_message)
-        self.assertIsNotNone(log_entry.duration_ms)
-        self.assertGreater(log_entry.duration_ms, 0)
+        # `error_message` is a TextField(blank=True) with no null=True, so it
+        # is "" when there is nothing to report and can never be None — the
+        # Django convention of not having two empty values for a string field.
+        # The old assertIsNone could not have passed against this model.
+        self.assertEqual(log_entry.error_message, "")
+        # Recorded, not timed. duration_ms is int((time.time() - start) * 1000)
+        # and a sync whose connector is mocked can finish inside a millisecond,
+        # so asserting > 0 is a coin flip on how quick the database round trip
+        # was. What this test is about is that a duration gets written at all.
+        self.assertIsInstance(log_entry.duration_ms, int)
 
     def test_sync_error_creates_audit_log_entry(self):
         """Failed sync creates log entry with status=error."""
@@ -860,7 +873,12 @@ class MapGapOverlayContextTests(TestCase):
         resp = Client().get(reverse("workspace_map", kwargs={"workspace_slug": "overlay-city"}))
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(list(resp.context["mobility_gap_sources"]), [])
-        self.assertNotContains(resp, "toggle-mobility-gaps")
+        # Match the checkbox itself, not the panel script, which calls
+        # getElementById("toggle-mobility-gaps") unconditionally. A bare
+        # substring search hits those two calls whether or not the overlay is
+        # offered — which made the negative case fail and, worse, made the
+        # positive case below pass even when the checkbox was absent.
+        self.assertNotContains(resp, 'id="toggle-mobility-gaps"')
 
     def test_overlay_appears_with_snapshots(self):
         from datasets.models import MobilitySnapshot
@@ -878,4 +896,4 @@ class MapGapOverlayContextTests(TestCase):
         resp = Client().get(reverse("workspace_map", kwargs={"workspace_slug": "overlay-city"}))
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(len(resp.context["mobility_gap_sources"]), 1)
-        self.assertContains(resp, "toggle-mobility-gaps")
+        self.assertContains(resp, 'id="toggle-mobility-gaps"')

@@ -72,6 +72,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `seed_demo --resync` to refresh the OpenStreetMap layers on purpose.
 
 ### Fixed
+- **The test suite actually runs now.** `python manage.py test` from the
+  repository root discovered no tests at all and exited successfully, so every
+  CI run reported a green test step while executing nothing — roughly 600 tests
+  across 14 files had never run once. Discovery now starts at `backend/`, where
+  the apps live, so the command CONTRIBUTING.md asks contributors to run before
+  every commit does what it claims.
+
 - Saved views no longer lose the **Parked cars** and **Availability gaps**
   overlays. Loading a view restored them on the map but left their checkboxes
   unticked and their data unloaded, so the panel and the map disagreed.
