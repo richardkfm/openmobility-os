@@ -855,14 +855,24 @@
 {% block extra_js %}
 <script>
 const WORKSPACE_SLUG = "{{ workspace.slug }}";
-const MAP_TILE_URL = "{{ map_tile_url }}";
+// Tile URLs are JS-escaped rather than HTML-escaped: HTML escaping would turn
+// the "&" between query parameters (API keys, WMTS) into a literal "&amp;".
+const MAP_TILE_URL = "{{ map_tile_url|escapejs }}";
 const MAP_TILE_ATTR = "{{ map_tile_attribution }}";
-const MAP_TILE_URL_DARK = "{{ map_tile_url_dark }}";
+// Only used when MAP_DARK_STYLE is "raster".
+const MAP_TILE_URL_DARK = "{{ map_tile_url_dark|escapejs }}";
 const MAP_TILE_ATTR_DARK = "{{ map_tile_attribution_dark }}";
 // Optional satellite/aerial basemap — empty string when the self-hoster has
 // cleared MAP_TILE_URL_SATELLITE, in which case the Satellite option is hidden.
-const MAP_TILE_URL_SATELLITE = "{{ map_tile_url_satellite }}";
+const MAP_TILE_URL_SATELLITE = "{{ map_tile_url_satellite|escapejs }}";
 const MAP_TILE_ATTR_SATELLITE = "{{ map_tile_attribution_satellite }}";
+// How the light and dark basemaps are drawn, set by the operator in .env and
+// already checked server-side: light is "raster" or "vector"; dark is
+// "vector", "filter" (the light tiles darkened) or "raster" (MAP_TILE_URL_DARK).
+const MAP_LIGHT_STYLE = "{{ map_light_style }}";
+const MAP_DARK_STYLE = "{{ map_dark_style }}";
+const MAP_VECTOR_STYLE_URL_LIGHT = "{{ map_vector_style_url_light|escapejs }}";
+const MAP_VECTOR_STYLE_URL_DARK = "{{ map_vector_style_url_dark|escapejs }}";
 const LAYER_KINDS = {{ layer_kinds|pprint|safe }};
 // value → translated label, built from the server-side `layers` context so the
 // legend stays gettext-correct and city-agnostic (no hardcoded copy in JS).
@@ -1225,13 +1235,55 @@ function resolveBasemap(mode) {
   return mode;
 }
 
-function basemapTiles(resolved) {
-  if (resolved === "satellite") return { tiles: [MAP_TILE_URL_SATELLITE], attr: MAP_TILE_ATTR_SATELLITE };
-  if (resolved === "dark")      return { tiles: [MAP_TILE_URL_DARK], attr: MAP_TILE_ATTR_DARK };
-  return { tiles: [MAP_TILE_URL], attr: MAP_TILE_ATTR };
+// Turns the light tiles into a muted dark basemap (MAP_DARK_STYLE=filter, and
+// the fallback when a dark vector style can't be loaded). A brightness-min
+// above brightness-max inverts lightness (white land goes near-black, dark
+// labels go light grey); the 180° hue turn puts water and parks back near
+// their own hues, and desaturation keeps the base quiet under the data layers.
+const DARK_RASTER_PAINT = {
+  "raster-brightness-min": 0.8,
+  "raster-brightness-max": 0.06,
+  "raster-hue-rotate": 180,
+  "raster-saturation": -0.8,
+  "raster-contrast": 0,
+};
+// MapLibre's raster defaults: tiles drawn as served.
+const PLAIN_RASTER_PAINT = {
+  "raster-brightness-min": 0,
+  "raster-brightness-max": 1,
+  "raster-hue-rotate": 0,
+  "raster-saturation": 0,
+  "raster-contrast": 0,
+};
+const RASTER_LIGHT = { tiles: [MAP_TILE_URL], attr: MAP_TILE_ATTR, paint: PLAIN_RASTER_PAINT };
+const RASTER_DARK_FILTERED = { tiles: [MAP_TILE_URL], attr: MAP_TILE_ATTR, paint: DARK_RASTER_PAINT };
+
+// What to draw for a resolved basemap: raster tiles ({tiles, attr, paint}) or a
+// MapLibre vector style ({styleUrl, fallback}). The server only reports a style
+// whose URL is configured, so each branch has what it needs.
+function basemapSpec(resolved) {
+  if (resolved === "satellite") {
+    return { tiles: [MAP_TILE_URL_SATELLITE], attr: MAP_TILE_ATTR_SATELLITE, paint: PLAIN_RASTER_PAINT };
+  }
+  if (resolved === "dark") {
+    if (MAP_DARK_STYLE === "vector") {
+      return { styleUrl: MAP_VECTOR_STYLE_URL_DARK, fallback: RASTER_DARK_FILTERED };
+    }
+    if (MAP_DARK_STYLE === "raster") {
+      return { tiles: [MAP_TILE_URL_DARK], attr: MAP_TILE_ATTR_DARK, paint: PLAIN_RASTER_PAINT };
+    }
+    return RASTER_DARK_FILTERED;
+  }
+  if (MAP_LIGHT_STYLE === "vector") {
+    return { styleUrl: MAP_VECTOR_STYLE_URL_LIGHT, fallback: RASTER_LIGHT };
+  }
+  return RASTER_LIGHT;
 }
 
-const _initialBasemap = basemapTiles(resolveBasemap(readBasemapMode()));
+// A vector basemap can only be added once the style has loaded, so until then
+// the raster layer stays hidden rather than flashing the light tiles first.
+const _initialBasemap = basemapSpec(resolveBasemap(readBasemapMode()));
+const _initialRaster = _initialBasemap.styleUrl ? null : _initialBasemap;
 
 const map = new maplibregl.Map({
   container: "map",
@@ -1243,39 +1295,189 @@ const map = new maplibregl.Map({
     sources: {
       osm: {
         type: "raster",
-        tiles: _initialBasemap.tiles,
+        tiles: (_initialRaster || RASTER_LIGHT).tiles,
         tileSize: 256,
       },
     },
-    layers: [{ id: "osm-tiles", type: "raster", source: "osm" }],
+    layers: [{
+      id: "osm-tiles",
+      type: "raster",
+      source: "osm",
+      paint: (_initialRaster || RASTER_LIGHT).paint,
+      layout: { visibility: _initialRaster ? "visible" : "none" },
+    }],
   },
   center: [CENTER_LON, CENTER_LAT],
   zoom: DEFAULT_ZOOM,
   preserveDrawingBuffer: true,
 });
 
-// The active basemap credit line — also composited into PNG exports.
-let _currentAttr = _initialBasemap.attr;
-let _attribCtrl = new maplibregl.AttributionControl({ customAttribution: _initialBasemap.attr });
+// The raster basemap's credit line. A vector style's sources credit themselves,
+// so the control shows theirs; PNG exports copy whatever the control shows.
+let _currentAttr = _initialRaster ? _initialRaster.attr : "";
+let _currentTiles = (_initialRaster || RASTER_LIGHT).tiles.join(" ");
+let _attribCtrl = new maplibregl.AttributionControl({ customAttribution: _currentAttr });
 map.addControl(_attribCtrl);
 map.addControl(new maplibregl.NavigationControl(), "top-right");
 map.addControl(new maplibregl.ScaleControl({ unit: "metric" }), "bottom-left");
 
-// Swap the raster tiles + refresh the attribution credit without rebuilding the
-// style, so every overlay data layer and the current view state are preserved.
-// `setTiles` does not re-read the source attribution, so we re-create the
-// attribution control on each change.
-function applyBasemap(mode, persist) {
-  if (persist) { try { localStorage.setItem(BASEMAP_KEY, mode); } catch (_) {} }
-  const { tiles, attr } = basemapTiles(resolveBasemap(mode));
+// `setTiles` does not re-read the source attribution, so the attribution
+// control is re-created on each change.
+function setBasemapAttribution(attr) {
   _currentAttr = attr;
-  const src = map.getSource("osm");
-  if (src && src.setTiles) src.setTiles(tiles);
   if (_attribCtrl) map.removeControl(_attribCtrl);
   _attribCtrl = new maplibregl.AttributionControl({ customAttribution: attr });
   map.addControl(_attribCtrl);
-  window.dispatchEvent(new CustomEvent("omos:basemapchange", { detail: { mode } }));
 }
+
+// ─── Vector basemaps (a MapLibre style URL, e.g. OpenFreeMap) ────────────────
+// The style's sources and layers are added under the data layers rather than
+// replacing the map style, which would drop every overlay and the icons
+// registered with map.addImage. Everything it adds is namespaced so the rest of
+// the page can tell basemap layers from data layers.
+const BASEMAP_NS = "basemap/";
+const BASEMAP_SPRITE = "basemap";
+const IMAGE_PROPS = ["icon-image", "fill-pattern", "line-pattern", "background-pattern", "fill-extrusion-pattern"];
+const _vectorStyles = {};
+let _vectorStyleUrl = null;
+let _vectorSprites = [];
+let _basemapRequest = 0;
+
+function isBasemapLayer(id) {
+  return id === "osm-tiles" || id.startsWith(BASEMAP_NS);
+}
+
+function fetchVectorStyle(url) {
+  if (!_vectorStyles[url]) {
+    _vectorStyles[url] = fetch(url).then(r => {
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.json();
+    });
+    // Forget a failed fetch so the next switch tries again.
+    _vectorStyles[url].catch(() => { delete _vectorStyles[url]; });
+  }
+  return _vectorStyles[url];
+}
+
+// Point an image reference at the namespaced sprite. A zoom-driven step must
+// stay the outermost expression, so outputs are prefixed in place, and ""
+// keeps meaning "no image".
+function prefixImageRef(value, ns) {
+  if (typeof value === "string") return value ? ns + value : value;
+  if (!Array.isArray(value)) return value;
+  const out = value.slice();
+  const last = out.length - 1;
+  switch (out[0]) {
+    case "step":
+      for (let i = 2; i <= last; i += 2) out[i] = prefixImageRef(out[i], ns);
+      return out;
+    case "match":
+      for (let i = 3; i < last; i += 2) out[i] = prefixImageRef(out[i], ns);
+      out[last] = prefixImageRef(out[last], ns);
+      return out;
+    case "case":
+      for (let i = 2; i < last; i += 2) out[i] = prefixImageRef(out[i], ns);
+      out[last] = prefixImageRef(out[last], ns);
+      return out;
+    case "coalesce":
+      for (let i = 1; i <= last; i++) out[i] = prefixImageRef(out[i], ns);
+      return out;
+    case "image":
+      out[1] = prefixImageRef(out[1], ns);
+      return out;
+    default:
+      return ["concat", ns, value];
+  }
+}
+
+function removeVectorBasemap() {
+  if (!_vectorStyleUrl) return;
+  const style = map.getStyle();
+  style.layers.forEach(l => { if (l.id.startsWith(BASEMAP_NS)) map.removeLayer(l.id); });
+  Object.keys(style.sources).forEach(id => { if (id.startsWith(BASEMAP_NS)) map.removeSource(id); });
+  _vectorSprites.forEach(id => map.removeSprite(id));
+  _vectorSprites = [];
+  _vectorStyleUrl = null;
+}
+
+function showVectorBasemap(url, style) {
+  if (_vectorStyleUrl !== url) {
+    removeVectorBasemap();
+    _vectorStyleUrl = url;
+    if (style.glyphs) map.setGlyphs(style.glyphs);
+    // A single sprite URL gets its own namespace; a sprite array already names
+    // its sprites, and its layers refer to them by those names.
+    let ns = "";
+    if (typeof style.sprite === "string") {
+      map.addSprite(BASEMAP_SPRITE, style.sprite);
+      _vectorSprites = [BASEMAP_SPRITE];
+      ns = BASEMAP_SPRITE + ":";
+    } else if (Array.isArray(style.sprite)) {
+      style.sprite.forEach(s => map.addSprite(s.id, s.url));
+      _vectorSprites = style.sprite.map(s => s.id);
+    }
+    const before = map.getStyle().layers.map(l => l.id).find(id => !isBasemapLayer(id));
+    Object.entries(style.sources || {}).forEach(([id, source]) => map.addSource(BASEMAP_NS + id, source));
+    (style.layers || []).forEach(layer => {
+      const l = { ...layer, id: BASEMAP_NS + layer.id };
+      if (layer.source) l.source = BASEMAP_NS + layer.source;
+      if (ns) {
+        ["layout", "paint"].forEach(part => {
+          if (!layer[part]) return;
+          l[part] = { ...layer[part] };
+          IMAGE_PROPS.forEach(prop => {
+            if (prop in l[part]) l[part][prop] = prefixImageRef(l[part][prop], ns);
+          });
+        });
+      }
+      map.addLayer(l, before);
+    });
+  }
+  map.setLayoutProperty("osm-tiles", "visibility", "none");
+  setBasemapAttribution("");
+}
+
+// Light and the filtered dark basemap share one tileset, so switching between
+// them only changes the paint and keeps the loaded tiles.
+function showRasterBasemap({ tiles, attr, paint }) {
+  removeVectorBasemap();
+  const key = tiles.join(" ");
+  if (key !== _currentTiles) {
+    map.getSource("osm").setTiles(tiles);
+    _currentTiles = key;
+  }
+  Object.entries(paint).forEach(([prop, value]) => map.setPaintProperty("osm-tiles", prop, value));
+  map.setLayoutProperty("osm-tiles", "visibility", "visible");
+  setBasemapAttribution(attr);
+}
+
+// Switch the basemap without rebuilding the style, so every overlay data layer
+// and the current view state are preserved.
+let _mapReady = false;
+function applyBasemap(mode, persist) {
+  if (persist) { try { localStorage.setItem(BASEMAP_KEY, mode); } catch (_) {} }
+  window.dispatchEvent(new CustomEvent("omos:basemapchange", { detail: { mode } }));
+  // Before the style has loaded, the load handler applies the stored mode.
+  if (!_mapReady) return;
+  const spec = basemapSpec(resolveBasemap(mode));
+  const request = ++_basemapRequest;
+  if (!spec.styleUrl) {
+    showRasterBasemap(spec);
+    return;
+  }
+  // If the vector style can't be fetched or added, keep the map usable on
+  // raster tiles. A later switch discards a response that arrives late.
+  fetchVectorStyle(spec.styleUrl)
+    .then(style => { if (request === _basemapRequest) showVectorBasemap(spec.styleUrl, style); })
+    .catch(err => {
+      console.warn("Vector basemap unavailable, using raster tiles:", err);
+      if (request === _basemapRequest) showRasterBasemap(spec.fallback);
+    });
+}
+map.on("load", () => {
+  _mapReady = true;
+  applyBasemap(readBasemapMode(), false);
+});
 
 // On mobile the surrounding flex layout can finish settling after the map is
 // constructed, leaving the canvas sized to a stale (or zero) width/height —
@@ -2915,11 +3117,11 @@ function activateStoryView(key) {
   // Snapshot visibility of every current layer so Clear can restore it.
   _storySnapshot = {};
   map.getStyle().layers.forEach(l => {
-    if (l.id !== "osm-tiles") _storySnapshot[l.id] = map.getLayoutProperty(l.id, "visibility") || "visible";
+    if (!isBasemapLayer(l.id)) _storySnapshot[l.id] = map.getLayoutProperty(l.id, "visibility") || "visible";
   });
   // Hide everything and uncheck every toggle, then build the view up cleanly.
   map.getStyle().layers.forEach(l => {
-    if (l.id !== "osm-tiles") map.setLayoutProperty(l.id, "visibility", "none");
+    if (!isBasemapLayer(l.id)) map.setLayoutProperty(l.id, "visibility", "none");
   });
   document.querySelectorAll(".layer-toggle").forEach(cb => { cb.checked = false; });
   accidentsState.enabled = false;
@@ -3568,7 +3770,7 @@ function savedViews() {
       if (!name) return;
       const layerVisibility = {};
       map.getStyle().layers.forEach(l => {
-        if (l.id !== "osm-tiles") {
+        if (!isBasemapLayer(l.id)) {
           layerVisibility[l.id] = map.getLayoutProperty(l.id, "visibility") || "visible";
         }
       });
@@ -3963,9 +4165,11 @@ document.getElementById("export-png")?.addEventListener("click", () => {
   ctx.font = `${12 * pr}px Inter, system-ui, sans-serif`;
   ctx.textBaseline = "middle";
 
-  // Basemap credit — bottom-right strip (HTML stripped to plain text).
+  // Basemap credit — bottom-right strip (HTML stripped to plain text). Copied
+  // from the attribution control, which also lists a vector style's sources.
   const attrEl = document.createElement("div");
-  attrEl.innerHTML = _currentAttr || "";
+  const attribInner = map.getContainer().querySelector(".maplibregl-ctrl-attrib-inner");
+  attrEl.innerHTML = attribInner ? attribInner.innerHTML : (_currentAttr || "");
   const attrText = (attrEl.textContent || "").trim();
   if (attrText) {
     const tw = ctx.measureText(attrText).width;

@@ -69,8 +69,9 @@ Clicking a workspace takes you to its dashboard at `/<slug>/`. You will see:
 
 ### Interactive map
 
-The map at `/<slug>/map/` uses MapLibre GL JS with OSM vector tiles (or any
-XYZ tile server you configure via `MAP_TILE_URL`). A **Base map** switcher on
+The map at `/<slug>/map/` uses MapLibre GL JS with OpenStreetMap tiles or an
+OpenFreeMap vector style, as configured by the operator (see
+[DEPLOYMENT.md](DEPLOYMENT.md)). A **Base map** switcher on
 the map lets you flip between Light, Dark, and Satellite imagery independently
 of the UI theme, and a **legend** below the map always shows which colour and
 marker means which active layer. A **full-screen** button (below the base-map

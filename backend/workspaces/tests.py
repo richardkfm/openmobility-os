@@ -6,6 +6,7 @@ Covers the `seed_unfallatlas` command end-to-end without hitting the network.
 from __future__ import annotations
 
 import json
+import re
 import tempfile
 from io import StringIO
 from pathlib import Path
@@ -483,6 +484,55 @@ class FocusAreaViewTests(TestCase):
         target = area.current_target
         self.assertEqual(target.target_value, 0)
         self.assertEqual(target.target_mode, "zero")
+
+
+@override_settings(
+    STORAGES={
+        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    }
+)
+class MapTileSettingsTests(TestCase):
+    """The map page hands tile URLs to MapLibre exactly as configured."""
+
+    def setUp(self):
+        self.ws = Workspace.objects.create(
+            slug="tiles", name="Tiles", center=Point(0.01, 0.01, srid=4326)
+        )
+
+    def _script_constant(self, response, name):
+        """The value of a `const NAME = "...";` string in the map script."""
+        match = re.search(rf'const {name} = "(.*?)";', response.content.decode())
+        self.assertIsNotNone(match, name)
+        # escapejs output (\uXXXX escapes) is also a valid JSON string body.
+        return json.loads(f'"{match.group(1)}"')
+
+    @override_settings(
+        MAP_TILE_URL="https://tiles.example.test/{z}/{x}/{y}.png?key=abc&lang=de",
+        MAP_TILE_URL_DARK="",
+    )
+    def test_query_string_survives_into_the_map_script(self):
+        # HTML escaping would hand MapLibre "&amp;lang=de" and break the key.
+        response = self.client.get(reverse("workspace_map", kwargs={"workspace_slug": "tiles"}))
+        self.assertEqual(
+            self._script_constant(response, "MAP_TILE_URL"),
+            "https://tiles.example.test/{z}/{x}/{y}.png?key=abc&lang=de",
+        )
+        self.assertEqual(self._script_constant(response, "MAP_TILE_URL_DARK"), "")
+
+    @override_settings(
+        MAP_DARK_STYLE="vector",
+        MAP_VECTOR_STYLE_URL_DARK="https://styles.example.test/dark?key=abc&v=2",
+        MAP_LIGHT_STYLE="raster",
+    )
+    def test_basemap_styles_reach_the_map_script(self):
+        response = self.client.get(reverse("workspace_map", kwargs={"workspace_slug": "tiles"}))
+        self.assertEqual(self._script_constant(response, "MAP_DARK_STYLE"), "vector")
+        self.assertEqual(self._script_constant(response, "MAP_LIGHT_STYLE"), "raster")
+        self.assertEqual(
+            self._script_constant(response, "MAP_VECTOR_STYLE_URL_DARK"),
+            "https://styles.example.test/dark?key=abc&v=2",
+        )
 
 
 class FocusAreaApiTests(TestCase):

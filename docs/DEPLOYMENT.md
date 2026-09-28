@@ -47,15 +47,51 @@ MAP_TILE_URL=http://tileserver:8080/styles/osm-bright/{z}/{x}/{y}.png
 MAP_TILE_ATTRIBUTION=© OpenMapTiles © OpenStreetMap contributors
 ```
 
-The **dark-mode basemap** is configured the same way via `MAP_TILE_URL_DARK`
-and `MAP_TILE_ATTRIBUTION_DARK`. It defaults to CARTO's free, keyless OSM dark
-tiles; point it at your own dark style (e.g. a tileserver-gl dark style) for a
-fully self-hosted setup:
+### Light and dark basemaps
+
+Each of the light and dark basemaps is drawn either from raster tiles or from a
+[MapLibre style](https://maplibre.org/maplibre-style-spec/) (vector tiles). The
+operator picks one per mode in `.env`; visitors see a single Light and Dark
+button either way.
+
+| Setting | Values | Default |
+|---|---|---|
+| `MAP_LIGHT_STYLE` | `raster` (`MAP_TILE_URL`), `vector` (`MAP_VECTOR_STYLE_URL_LIGHT`) | `raster` |
+| `MAP_DARK_STYLE` | `vector` (`MAP_VECTOR_STYLE_URL_DARK`), `filter` (`MAP_TILE_URL` darkened in the browser), `raster` (`MAP_TILE_URL_DARK`) | `vector` |
+
+The vector styles default to [OpenFreeMap](https://openfreemap.org): free, no
+API key, no registration, open source. Its styles are `positron` (the light
+default), `liberty` and `bright` for light, and `dark` for dark:
 
 ```
+MAP_LIGHT_STYLE=vector
+MAP_VECTOR_STYLE_URL_LIGHT=https://tiles.openfreemap.org/styles/positron
+MAP_DARK_STYLE=vector
+MAP_VECTOR_STYLE_URL_DARK=https://tiles.openfreemap.org/styles/dark
+```
+
+For a fully self-hosted setup, run [OpenFreeMap](https://github.com/hyperknot/openfreemap)
+yourself and point both URLs at it. A style's credit line comes from its own
+tile sources, so there is no attribution setting for vector styles.
+
+If a vector style can't be loaded (the service is down or blocked), the map
+falls back to raster tiles: light shows `MAP_TILE_URL`, dark shows it through
+the dark filter. The filter needs nothing beyond `MAP_TILE_URL`, so
+`MAP_DARK_STYLE=filter` is the choice for an installation that must not call
+any tile service except its own.
+
+To use a dedicated dark raster tileset (e.g. a tileserver-gl dark style):
+
+```
+MAP_DARK_STYLE=raster
 MAP_TILE_URL_DARK=http://tileserver:8080/styles/dark-matter/{z}/{x}/{y}.png
 MAP_TILE_ATTRIBUTION_DARK=© OpenMapTiles © OpenStreetMap contributors
 ```
+
+If `MAP_DARK_STYLE` is not set at all, an installation that sets
+`MAP_TILE_URL_DARK` keeps using it and every other installation gets `vector`.
+The keyless CARTO dark URL that earlier versions shipped is ignored, because
+CARTO now answers it with "API key required" tiles.
 
 The **satellite basemap** offered by the map's Base map switcher is configured
 the same way via `MAP_TILE_URL_SATELLITE` and `MAP_TILE_ATTRIBUTION_SATELLITE`.

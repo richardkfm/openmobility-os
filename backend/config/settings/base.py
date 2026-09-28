@@ -21,11 +21,20 @@ env = environ.Env(
     DEFAULT_LOCALE=(str, "de"),
     MAP_TILE_URL=(str, "https://tile.openstreetmap.org/{z}/{x}/{y}.png"),
     MAP_TILE_ATTRIBUTION=(str, "© OpenStreetMap contributors"),
-    # Dark-mode basemap. Defaults to CARTO's free, keyless OSM-based dark
-    # raster tiles — overridable like any other tile source, so self-hosters
-    # can point it at their own dark tiles with no proprietary lock-in.
-    MAP_TILE_URL_DARK=(str, "https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"),
-    MAP_TILE_ATTRIBUTION_DARK=(str, "© OpenStreetMap contributors, © CARTO"),
+    # How the light basemap is drawn: "raster" (MAP_TILE_URL) or "vector" (the
+    # MapLibre style at MAP_VECTOR_STYLE_URL_LIGHT).
+    MAP_LIGHT_STYLE=(str, "raster"),
+    MAP_VECTOR_STYLE_URL_LIGHT=(str, "https://tiles.openfreemap.org/styles/positron"),
+    # How the dark basemap is drawn: "vector" (the MapLibre style at
+    # MAP_VECTOR_STYLE_URL_DARK), "filter" (the MAP_TILE_URL tiles darkened in
+    # the browser) or "raster" (MAP_TILE_URL_DARK). Unset means "raster" when
+    # MAP_TILE_URL_DARK is set and "vector" otherwise. OpenFreeMap needs no API
+    # key and can be self-hosted; if its style can't be loaded, the map falls
+    # back to the filter.
+    MAP_DARK_STYLE=(str, ""),
+    MAP_VECTOR_STYLE_URL_DARK=(str, "https://tiles.openfreemap.org/styles/dark"),
+    MAP_TILE_URL_DARK=(str, ""),
+    MAP_TILE_ATTRIBUTION_DARK=(str, ""),
     # Optional satellite/aerial basemap. Defaults to Esri's keyless World
     # Imagery service so the satellite view works out of the box, but it is
     # overridable like any other tile source — self-hosters can point it at
@@ -73,6 +82,10 @@ ADMIN_TOKEN = env("ADMIN_TOKEN", default="")
 # --- Map config ---
 MAP_TILE_URL = env("MAP_TILE_URL")
 MAP_TILE_ATTRIBUTION = env("MAP_TILE_ATTRIBUTION")
+MAP_LIGHT_STYLE = env("MAP_LIGHT_STYLE")
+MAP_VECTOR_STYLE_URL_LIGHT = env("MAP_VECTOR_STYLE_URL_LIGHT")
+MAP_DARK_STYLE = env("MAP_DARK_STYLE")
+MAP_VECTOR_STYLE_URL_DARK = env("MAP_VECTOR_STYLE_URL_DARK")
 MAP_TILE_URL_DARK = env("MAP_TILE_URL_DARK")
 MAP_TILE_ATTRIBUTION_DARK = env("MAP_TILE_ATTRIBUTION_DARK")
 MAP_TILE_URL_SATELLITE = env("MAP_TILE_URL_SATELLITE")
