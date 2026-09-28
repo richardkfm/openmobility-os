@@ -518,8 +518,21 @@ class MapTileSettingsTests(TestCase):
             self._script_constant(response, "MAP_TILE_URL"),
             "https://tiles.example.test/{z}/{x}/{y}.png?key=abc&lang=de",
         )
-        # No dark tileset: the map darkens the light tiles itself.
         self.assertEqual(self._script_constant(response, "MAP_TILE_URL_DARK"), "")
+
+    @override_settings(
+        MAP_DARK_STYLE="vector",
+        MAP_VECTOR_STYLE_URL_DARK="https://styles.example.test/dark?key=abc&v=2",
+        MAP_LIGHT_STYLE="raster",
+    )
+    def test_basemap_styles_reach_the_map_script(self):
+        response = self.client.get(reverse("workspace_map", kwargs={"workspace_slug": "tiles"}))
+        self.assertEqual(self._script_constant(response, "MAP_DARK_STYLE"), "vector")
+        self.assertEqual(self._script_constant(response, "MAP_LIGHT_STYLE"), "raster")
+        self.assertEqual(
+            self._script_constant(response, "MAP_VECTOR_STYLE_URL_DARK"),
+            "https://styles.example.test/dark?key=abc&v=2",
+        )
 
 
 class FocusAreaApiTests(TestCase):

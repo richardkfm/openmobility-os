@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Vector basemaps from OpenFreeMap, chosen per mode by the operator.**
+  `MAP_LIGHT_STYLE` (`raster` or `vector`) and `MAP_DARK_STYLE` (`vector`,
+  `filter` or `raster`) in `.env` decide how the light and dark basemaps are
+  drawn. Vector styles default to OpenFreeMap (positron for light, dark for
+  dark): no API key, no registration, and self-hostable by pointing
+  `MAP_VECTOR_STYLE_URL_LIGHT` / `MAP_VECTOR_STYLE_URL_DARK` at your own
+  instance. Data layers, story views, saved views and PNG export work the same
+  on both kinds of basemap, and the PNG credit line names the vector style's
+  sources. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 - **Walking quality is now on the map.** A new **Walking quality** layer draws
   every street in one of five named bands — comfortable, usable, tight, hostile,
   or not enough data — with a popup that reads the rating out in words, says how
@@ -74,12 +83,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - **The dark map shows a map again instead of "API KEY REQUIRED" tiles.** The
   dark basemap came from CARTO, which now requires an API key and sends a
-  watermark tile to every map without one. Dark mode now darkens the regular
-  OpenStreetMap tiles in the browser instead: no API key, no extra tile
-  service, and it follows whichever light tile server `MAP_TILE_URL` points
-  to, including a self-hosted one. Installations whose `.env` still sets the
-  old CARTO dark URL switch over automatically; setting `MAP_TILE_URL_DARK`
-  still selects a dedicated dark tileset.
+  watermark tile to every map without one. Dark mode now uses OpenFreeMap's
+  dark vector style, which needs no key. If that style can't be loaded, the
+  map darkens the regular OpenStreetMap tiles in the browser instead.
+  Installations whose `.env` still sets the old CARTO dark URL switch over
+  automatically; one that sets its own `MAP_TILE_URL_DARK` keeps using it.
 - **Tile URLs with more than one query parameter work.** An `&` in
   `MAP_TILE_URL`, `MAP_TILE_URL_DARK` or `MAP_TILE_URL_SATELLITE` (for example
   an API key followed by a language) reached the map as `&amp;`, breaking

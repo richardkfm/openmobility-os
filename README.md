@@ -3,7 +3,7 @@
 
 # OpenMobility OS
 
-**Version:** 0.55.2 (pre-release) — see [CHANGELOG.md](CHANGELOG.md)
+**Version:** 0.56.0 (pre-release) — see [CHANGELOG.md](CHANGELOG.md)
 **License:** See [LICENSE](LICENSE)
 
 > The open, free, self-hostable operating system between open mobility data
@@ -213,8 +213,9 @@ four demo workspaces: **Leipzig**, **Utrecht**, **Musterstadt**, and **Muster-La
   one stands out. All choices are remembered in the browser
 - **Base map switcher** — pick a Light, Dark, or Satellite base map from a
   control on the map, independent of the UI theme; the choice is remembered.
-  Dark needs no API key: it darkens your configured light tiles unless you set
-  a dedicated dark tileset
+  Dark uses OpenFreeMap's vector style by default and light uses OpenStreetMap
+  tiles; operators can switch either between raster tiles and a vector style.
+  No API key needed. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
 - **Full-screen map mode** — expand the map, its on-map controls, and the
   legend to the whole screen for presentations; Escape returns to the page
 - **Light & dark mode** — a header toggle switches the whole UI between light and
