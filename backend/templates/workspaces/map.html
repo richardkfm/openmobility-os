@@ -855,13 +855,17 @@
 {% block extra_js %}
 <script>
 const WORKSPACE_SLUG = "{{ workspace.slug }}";
-const MAP_TILE_URL = "{{ map_tile_url }}";
+// Tile URLs are JS-escaped rather than HTML-escaped: HTML escaping would turn
+// the "&" between query parameters (API keys, WMTS) into a literal "&amp;".
+const MAP_TILE_URL = "{{ map_tile_url|escapejs }}";
 const MAP_TILE_ATTR = "{{ map_tile_attribution }}";
-const MAP_TILE_URL_DARK = "{{ map_tile_url_dark }}";
+// Empty when no dedicated dark tileset is configured; the dark basemap then
+// draws the MAP_TILE_URL tiles through DARK_RASTER_PAINT.
+const MAP_TILE_URL_DARK = "{{ map_tile_url_dark|escapejs }}";
 const MAP_TILE_ATTR_DARK = "{{ map_tile_attribution_dark }}";
 // Optional satellite/aerial basemap — empty string when the self-hoster has
 // cleared MAP_TILE_URL_SATELLITE, in which case the Satellite option is hidden.
-const MAP_TILE_URL_SATELLITE = "{{ map_tile_url_satellite }}";
+const MAP_TILE_URL_SATELLITE = "{{ map_tile_url_satellite|escapejs }}";
 const MAP_TILE_ATTR_SATELLITE = "{{ map_tile_attribution_satellite }}";
 const LAYER_KINDS = {{ layer_kinds|pprint|safe }};
 // value → translated label, built from the server-side `layers` context so the
@@ -1225,10 +1229,38 @@ function resolveBasemap(mode) {
   return mode;
 }
 
+// Turns the light tiles into a muted dark basemap when no dark tileset is
+// configured. A brightness-min above brightness-max inverts lightness (white
+// land goes near-black, dark labels go light grey); the 180° hue turn puts
+// water and parks back near their own hues, and desaturation keeps the base
+// quiet under the data layers.
+const DARK_RASTER_PAINT = {
+  "raster-brightness-min": 0.8,
+  "raster-brightness-max": 0.06,
+  "raster-hue-rotate": 180,
+  "raster-saturation": -0.8,
+  "raster-contrast": 0,
+};
+// MapLibre's raster defaults: tiles drawn as served.
+const PLAIN_RASTER_PAINT = {
+  "raster-brightness-min": 0,
+  "raster-brightness-max": 1,
+  "raster-hue-rotate": 0,
+  "raster-saturation": 0,
+  "raster-contrast": 0,
+};
+
 function basemapTiles(resolved) {
-  if (resolved === "satellite") return { tiles: [MAP_TILE_URL_SATELLITE], attr: MAP_TILE_ATTR_SATELLITE };
-  if (resolved === "dark")      return { tiles: [MAP_TILE_URL_DARK], attr: MAP_TILE_ATTR_DARK };
-  return { tiles: [MAP_TILE_URL], attr: MAP_TILE_ATTR };
+  if (resolved === "satellite") {
+    return { tiles: [MAP_TILE_URL_SATELLITE], attr: MAP_TILE_ATTR_SATELLITE, paint: PLAIN_RASTER_PAINT };
+  }
+  if (resolved === "dark" && MAP_TILE_URL_DARK) {
+    return { tiles: [MAP_TILE_URL_DARK], attr: MAP_TILE_ATTR_DARK, paint: PLAIN_RASTER_PAINT };
+  }
+  if (resolved === "dark") {
+    return { tiles: [MAP_TILE_URL], attr: MAP_TILE_ATTR, paint: DARK_RASTER_PAINT };
+  }
+  return { tiles: [MAP_TILE_URL], attr: MAP_TILE_ATTR, paint: PLAIN_RASTER_PAINT };
 }
 
 const _initialBasemap = basemapTiles(resolveBasemap(readBasemapMode()));
@@ -1247,7 +1279,7 @@ const map = new maplibregl.Map({
         tileSize: 256,
       },
     },
-    layers: [{ id: "osm-tiles", type: "raster", source: "osm" }],
+    layers: [{ id: "osm-tiles", type: "raster", source: "osm", paint: _initialBasemap.paint }],
   },
   center: [CENTER_LON, CENTER_LAT],
   zoom: DEFAULT_ZOOM,
@@ -1256,6 +1288,7 @@ const map = new maplibregl.Map({
 
 // The active basemap credit line — also composited into PNG exports.
 let _currentAttr = _initialBasemap.attr;
+let _currentTiles = _initialBasemap.tiles.join(" ");
 let _attribCtrl = new maplibregl.AttributionControl({ customAttribution: _initialBasemap.attr });
 map.addControl(_attribCtrl);
 map.addControl(new maplibregl.NavigationControl(), "top-right");
@@ -1264,13 +1297,20 @@ map.addControl(new maplibregl.ScaleControl({ unit: "metric" }), "bottom-left");
 // Swap the raster tiles + refresh the attribution credit without rebuilding the
 // style, so every overlay data layer and the current view state are preserved.
 // `setTiles` does not re-read the source attribution, so we re-create the
-// attribution control on each change.
+// attribution control on each change. Light and the derived dark basemap share
+// one tileset, so only the paint changes and the loaded tiles are kept.
 function applyBasemap(mode, persist) {
   if (persist) { try { localStorage.setItem(BASEMAP_KEY, mode); } catch (_) {} }
-  const { tiles, attr } = basemapTiles(resolveBasemap(mode));
+  const { tiles, attr, paint } = basemapTiles(resolveBasemap(mode));
   _currentAttr = attr;
   const src = map.getSource("osm");
-  if (src && src.setTiles) src.setTiles(tiles);
+  if (src && src.setTiles && tiles.join(" ") !== _currentTiles) {
+    src.setTiles(tiles);
+    _currentTiles = tiles.join(" ");
+  }
+  if (map.getLayer("osm-tiles")) {
+    for (const [prop, value] of Object.entries(paint)) map.setPaintProperty("osm-tiles", prop, value);
+  }
   if (_attribCtrl) map.removeControl(_attribCtrl);
   _attribCtrl = new maplibregl.AttributionControl({ customAttribution: attr });
   map.addControl(_attribCtrl);

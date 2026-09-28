@@ -21,11 +21,12 @@ env = environ.Env(
     DEFAULT_LOCALE=(str, "de"),
     MAP_TILE_URL=(str, "https://tile.openstreetmap.org/{z}/{x}/{y}.png"),
     MAP_TILE_ATTRIBUTION=(str, "© OpenStreetMap contributors"),
-    # Dark-mode basemap. Defaults to CARTO's free, keyless OSM-based dark
-    # raster tiles — overridable like any other tile source, so self-hosters
-    # can point it at their own dark tiles with no proprietary lock-in.
-    MAP_TILE_URL_DARK=(str, "https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"),
-    MAP_TILE_ATTRIBUTION_DARK=(str, "© OpenStreetMap contributors, © CARTO"),
+    # Dark-mode basemap. Empty by default: the map then draws the MAP_TILE_URL
+    # tiles through a dark raster filter, so dark mode needs no second tile
+    # service or API key. Set it to use a dedicated dark tileset instead
+    # (e.g. a self-hosted tileserver-gl dark style).
+    MAP_TILE_URL_DARK=(str, ""),
+    MAP_TILE_ATTRIBUTION_DARK=(str, ""),
     # Optional satellite/aerial basemap. Defaults to Esri's keyless World
     # Imagery service so the satellite view works out of the box, but it is
     # overridable like any other tile source — self-hosters can point it at

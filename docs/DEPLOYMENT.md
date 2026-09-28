@@ -47,10 +47,11 @@ MAP_TILE_URL=http://tileserver:8080/styles/osm-bright/{z}/{x}/{y}.png
 MAP_TILE_ATTRIBUTION=© OpenMapTiles © OpenStreetMap contributors
 ```
 
-The **dark-mode basemap** is configured the same way via `MAP_TILE_URL_DARK`
-and `MAP_TILE_ATTRIBUTION_DARK`. It defaults to CARTO's free, keyless OSM dark
-tiles; point it at your own dark style (e.g. a tileserver-gl dark style) for a
-fully self-hosted setup:
+The **dark-mode basemap** needs no setup: by default the map draws the
+`MAP_TILE_URL` tiles through a dark filter, so it works with any light tileset,
+including a self-hosted one, and needs no second tile service or API key. To
+use a dedicated dark tileset instead (e.g. a tileserver-gl dark style), set
+`MAP_TILE_URL_DARK` and `MAP_TILE_ATTRIBUTION_DARK`:
 
 ```
 MAP_TILE_URL_DARK=http://tileserver:8080/styles/dark-matter/{z}/{x}/{y}.png

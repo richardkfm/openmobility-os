@@ -72,6 +72,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `seed_demo --resync` to refresh the OpenStreetMap layers on purpose.
 
 ### Fixed
+- **The dark map shows a map again instead of "API KEY REQUIRED" tiles.** The
+  dark basemap came from CARTO, which now requires an API key and sends a
+  watermark tile to every map without one. Dark mode now darkens the regular
+  OpenStreetMap tiles in the browser instead: no API key, no extra tile
+  service, and it follows whichever light tile server `MAP_TILE_URL` points
+  to, including a self-hosted one. Installations whose `.env` still sets the
+  old CARTO dark URL switch over automatically; setting `MAP_TILE_URL_DARK`
+  still selects a dedicated dark tileset.
+- **Tile URLs with more than one query parameter work.** An `&` in
+  `MAP_TILE_URL`, `MAP_TILE_URL_DARK` or `MAP_TILE_URL_SATELLITE` (for example
+  an API key followed by a language) reached the map as `&amp;`, breaking
+  every parameter after the first.
 - **The test suite actually runs now.** `python manage.py test` from the
   repository root discovered no tests at all and exited successfully, so every
   CI run reported a green test step while executing nothing — roughly 600 tests
