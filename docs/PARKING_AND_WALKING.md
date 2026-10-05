@@ -1,8 +1,9 @@
 # Parking vs walking
 
-Two opposed readings of the same street, on one map. **Parked cars** fills the
-kerbs and car parks of a city with one symbol per car, so the space given to
-cars at rest can be counted instead of asserted. **Walking quality** colours
+Two opposed readings of the same street, on one map. **Parked cars** lines the
+kerbs of a city with cars at true scale and fills its car parks with rows of
+them, so the space given to cars at rest can be seen and counted instead of
+asserted. **Walking quality** colours
 every street by what it is like on foot. The two halves are linked by a fact the
 data already carries: a street whose walking score is dragged down by cars
 parked *on the kerb* is the same street the parking layer has just filled.
@@ -52,12 +53,23 @@ for syncing it rather than a fault.
 
 ## What the parked-car layer claims
 
-Each symbol is one car space. **Solid** symbols are surveyed: OpenStreetMap
-records parking there. **Dashed outlines** are modelled: nobody surveyed the
-street, but a residential street usually has a kerb people park on, so the space
-is filled with an assumption and counted separately. The panel and the legend
-always state which is which, and the two are never added into one undifferentiated
-total.
+Every car drawn is one car space, drawn to scale. Each kerb with parking is a
+band of cars bumper to bumper: one car every bay length along the kerb, as deep
+as the bay is wide, on the side of the street the parking is recorded on, and
+sitting the way the bays do — parallel, at an angle, or nose-in. Each car park
+is rows of cars with an aisle between them, laid out at the catalogue's square
+metres per space. The bay length, bay depth and square metres per space are the
+same per-workspace parameters the count is made from, so the picture and the
+figure in the panel cannot disagree.
+
+**Solid** cars are surveyed: OpenStreetMap records parking there. **Dashed
+hulls with a pale wash** are modelled: nobody surveyed the street, but a
+residential street usually has a kerb people park on, so the space is filled
+with an assumption and counted separately. The wash is deliberate: a bare
+outline shrinks to nothing when the band is a few pixels wide, and a city whose
+parking nobody has surveyed would then look like a city with no cars. The panel
+and the legend always state which is which, and the two are never added into
+one undifferentiated total.
 
 A street that was surveyed and found to have **no** parking is left empty. That
 is evidence, and overwriting it with an assumption would be the worst thing this
@@ -67,12 +79,17 @@ It reports **capacity, not occupancy** — how many cars fit, not how many are
 parked right now. Occupancy would be a second layer of fiction on top of the
 first.
 
-Zoomed out, twenty thousand overlapping symbols say nothing, so the estimate
-falls back onto the geometry it came from: the kerb keeps its street, the car
-park keeps its footprint, each drawn by how many cars it holds. Where a city has
-more cars than can be drawn one by one, the server thins them deterministically
-and every remaining symbol carries a `represents` count that the legend prints —
-a thinned map that claimed one symbol per car would be a lie.
+The bands are the same at every zoom. Zoomed out, a band is clamped to a few
+pixels wide so a street lined with cars still reads as one, and the whole city
+shows which streets store cars and which do not; zoomed in, the cars can be told
+apart. Car parks are a flat fill, darker the denser they are, until a car is
+large enough on screen to draw, and rows of cars from there.
+
+Nothing is thinned. The map asks for one feature per kerb and per car park
+rather than one point per car, so a city with a hundred thousand spaces is a
+few thousand lines and polygons, loaded once, with nothing to refetch when the
+viewer zooms. Clicking a band reports the whole kerb: how many spaces, on what
+basis, how the cars sit, and how many per 100 m.
 
 ---
 
@@ -273,9 +290,21 @@ exactly that reason.
 Both layers are public, read-only and need no login.
 
 ```
-GET /api/v1/workspaces/<slug>/parked-cars/?include=surveyed,modelled&format=symbols
+GET /api/v1/workspaces/<slug>/parked-cars/?include=surveyed,modelled&format=density
 GET /api/v1/workspaces/<slug>/walkability/?mode=classes
 ```
+
+`/parked-cars/?format=density` is what the map draws: one feature per kerb and
+per car park, on its own geometry. A kerb carries its `cars`, `basis`, `side`
+(relative to the way's direction, as OpenStreetMap records it), `orientation`
+(`parallel`, `diagonal` or `perpendicular`), `length_m` and `cars_per_100m`; a
+car park carries `cars`, `basis`, `parking_form`, `area_m2` and
+`cars_per_1000m2`. The collection's `drawing` block names the bay geometry the
+bands are scaled to — `kerb_offset_m`, a `bays` table of length and width per
+orientation, and `lot_space_m2` — taken from the workspace's own catalogue.
+`format=symbols` returns one point per car instead, thinned above
+`MAX_SYMBOLS` with a `represents` count on every point, for consumers that want
+individual positions.
 
 `/walkability/` returns a GeoJSON FeatureCollection. Every street carries its
 `walk_class`, the `safety_band` and `comfort_band` the popup reads, its

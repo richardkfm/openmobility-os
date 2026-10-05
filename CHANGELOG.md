@@ -70,6 +70,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   reports those streets as unknown instead of assuming one country's rules.
 
 ### Changed
+- **Parked cars are now drawn as bands of cars at true scale, not as thinned
+  symbols.** Every kerb with parking is lined with cars bumper to bumper — one
+  car per space, as long and as wide as the workspace's own bay standard says —
+  and every car park is filled with rows of them. The old one-symbol-per-car
+  layer was capped at 20,000 symbols, so in a city-sized workspace each tiny
+  icon stood for six cars and the map looked nearly empty; the bands show every
+  space, from the whole-city view (where each street becomes a solid line of
+  cars) down to a single kerb (where the cars can be told apart). Cars follow
+  how they are parked — parallel, angled, or nose-in — and sit on the side of the
+  street they are recorded on. Surveyed cars stay solid; modelled cars are a
+  dashed hull with a pale wash, so a street nobody has surveyed is still visibly
+  lined with cars but never mistaken for a surveyed one.
+- **The parked-car layer loads once and stays fast however big the city.** It
+  now asks the server for one feature per street and per car park instead of one
+  point per car, so there is nothing to thin, nothing to refetch when zooming,
+  and a response that is a fraction of the size. Clicking a band reports the
+  whole kerb: how many spaces, on what basis, how the cars sit, and the density
+  per 100 m.
+- `/api/v1/workspaces/<slug>/parked-cars/?format=density` now carries each
+  kerb's `side` and `orientation` and a `drawing` block naming the bay geometry
+  the bands are scaled to. `format=symbols` is unchanged and still available.
 - **Restarting the server no longer re-downloads map data it already has.**
   Demo seeding runs on every container start, and it used to re-fetch every
   OpenStreetMap layer each time. A restart therefore spent minutes on network

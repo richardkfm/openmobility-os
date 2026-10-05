@@ -614,6 +614,107 @@ class BuildParkingDensityTests(TestCase):
         density = pe.build_parking_density(street_features=[street])
         self.assertEqual(symbols["counts"], density["counts"])
 
+    # The map draws the density form as bands of cars, so each kerb has to say
+    # which side the cars sit on and how they are oriented, and the collection
+    # has to say what scale the band is drawn to.
+
+    def test_a_kerb_says_which_side_and_how_the_cars_sit(self):
+        center = CENTRES[1]
+        kerb = _line(center, 200.0, osm_id=1)
+        kerb["properties"].update(
+            {"parking_present": True, "side": "both", "orientation": "perpendicular"}
+        )
+        fc = pe.build_parking_density(kerb_features=[kerb])
+        props = fc["features"][0]["properties"]
+        self.assertEqual(props["side"], "both")
+        self.assertEqual(props["orientation"], "perpendicular")
+        self.assertEqual(props["length_m"], 200.0)
+
+    def test_a_side_or_orientation_the_catalogue_does_not_know_is_normalised(self):
+        center = CENTRES[0]
+        kerb = _line(center, 200.0, osm_id=1)
+        kerb["properties"].update(
+            {"parking_present": True, "side": "middle", "orientation": "sideways"}
+        )
+        fc = pe.build_parking_density(kerb_features=[kerb])
+        props = fc["features"][0]["properties"]
+        # Drawn on one kerb, parallel — which is also how it was counted.
+        self.assertEqual(props["side"], "unknown")
+        self.assertEqual(props["orientation"], "parallel")
+
+    def test_a_modelled_kerb_carries_the_modelled_side_and_orientation(self):
+        center = CENTRES[0]
+        street = _line(center, 300.0, osm_id=3)
+        street["properties"]["highway"] = "residential"
+        fc = pe.build_parking_density(
+            street_features=[street], params={**pe.DEFAULT_PARAMS, "modelled_sides": 2}
+        )
+        props = fc["features"][0]["properties"]
+        self.assertEqual(props["basis"], "modelled")
+        self.assertEqual(props["side"], "both")
+        self.assertEqual(props["orientation"], "parallel")
+
+    def test_a_lot_carries_its_form_and_footprint_not_a_side(self):
+        center = CENTRES[0]
+        lot = _square_lot(center, 100.0, osm_id=2, parking_form="multi-storey")
+        fc = pe.build_parking_density(lot_features=[lot])
+        props = fc["features"][0]["properties"]
+        self.assertEqual(props["parking_form"], "multi-storey")
+        self.assertEqual(props["area_m2"], 10000.0)
+        self.assertNotIn("side", props)
+        self.assertNotIn("orientation", props)
+
+    def test_the_collection_says_what_scale_the_bands_are_drawn_to(self):
+        fc = pe.build_parking_density()
+        drawing = fc["drawing"]
+        self.assertEqual(drawing["kerb_offset_m"], pe.DEFAULT_PARAMS["kerb_offset_m"])
+        self.assertEqual(
+            drawing["bays"]["parallel"]["length_m"],
+            street_space.DEFAULT_PARAMS["parking_space_length_m"]["parallel"],
+        )
+        self.assertEqual(
+            drawing["bays"]["perpendicular"]["width_m"],
+            street_space.DEFAULT_PARAMS["parking_lane_width_m"]["perpendicular"],
+        )
+        self.assertEqual(drawing["lot_space_m2"], 25.0)
+
+
+class DrawingParamsTests(TestCase):
+    """The band is scaled to the same catalogue the count came from."""
+
+    def test_defaults_cover_every_orientation(self):
+        drawing = pe.drawing_params()
+        self.assertEqual(set(drawing["bays"]), set(pe.ORIENTATIONS))
+        for bay in drawing["bays"].values():
+            self.assertGreater(bay["length_m"], 0)
+            self.assertGreater(bay["width_m"], 0)
+
+    def test_a_workspace_bay_standard_reaches_the_drawing(self):
+        ws = _Ws(
+            settings={
+                "street_space": {"parking_space_length_m": {"parallel": 6.5}},
+                "parking_estimate": {"kerb_offset_m": 3.0, "lot_area_per_space_m2": {"default": 30.0}},
+            }
+        )
+        drawing = pe.drawing_params(pe.params_for(ws), street_space.params_for(ws))
+        self.assertEqual(drawing["bays"]["parallel"]["length_m"], 6.5)
+        # The other orientations keep the catalogue's own values.
+        self.assertEqual(
+            drawing["bays"]["perpendicular"]["length_m"],
+            street_space.DEFAULT_PARAMS["parking_space_length_m"]["perpendicular"],
+        )
+        self.assertEqual(drawing["kerb_offset_m"], 3.0)
+        self.assertEqual(drawing["lot_space_m2"], 30.0)
+
+    def test_an_orientation_missing_from_the_catalogue_falls_back_to_parallel(self):
+        sp = {
+            **street_space.DEFAULT_PARAMS,
+            "parking_space_length_m": {"parallel": 6.0},
+            "parking_lane_width_m": {"parallel": 2.2},
+        }
+        drawing = pe.drawing_params(street_params=sp)
+        self.assertEqual(drawing["bays"]["diagonal"], {"length_m": 6.0, "width_m": 2.2})
+
 
 class StreetLayerFallbackTests(TestCase):
     """The modelled kerb must work off whichever street layer a workspace has.

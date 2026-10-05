@@ -14,6 +14,7 @@ from measures.accident_kpis import compute_accident_kpis
 from measures.models import Measure, MeasureScore
 from measures.scoring import compute_priority_score
 from measures.effects import factors_for as effect_factors_for
+from measures.parking_estimate import drawing_params as parking_drawing_params
 from measures.parking_estimate import params_for as parking_estimate_params_for
 from measures.street_space import params_for as street_space_params_for
 from measures.walkability import params_for as walkability_params_for
@@ -163,6 +164,11 @@ def workspace_map(request, workspace_slug: str):
             "has_flood_water_data": has_flood_water_data,
             "has_cooling_green_data": has_cooling_green_data,
             "has_parked_car_data": has_parked_car_data,
+            # The bay geometry the parked-car bands are scaled to, from the
+            # workspace's own catalogue, so the map and the count agree.
+            "parked_car_drawing": parking_drawing_params(
+                parking_estimate_params_for(ws), street_space_params_for(ws)
+            ),
             "has_walkability_data": has_walkability_data,
             "has_districts": has_districts,
             "area_indicators": area_indicators,

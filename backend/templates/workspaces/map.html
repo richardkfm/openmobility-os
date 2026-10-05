@@ -431,6 +431,9 @@
 
           {# Parked cars — the space the city gives to cars at rest #}
           {% if has_parked_car_data %}
+          {# The bay geometry the bands are drawn to, from this workspace's own
+             catalogue, so the picture and the count come from one place. #}
+          {{ parked_car_drawing|json_script:"parked-car-drawing" }}
           <div class="pt-2 border-t mt-2" x-data="parkedCars()" x-init="init()">
             <label class="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" id="toggle-parked-cars" @change="toggle($event.target.checked)">
@@ -449,7 +452,7 @@
                 <option value="public">{% trans "Car parks: public only" %}</option>
                 <option value="public,customers">{% trans "Car parks: public and customer" %}</option>
               </select>
-              {# The two symbols differ on purpose: a solid car was surveyed, a
+              {# The two sprites differ on purpose: a solid car was surveyed, a
                  dashed outline is our assumption. Never let them read alike. #}
               <div class="flex items-center gap-3 text-xs text-slate-600">
                 <span class="flex items-center gap-1">
@@ -460,16 +463,15 @@
                 </span>
                 <span class="flex items-center gap-1">
                   <svg width="9" height="15" viewBox="0 0 14 24" aria-hidden="true">
-                    <rect x="1.5" y="1.5" width="11" height="21" rx="3" fill="#ffffff"
+                    <rect x="1.5" y="1.5" width="11" height="21" rx="3" fill="#7c3aed" fill-opacity="0.38"
                           stroke="#7c3aed" stroke-width="1.8" stroke-dasharray="3 2"/>
                   </svg>
                   {% trans "Modelled" %}
                 </span>
               </div>
               <p class="text-xs text-slate-600" x-show="counts.total > 0" x-text="countsNote"></p>
-              <p class="text-xs text-amber-600" x-show="represents > 1" x-text="representsNote"></p>
-              <p class="text-xs text-slate-400" x-show="mode === 'density'">
-                {% trans "Zoom in to see individual cars." %}
+              <p class="text-xs text-slate-400">
+                {% trans "Every car in a band is one car space, drawn to scale. Zoom in to tell them apart." %}
               </p>
               <p class="text-xs text-amber-600" x-show="enabled && loaded && counts.total === 0">
                 {% trans "No parking data in this workspace yet — sync a kerbside or car-park layer." %}
@@ -1577,35 +1579,162 @@ function loadIconImage(imageId) {
   img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
 }
 
-// ─── Parked-car sprites ──────────────────────────────────────────────────────
-// The badge glyphs above are 44 px discs — far too heavy when a city-sized
-// workspace draws twenty thousand cars. These are plan-view car silhouettes at
-// a fraction of the size, and the two of them deliberately do not look alike:
+// ─── Parked-car band sprites ─────────────────────────────────────────────────
+// The map does not draw one symbol per car. It draws every kerb as a band of
+// cars at true scale: a MapLibre line-pattern is stretched to the line's width,
+// so a sprite whose aspect ratio is bay length : bay depth repeats exactly once
+// per car space when the line is drawn as wide as the bay is deep. One feature
+// per street carries the whole kerb, however many cars it holds, so a
+// city-sized workspace is a few thousand lines instead of a hundred thousand
+// points, nothing is thinned, and one response serves every zoom. Car parks are
+// a fill-pattern of the same cars, laid out in rows at the catalogue's square
+// metres per space, one tile size per integer zoom.
 //
-//   car-surveyed  solid       OpenStreetMap records parking here.
-//   car-modelled  dashed hull we assumed it, because a residential street
-//                             usually has a kerb people park on.
+// The two bases deliberately do not look alike:
+//
+//   car-surveyed-<orientation>  solid        OpenStreetMap records parking here.
+//   car-modelled-<orientation>  dashed hull  we assumed it, because a residential
+//                                            street usually has a kerb people park on.
 //
 // A viewer must be able to tell a survey from a guess at a glance, so the
-// difference is fill-versus-outline, not a shade of the same colour.
+// difference is solid-versus-dashed hull, not merely a shade of the same colour.
 const PARKED_CAR_COLOR = "#7c3aed";
+const PARKED_CAR_DRAWING = (() => {
+  const el = document.getElementById("parked-car-drawing");
+  return el ? JSON.parse(el.textContent) : null;
+})();
+const PARKED_ORIENTATIONS = ["parallel", "diagonal", "perpendicular"];
+// Car parks switch from a flat fill to rows of cars at this zoom: below it a
+// car is under two pixels long and the pattern would be noise.
+const PARKED_LOT_PATTERN_MINZOOM = 17;
+const PARKED_LOT_PATTERN_MAXZOOM = 21;
+// A car body inside its bay, in metres. The bay comes from the catalogue; the
+// car is just what is drawn in it.
+const CAR_BODY_M = { length: 4.5, width: 1.8 };
 
-function carSvg(surveyed) {
-  const c = PARKED_CAR_COLOR;
-  const body = surveyed
-    ? '<rect x="2" y="2" width="10" height="20" rx="3" fill="' + c + '" stroke="#ffffff" stroke-width="1"/>'
-      + '<rect x="4" y="6" width="6" height="4" rx="1" fill="#ffffff" fill-opacity="0.65"/>'
-    : '<rect x="2" y="2" width="10" height="20" rx="3" fill="#ffffff" fill-opacity="0.75"'
-      + ' stroke="' + c + '" stroke-width="1.8" stroke-dasharray="3 2"/>';
-  return '<svg xmlns="http://www.w3.org/2000/svg" width="28" height="48" viewBox="0 0 14 24">'
-    + body + '</svg>';
+// Metres per screen pixel at this workspace's latitude. Web Mercator scale is
+// not constant with latitude, and a band that is true to scale in Auckland
+// must still be true to scale in Tromsø.
+function pxPerMetreAt(zoom) {
+  const lat = Math.abs(CENTER_LAT) < 85 ? CENTER_LAT : 0;
+  return Math.pow(2, zoom) / (156543.03392 * Math.cos(lat * Math.PI / 180));
 }
 
-function loadCarImage(imageId) {
+function parkedBay(orientation) {
+  const bays = (PARKED_CAR_DRAWING && PARKED_CAR_DRAWING.bays) || {};
+  return bays[orientation] || bays.parallel || { length_m: 5.75, width_m: 2.0 };
+}
+
+// One car, as an SVG fragment, centred at (cx, cy) in a sprite of `scale` px
+// per metre, rotated `angle` degrees from the sprite's x axis.
+function carShape(cx, cy, scale, angle, surveyed, length = CAR_BODY_M.length, width = CAR_BODY_M.width) {
+  const c = PARKED_CAR_COLOR;
+  const L = length * scale, W = width * scale;
+  const r = Math.min(L, W) * 0.22;
+  const body = surveyed
+    ? `<rect x="${-L / 2}" y="${-W / 2}" width="${L}" height="${W}" rx="${r}" fill="${c}" stroke="#ffffff" stroke-width="${Math.max(0.6, W * 0.06)}"/>`
+      + `<rect x="${L * 0.12}" y="${-W * 0.36}" width="${L * 0.16}" height="${W * 0.72}" rx="${r * 0.4}" fill="#ffffff" fill-opacity="0.65"/>`
+    // A modelled car is a dashed hull with a pale wash inside it. The wash is
+    // what keeps a modelled street visibly lined with cars when the band is a
+    // few pixels wide: an empty outline shrinks to nothing, and a city whose
+    // parking nobody has surveyed would then look like a city with no cars.
+    : `<rect x="${-L / 2}" y="${-W / 2}" width="${L}" height="${W}" rx="${r}" fill="${c}" fill-opacity="0.38"`
+      + ` stroke="${c}" stroke-width="${Math.max(0.8, W * 0.11)}" stroke-dasharray="${W * 0.28} ${W * 0.18}"/>`;
+  return `<g transform="translate(${cx} ${cy}) rotate(${angle})">${body}</g>`;
+}
+
+// A kerb sprite: one bay, `length_m` along the kerb by `width_m` across it.
+// The width is a power of two because MapLibre needs that to tile a line
+// pattern seamlessly; the height follows from the bay's own proportions.
+function kerbBandSvg(orientation, surveyed) {
+  const bay = parkedBay(orientation);
+  const w = 128;
+  const scale = w / bay.length_m;
+  const h = Math.max(2, Math.round(bay.width_m * scale));
+  // How the car sits in the bay: nose to tail along the kerb, side by side
+  // across it, or at an angle between — and always inside its own tile, so
+  // the pattern never shows a car cut in half at a tile edge.
+  let angle, len, wid;
+  if (orientation === "perpendicular") {
+    angle = 90;
+    len = Math.min(CAR_BODY_M.length, bay.width_m * 0.9);
+    wid = Math.min(CAR_BODY_M.width, bay.length_m * 0.85);
+  } else if (orientation === "diagonal") {
+    angle = 60;
+    wid = Math.min(CAR_BODY_M.width, 1.7);
+    const sin = Math.sin(Math.PI / 3), cos = Math.cos(Math.PI / 3);
+    len = Math.max(1.0, Math.min(
+      CAR_BODY_M.length,
+      (bay.length_m - wid * sin) / cos,
+      (bay.width_m - wid * cos) / sin
+    ));
+  } else {
+    angle = 0;
+    len = Math.min(CAR_BODY_M.length, bay.length_m * 0.9);
+    wid = Math.min(CAR_BODY_M.width, bay.width_m * 0.9);
+  }
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">`
+    + carShape(w / 2, h / 2, scale, angle, surveyed, len, wid)
+    + `</svg>`;
+}
+
+// A car-park tile at one integer zoom: a bay 2.5 m wide, a car at each end of
+// an aisle, so each car owns `lot_space_m2` of ground including its share of
+// the aisle — the same figure the count was made from.
+function lotTileSvg(zoom, surveyed) {
+  const perSpace = (PARKED_CAR_DRAWING && PARKED_CAR_DRAWING.lot_space_m2) || 25.0;
+  const bayW = 2.5;
+  const rowDepth = perSpace / bayW;           // car plus its half of the aisle
+  const tileWm = bayW, tileHm = rowDepth * 2;
+  // MapLibre draws a fill pattern at its raw pixel size in CSS pixels, whatever
+  // pixelRatio the image is registered with and whatever the display's density
+  // is (measured, not assumed: a 2x image came out twice the size on a 1x and
+  // a 2x screen alike). So the tile is drawn at exactly its on-screen size.
+  const scale = pxPerMetreAt(zoom);
+  const w = Math.max(2, Math.round(tileWm * scale));
+  const h = Math.max(4, Math.round(tileHm * scale));
+  const sx = w / tileWm, sy = h / tileHm;
+  const s = Math.min(sx, sy);
+  const carLen = Math.min(CAR_BODY_M.length, rowDepth * 0.95);
+  const carWid = Math.min(CAR_BODY_M.width, bayW * 0.85);
+  // Cars nose-in at both ends of the aisle, i.e. along the tile's y axis.
+  const top = carShape(w / 2, (carLen / 2 + 0.25) * s, s, 90, surveyed, carLen, carWid);
+  const bottom = carShape(w / 2, h - (carLen / 2 + 0.25) * s, s, -90, surveyed, carLen, carWid);
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">`
+    + top + bottom + `</svg>`;
+}
+
+// Image ids: car-<basis>-<orientation> for kerbs, lot-<basis>-z<zoom> for car parks.
+function loadParkedCarImage(imageId) {
   if (map.hasImage(imageId)) return;
-  const img = new Image(28, 48);
-  img.onload = () => { if (!map.hasImage(imageId)) map.addImage(imageId, img, { pixelRatio: 2 }); };
-  img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(carSvg(imageId === "car-surveyed"));
+  const m = /^(car|lot)-(surveyed|modelled)-(.+)$/.exec(imageId);
+  if (!m) return;
+  const surveyed = m[2] === "surveyed";
+  let svg;
+  if (m[1] === "car") {
+    if (!PARKED_ORIENTATIONS.includes(m[3])) return;
+    svg = kerbBandSvg(m[3], surveyed);
+  } else {
+    const z = parseInt(m[3].replace(/^z/, ""), 10);
+    if (!Number.isFinite(z)) return;
+    svg = lotTileSvg(z, surveyed);
+  }
+  // Registered at pixelRatio 1 on purpose: a kerb sprite is stretched to the
+  // line width, so only its proportions matter, and a car-park tile is drawn
+  // at its raw pixel size whatever ratio it is registered with (see lotTileSvg).
+  const img = new Image();
+  img.onload = () => { if (!map.hasImage(imageId)) map.addImage(imageId, img, { pixelRatio: 1 }); };
+  img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+}
+
+function registerParkedCarSprites() {
+  if (!PARKED_CAR_DRAWING) return;
+  ["surveyed", "modelled"].forEach(basis => {
+    PARKED_ORIENTATIONS.forEach(o => loadParkedCarImage(`car-${basis}-${o}`));
+    for (let z = PARKED_LOT_PATTERN_MINZOOM; z <= PARKED_LOT_PATTERN_MAXZOOM; z++) {
+      loadParkedCarImage(`lot-${basis}-z${z}`);
+    }
+  });
 }
 
 // Register every glyph referenced by an active icon layer. Called on map.load.
@@ -1614,8 +1743,7 @@ function registerMapIcons() {
     const s = LAYER_STYLE[kind];
     if (s && s.point === "icon" && s.icon) loadIconImage(iconName(kind));
   });
-  loadCarImage("car-surveyed");
-  loadCarImage("car-modelled");
+  registerParkedCarSprites();
 }
 
 // ─── Walking quality ─────────────────────────────────────────────────────────
@@ -2238,7 +2366,10 @@ function deriveAccidentMode() {
 
 // Lazily draw any glyph the renderer asks for but that isn't registered yet —
 // a safety net so symbol layers never render with a missing image.
-map.on("styleimagemissing", (e) => loadIconImage(e.id));
+map.on("styleimagemissing", (e) => {
+  if (/^(car|lot)-/.test(e.id)) loadParkedCarImage(e.id);
+  else loadIconImage(e.id);
+});
 
 map.on("load", () => {
   // Pre-register POI glyphs so the first paint already shows the icons.
@@ -2389,7 +2520,7 @@ map.on("load", () => {
     layout: { visibility: "none", "line-cap": "round" },
     paint: {
       "line-color": walkClassColorExpr(),
-      // Thinner than parked-cars-density-line at every zoom, so the two read
+      // Thinner than a parked-car band at every zoom, so the two read
       // as two layers when stacked rather than as one fat smear. Unclassed
       // streets are drawn thinnest: present, visibly a gap, never shouting.
       "line-width": [
@@ -2471,106 +2602,179 @@ map.on("load", () => {
   map.on("mouseleave", "walkability-line", () => { map.getCanvas().style.cursor = ""; });
 
   // ── Parked cars ──
-  // Two sources, because the honest answer changes with zoom. Close in, one
-  // symbol is one car. Zoomed out, twenty thousand car symbols are a smear, so
-  // the estimate goes back onto the geometry it came from — the kerb keeps its
-  // street, the car park keeps its footprint — rather than being re-binned into
-  // an arbitrary grid that belongs to neither.
+  // One source, at every zoom. Each kerb is the street it belongs to and is
+  // drawn as a band of cars at true scale, offset to the side the cars sit on;
+  // each car park is its footprint, filled with rows of cars once a car is big
+  // enough on screen to be one. Below that a kerb band is clamped to a minimum
+  // width, so a city-wide view reads as what it is — streets lined with cars —
+  // instead of thinning out into a scatter of specks.
   map.addSource("parked-cars", {
     type: "geojson",
     data: { type: "FeatureCollection", features: [] },
   });
-  map.addSource("parked-cars-density", {
-    type: "geojson",
-    data: { type: "FeatureCollection", features: [] },
-  });
 
+  // A band's depth is the bay's: two metres for parallel parking, five for
+  // perpendicular. Everything below is in metres until the zoom stops turn it
+  // into pixels at this latitude.
+  const orientationOf = ["coalesce", ["get", "orientation"], "parallel"];
+  const bandDepthM = ["match", orientationOf,
+    "diagonal", parkedBay("diagonal").width_m,
+    "perpendicular", parkedBay("perpendicular").width_m,
+    parkedBay("parallel").width_m];
+  // The catalogue's kerb offset is where the middle of a parallel bay sits
+  // from the centreline; a deeper bay keeps the same inner edge.
+  const kerbOffsetM = (PARKED_CAR_DRAWING && PARKED_CAR_DRAWING.kerb_offset_m) || 0;
+  const bandCentreM = ["+", kerbOffsetM - parkedBay("parallel").width_m / 2, ["/", bandDepthM, 2]];
+  // Below true scale a band still has to be a band. 3 px keeps a street
+  // visibly lined with cars from the whole-city view down.
+  const PARKED_BAND_MIN_PX = 3;
+  // One stop per integer zoom: a scale that doubles per zoom interpolates
+  // exactly between integer stops, and the minimum width stays a flat line
+  // where it applies instead of being smeared across the whole range.
+  const zoomStops = (perZoom) => {
+    const out = ["interpolate", ["exponential", 2], ["zoom"]];
+    for (let z = 8; z <= 22; z++) out.push(z, perZoom(pxPerMetreAt(z)));
+    return out;
+  };
+  const bandWidth = zoomStops(ppm => ["max", PARKED_BAND_MIN_PX, ["*", ppm, bandDepthM]]);
+  const bandOffset = (sign) => zoomStops(ppm => ["*", sign * ppm, bandCentreM]);
+  // car-<basis>-<orientation>; anything the catalogue does not know draws as
+  // parallel, which is also how it was counted.
+  const bandPattern = ["concat", "car-",
+    ["match", ["get", "basis"], "modelled", "modelled", "surveyed"], "-",
+    ["match", orientationOf, ["diagonal", "perpendicular"], orientationOf, "parallel"]];
+  // `side` is OpenStreetMap's: relative to the way's direction. MapLibre's
+  // line-offset is too — positive is to the right of the direction of travel.
+  // A kerb with cars on both sides gets a band on each; an unknown side gets
+  // one band, which is also how many kerbs it was counted for.
+  const kerbBand = (id, sign, sides) => ({
+    id,
+    type: "line",
+    source: "parked-cars",
+    filter: ["all",
+      ["==", ["geometry-type"], "LineString"],
+      ["match", ["coalesce", ["get", "side"], "unknown"], sides, true, false]],
+    layout: { visibility: "none", "line-join": "round" },
+    paint: {
+      "line-pattern": bandPattern,
+      "line-width": bandWidth,
+      "line-offset": bandOffset(sign),
+      // A modelled kerb is already an outline rather than a solid car; it is
+      // also drawn a touch fainter, for the same reason: the map must never
+      // make a guess look like a measurement.
+      "line-opacity": ["match", ["get", "basis"], "modelled", 0.85, 1],
+    },
+  });
+  map.addLayer(kerbBand("parked-cars-kerb-right", 1, ["right", "both", "unknown"]));
+  map.addLayer(kerbBand("parked-cars-kerb-left", -1, ["left", "both"]));
+
+  // Car parks: a flat fill while a car is under two pixels, rows of cars at
+  // true scale from PARKED_LOT_PATTERN_MINZOOM up, one tile size per integer
+  // zoom because a fill pattern is drawn in screen pixels.
   map.addLayer({
-    id: "parked-cars-density-fill",
+    id: "parked-cars-lot-fill",
     type: "fill",
-    source: "parked-cars-density",
+    source: "parked-cars",
     filter: ["==", ["geometry-type"], "Polygon"],
+    maxzoom: PARKED_LOT_PATTERN_MINZOOM,
     layout: { visibility: "none" },
     paint: {
       "fill-color": PARKED_CAR_COLOR,
-      "fill-opacity": [
-        "interpolate", ["linear"], ["coalesce", ["get", "cars_per_1000m2"], 0],
-        0, 0.15,
-        40, 0.55,
-        80, 0.8
-      ],
+      // Denser car parks draw darker; a modelled one is paler at every density.
+      "fill-opacity": ["*",
+        ["match", ["get", "basis"], "modelled", 0.6, 1],
+        ["interpolate", ["linear"], ["coalesce", ["get", "cars_per_1000m2"], 0],
+          0, 0.35,
+          40, 0.6,
+          80, 0.8]],
     },
   });
-  map.addLayer({
-    id: "parked-cars-density-line",
-    type: "line",
-    source: "parked-cars-density",
-    filter: ["==", ["geometry-type"], "LineString"],
-    layout: { visibility: "none", "line-cap": "round" },
-    paint: {
-      "line-color": PARKED_CAR_COLOR,
-      // Width carries the count: a kerb holding thirty cars per hundred metres
-      // draws thicker than one holding five.
-      "line-width": [
-        "interpolate", ["linear"], ["coalesce", ["get", "cars_per_100m"], 0],
-        0, 1,
-        10, 3,
-        30, 7
-      ],
-      // A modelled kerb is drawn fainter than a surveyed one, for the same
-      // reason the symbols differ: the map must never make a guess look like a
-      // measurement.
-      "line-opacity": ["match", ["get", "basis"], "modelled", 0.35, 0.75],
-    },
-  });
-  map.addLayer({
-    id: "parked-cars-symbol",
-    type: "symbol",
-    source: "parked-cars",
-    layout: {
-      visibility: "none",
-      "icon-image": ["match", ["get", "basis"], "modelled", "car-modelled", "car-surveyed"],
-      // Cars park bumper to bumper; hiding the ones that touch would empty out
-      // exactly the streets this layer exists to show.
-      "icon-allow-overlap": true,
-      "icon-ignore-placement": true,
-      "icon-size": [
-        "interpolate", ["linear"], ["zoom"],
-        14, 0.30,
-        17, 0.55,
-        19, 0.9
-      ],
-    },
+  // One layer per basis, so the pattern is a zoom-only step rather than a
+  // per-feature lookup. That is not a stylistic choice: measured in MapLibre
+  // 4.5, a data-driven fill-pattern is drawn at twice its size at every zoom,
+  // while a zoom-only one is drawn true to scale and scales continuously
+  // between integer zooms. Rows of cars that claim a scale must be drawn at it.
+  const lotPatternFor = (basis) => {
+    const expr = ["step", ["zoom"], `lot-${basis}-z${PARKED_LOT_PATTERN_MINZOOM}`];
+    for (let z = PARKED_LOT_PATTERN_MINZOOM + 1; z <= PARKED_LOT_PATTERN_MAXZOOM; z++) {
+      expr.push(z, `lot-${basis}-z${z}`);
+    }
+    return expr;
+  };
+  ["surveyed", "modelled"].forEach(basis => {
+    map.addLayer({
+      id: `parked-cars-lot-${basis}`,
+      type: "fill",
+      source: "parked-cars",
+      filter: ["all",
+        ["==", ["geometry-type"], "Polygon"],
+        basis === "modelled"
+          ? ["==", ["get", "basis"], "modelled"]
+          : ["!=", ["get", "basis"], "modelled"]],
+      minzoom: PARKED_LOT_PATTERN_MINZOOM,
+      layout: { visibility: "none" },
+      paint: {
+        "fill-pattern": lotPatternFor(basis),
+        "fill-opacity": basis === "modelled" ? 0.85 : 1,
+      },
+    });
   });
 
+  // Clicking a band answers for the whole kerb, not one car: how many spaces
+  // it holds, on what basis, and at what density.
+  const PARKED_CAR_LAYERS = ["parked-cars-kerb-right", "parked-cars-kerb-left",
+    "parked-cars-lot-fill", "parked-cars-lot-surveyed", "parked-cars-lot-modelled"];
   const carPopup = new maplibregl.Popup({ closeButton: true });
-  map.on("click", "parked-cars-symbol", (e) => {
+  const ORIENTATION_LABELS = {
+    parallel: "{% trans 'parallel to the kerb' %}",
+    diagonal: "{% trans 'at an angle to the kerb' %}",
+    perpendicular: "{% trans 'nose-in to the kerb' %}",
+  };
+  const SIDE_LABELS = {
+    both: "{% trans 'both sides' %}",
+    left: "{% trans 'one side' %}",
+    right: "{% trans 'one side' %}",
+    unknown: "{% trans 'one side (side not recorded)' %}",
+  };
+  const onParkedCarClick = (e) => {
     if (!e.features.length) return;
     const p = e.features[0].properties;
     const surveyed = p.basis !== "modelled";
-    const head = surveyed
-      ? "{% trans 'Parked car — surveyed' %}"
-      : "{% trans 'Parked car — modelled (assumed)' %}";
-    const where = p.origin === "lot"
-      ? "{% trans 'Off-street car park' %}"
-      : "{% trans 'Kerbside parking' %}";
-    const stands = Number(p.represents) > 1
-      ? `<div class="text-amber-600">${escHtml(p.represents)} {% trans "cars per symbol" %}</div>`
-      : "";
+    const lot = p.origin === "lot";
+    const head = lot
+      ? (surveyed ? "{% trans 'Car park — surveyed' %}" : "{% trans 'Car park — modelled (assumed)' %}")
+      : (surveyed ? "{% trans 'Kerbside parking — surveyed' %}" : "{% trans 'Kerbside parking — modelled (assumed)' %}");
+    const count = "{% trans 'About %(n)s car spaces' %}".replace("%(n)s", Number(p.cars || 0).toLocaleString());
+    const rows = [];
+    if (lot) {
+      if (p.cars_per_1000m2 != null) {
+        rows.push("{% trans '%(n)s per 1,000 m² of car park' %}".replace("%(n)s", p.cars_per_1000m2));
+      }
+    } else {
+      const how = [ORIENTATION_LABELS[p.orientation] || ORIENTATION_LABELS.parallel, SIDE_LABELS[p.side] || SIDE_LABELS.unknown];
+      rows.push(how.join(" · "));
+      if (p.cars_per_100m != null) {
+        rows.push("{% trans '%(n)s per 100 m of street' %}".replace("%(n)s", p.cars_per_100m));
+      }
+    }
     carPopup
       .setLngLat(e.lngLat)
       .setHTML(
         `<div class="text-xs grid gap-0.5">` +
         `<div class="font-semibold">${head}</div>` +
         (p.name ? `<div>${escHtml(p.name)}</div>` : "") +
-        `<div class="text-slate-500">${where}</div>` +
-        stands +
+        `<div>${count}</div>` +
+        rows.map(r => `<div class="text-slate-500">${escHtml(r)}</div>`).join("") +
+        `<div class="text-slate-400">{% trans "Capacity, not occupancy." %}</div>` +
         `</div>`
       )
       .addTo(map);
+  };
+  PARKED_CAR_LAYERS.forEach(id => {
+    map.on("click", id, onParkedCarClick);
+    map.on("mouseenter", id, () => { map.getCanvas().style.cursor = "pointer"; });
+    map.on("mouseleave", id, () => { map.getCanvas().style.cursor = ""; });
   });
-  map.on("mouseenter", "parked-cars-symbol", () => { map.getCanvas().style.cursor = "pointer"; });
-  map.on("mouseleave", "parked-cars-symbol", () => { map.getCanvas().style.cursor = ""; });
 
   document.querySelectorAll(".layer-toggle").forEach(checkbox => {
     checkbox.addEventListener("change", (e) => {
@@ -3422,11 +3626,11 @@ function syncDerivedLayers() {
 }
 
 // ─── Parked cars (derived layer) ─────────────────────────────────────────────
-// Zoom decides which honest answer is on screen. Above PARKED_CAR_SYMBOL_ZOOM
-// each symbol is one car; below it the estimate goes back onto the kerb and the
-// car-park footprint it came from, because twenty thousand overlapping symbols
-// say nothing at city scale.
-const PARKED_CAR_SYMBOL_ZOOM = 14;
+// One request, one set of layers, every zoom. The response is one feature per
+// kerb and per car park, so there is nothing to thin and nothing to refetch
+// when the viewer zooms: the bands simply scale with the map.
+const PARKED_CAR_LAYER_IDS = ["parked-cars-kerb-right", "parked-cars-kerb-left",
+  "parked-cars-lot-fill", "parked-cars-lot-surveyed", "parked-cars-lot-modelled"];
 
 function parkedCars() {
   return {
@@ -3434,22 +3638,11 @@ function parkedCars() {
     include: "surveyed,modelled",
     access: "",
     counts: { total: 0, surveyed: 0, modelled: 0 },
-    represents: 1,
-    mode: "symbols",
     loaded: false,
     _fetchTimer: null,
     _fetched: {},
 
     init() {
-      this.mode = map.getZoom() >= PARKED_CAR_SYMBOL_ZOOM ? "symbols" : "density";
-      map.on("zoomend", () => {
-        const next = map.getZoom() >= PARKED_CAR_SYMBOL_ZOOM ? "symbols" : "density";
-        if (next === this.mode) return;
-        this.mode = next;
-        if (!this.enabled) return;
-        this._applyVisibility();
-        this._fetch();
-      });
       // A story view hides every layer on the map, this one included, so the
       // checkbox has to follow — a panel claiming the cars are on while the
       // map shows none of them is worse than no panel at all.
@@ -3485,14 +3678,12 @@ function parkedCars() {
     // Has map.on("load") run? The layers only exist from that point on, and a
     // viewer can tick the box before it does.
     _ready() {
-      return !!map.getLayer("parked-cars-symbol");
+      return !!map.getLayer("parked-cars-kerb-right");
     },
 
     _syncFromMap() {
       if (!this._ready()) return;
-      const visible = ["parked-cars-symbol", "parked-cars-density-line"].some(
-        id => map.getLayoutProperty(id, "visibility") === "visible"
-      );
+      const visible = map.getLayoutProperty("parked-cars-kerb-right", "visibility") === "visible";
       this.enabled = visible;
       const cb = document.getElementById("toggle-parked-cars");
       if (cb) cb.checked = visible;
@@ -3504,13 +3695,6 @@ function parkedCars() {
         .replace("%(total)s", (this.counts.total || 0).toLocaleString())
         .replace("%(surveyed)s", (this.counts.surveyed || 0).toLocaleString())
         .replace("%(modelled)s", (this.counts.modelled || 0).toLocaleString());
-    },
-
-    get representsNote() {
-      // A thinned map that claimed one symbol per car would be a lie, so this
-      // line is not optional decoration — it is what makes the drawing true.
-      const t = "{% trans 'Too many to draw one by one — each symbol stands for %(n)s cars.' %}";
-      return t.replace("%(n)s", this.represents);
     },
 
     toggle(checked) {
@@ -3529,39 +3713,32 @@ function parkedCars() {
     },
 
     _applyVisibility() {
-      const symbols = this.enabled && this.mode === "symbols";
-      const density = this.enabled && this.mode === "density";
-      const set = (id, on) => {
-        if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", on ? "visible" : "none");
-      };
-      set("parked-cars-symbol", symbols);
-      set("parked-cars-density-line", density);
-      set("parked-cars-density-fill", density);
+      PARKED_CAR_LAYER_IDS.forEach(id => {
+        if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", this.enabled ? "visible" : "none");
+      });
     },
 
     _params() {
       const params = new URLSearchParams();
       if (this.include) params.set("include", this.include);
       if (this.access) params.set("access", this.access);
-      if (this.mode === "density") params.set("format", "density");
+      params.set("format", "density");
       return params;
     },
 
     _fetch() {
       if (this._fetchTimer) clearTimeout(this._fetchTimer);
       this._fetchTimer = setTimeout(() => {
-        const sourceId = this.mode === "density" ? "parked-cars-density" : "parked-cars";
-        const src = map.getSource(sourceId);
+        const src = map.getSource("parked-cars");
         if (!src) return;
         const params = this._params();
-        const key = sourceId + "?" + params.toString();
+        const key = params.toString();
         if (this._fetched[key]) return;
         fetch(`/api/v1/workspaces/${WORKSPACE_SLUG}/parked-cars/?${params.toString()}`)
           .then(r => r.json())
           .then(fc => {
             this._fetched[key] = true;
             this.counts = fc.counts || { total: 0, surveyed: 0, modelled: 0 };
-            this.represents = fc.represents || 1;
             this.loaded = true;
             src.setData(fc);
           })
