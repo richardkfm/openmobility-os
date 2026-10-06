@@ -3,7 +3,7 @@
 
 # OpenMobility OS
 
-**Version:** 0.56.0 (pre-release) — see [CHANGELOG.md](CHANGELOG.md)
+**Version:** 0.57.0 (pre-release) — see [CHANGELOG.md](CHANGELOG.md)
 **License:** See [LICENSE](LICENSE)
 
 > The open, free, self-hostable operating system between open mobility data
@@ -163,18 +163,20 @@ four demo workspaces: **Leipzig**, **Utrecht**, **Musterstadt**, and **Muster-La
   plan reports how many people are still expected to be harmed rather than hiding
   it behind a percentage. See [docs/AREA_TARGETS.md](docs/AREA_TARGETS.md)
 - **Interactive maps** — MapLibre GL JS with configurable tile sources
-- **Parked cars, made visible** — a map layer that fills kerbside parking and
-  off-street car parks with one symbol per car, so the space a city gives to
-  cars at rest can be counted instead of asserted. Where OpenStreetMap records
-  parking the cars are drawn solid and counted as *surveyed*; where it is silent
-  on a residential street they are drawn as a dashed outline and counted
-  separately as *modelled*, and a street surveyed as having no parking is never
-  filled in. Zoomed out, the estimate falls back to a density view on the kerbs
-  and footprints it came from; where a city has too many cars to draw one by
-  one, the legend says how many each symbol stands for. It reports **capacity,
-  not occupancy** — how many cars fit, not how many are there now — and every
-  number behind it (bay length, square metres per space, which street classes
-  get a modelled kerb) is a parameter a workspace can override. See
+- **Parked cars, made visible** — a map layer that lines every kerb with
+  parking with cars at true scale, bumper to bumper, and fills every off-street
+  car park with rows of them, so the space a city gives to cars at rest can be
+  seen and counted instead of asserted. Where OpenStreetMap records parking the
+  cars are drawn solid and counted as *surveyed*; where it is silent on a
+  residential street they are drawn as pale dashed hulls and counted separately
+  as *modelled*, and a street surveyed as having no parking is never filled in.
+  The cars follow how they are parked — parallel, angled or nose-in — and the
+  bands stay visible from the whole-city view down to a single kerb with
+  nothing thinned: the map fetches one feature per street, not one per car, so
+  the layer loads once and stays fast however big the city. It reports
+  **capacity, not occupancy** — how many cars fit, not how many are there now —
+  and every number behind it (bay length, square metres per space, which street
+  classes get a modelled kerb) is a parameter a workspace can override. See
   [docs/PARKING_AND_WALKING.md](docs/PARKING_AND_WALKING.md)
 - **A walking score for every street** — each street is rated *comfortable*,
   *usable*, *tight*, *hostile* or *not enough data* from ten inputs: how

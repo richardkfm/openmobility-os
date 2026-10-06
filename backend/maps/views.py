@@ -120,15 +120,20 @@ def parked_cars_view(request, workspace_slug: str):
                        (``public``, ``customers``, ``private``, ``unknown``);
                        default all. Kerbside parking is public by definition
                        and is unaffected by this filter.
-        ``format``   — ``symbols`` (default) draws one point per car;
-                       ``density`` keeps the source geometry and reports cars
-                       per 100 m of kerb / per 1000 m2 of car park, for zoom
-                       levels where individual symbols mean nothing.
+        ``format``   — ``density`` keeps the source geometry: each kerb as
+                       its street with the side and orientation of its bays,
+                       each car park as its footprint, with cars per 100 m of
+                       kerb / per 1000 m2 of car park and a ``drawing`` block
+                       giving the bay geometry. This is what the map draws, as
+                       bands of cars at true scale, at every zoom.
+                       ``symbols`` (default) draws one point per car instead,
+                       for API consumers that want individual positions.
 
     Above ``MAX_SYMBOLS`` points the symbol output is thinned and every
     remaining point carries how many cars it stands for, with the same figure
-    repeated at collection level so the legend can say so. A thinned map that
-    claims one symbol per car would be a lie.
+    repeated at collection level so a consumer can say so. A thinned map that
+    claims one symbol per car would be a lie, which is one reason the map
+    itself draws the density form.
     """
     ws = get_active_workspace(workspace_slug)
 

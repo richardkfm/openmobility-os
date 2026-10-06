@@ -3,8 +3,11 @@
 OpenMobility OS can already price a rebuild in parking spaces. What it could not
 do is show the other side of that trade: how much of a city is given over to
 cars at rest. This module turns kerbside-parking tags and off-street car-park
-polygons into individual car positions, so "the space cars occupy" stops being
-an abstraction and becomes something a council chamber can count.
+polygons into car counts, and into the geometry the map draws them on, so "the
+space cars occupy" stops being an abstraction and becomes something a council
+chamber can count. The map draws each kerb as a band of cars at true scale
+(:func:`build_parking_density`); one point per car (:func:`build_parked_cars`)
+stays available through the API.
 
 Two honesty rules govern everything here, and neither may be relaxed:
 
@@ -101,6 +104,40 @@ DEFAULT_PARAMS: dict[str, Any] = {
     # the other.
     "needs_review": True,
 }
+
+# Orientations the street-space catalogue knows a bay length for. The map draws
+# one band sprite per orientation; anything else falls back to parallel.
+ORIENTATIONS = ("parallel", "diagonal", "perpendicular")
+
+
+def drawing_params(params=None, street_params=None) -> dict[str, Any]:
+    """The real-world dimensions the map scales a car band to.
+
+    The map no longer draws one symbol per car. It draws every kerb as a band of
+    cars at true scale — one car every ``parking_space_length_m`` along the
+    kerb, ``parking_lane_width_m`` deep — and every car park as a grid at
+    ``lot_area_per_space_m2``. Those numbers are the same ones the count comes
+    from, read from the same per-workspace catalogue, so the picture and the
+    figure in the panel cannot disagree. This block travels with every density
+    response so an API consumer can see what scale the drawing claims.
+    """
+    p = params or DEFAULT_PARAMS
+    sp = street_params or street_space.DEFAULT_PARAMS
+    lengths = sp.get("parking_space_length_m") or {}
+    widths = sp.get("parking_lane_width_m") or {}
+    bays = {}
+    for orientation in ORIENTATIONS:
+        length = _to_float(lengths.get(orientation)) or _to_float(lengths.get("parallel")) or 5.75
+        width = _to_float(widths.get(orientation)) or _to_float(widths.get("parallel")) or 2.0
+        bays[orientation] = {"length_m": length, "width_m": width}
+    per_space = p.get("lot_area_per_space_m2") or {}
+    return {
+        "kerb_offset_m": _to_float(p.get("kerb_offset_m")) or 0.0,
+        "kerb_coverage_factor": _to_float(p.get("kerb_coverage_factor")) or 1.0,
+        "bays": bays,
+        "lot_space_m2": _to_float(per_space.get("default")) or 25.0,
+    }
+
 
 # Above this many symbols a city-sized workspace stops being a map and starts
 # being a denial-of-service on the browser. Past it the server thins the output
@@ -809,10 +846,14 @@ def build_parking_density(
 ) -> dict:
     """The same estimates, kept on their own geometry instead of scattered.
 
-    This is what the map draws when it is zoomed too far out for individual
-    symbols to mean anything. Re-using the source geometry is both cheaper than
-    scattering and truer than re-binning it into an arbitrary grid: a kerb keeps
-    its street and a car park keeps its footprint.
+    This is what the map draws, at every zoom. Each kerb comes back as the
+    street it belongs to, with the side the cars sit on and how they are
+    oriented, and the map draws it as a band of cars at true scale; each car
+    park comes back as its footprint. One feature per place rather than one per
+    car means a city-sized workspace is a few thousand features instead of a
+    hundred thousand points, nothing has to be thinned, and the same response
+    serves a city-wide view and a single street. The ``drawing`` block says what
+    scale the band is drawn to.
     """
     p = params or DEFAULT_PARAMS
     sp = street_params or street_space.DEFAULT_PARAMS
@@ -842,10 +883,23 @@ def build_parking_density(
             "cars_per_100m": None,
             "cars_per_1000m2": None,
         }
-        if place.origin == "kerb" and place.length_m:
-            props["cars_per_100m"] = round(count * 100.0 / place.length_m, 1)
-        if place.origin == "lot" and place.area_m2:
-            props["cars_per_1000m2"] = round(count * 1000.0 / place.area_m2, 1)
+        if place.origin == "kerb":
+            # Which kerb(s) the band is drawn on, and how the cars sit in it.
+            # `side` is relative to the way's direction, as OpenStreetMap tags
+            # it; the map offsets the band the same way. An unknown side is
+            # drawn on one kerb, which is also how it was counted.
+            props["side"] = place.side if place.side in ("left", "right", "both") else "unknown"
+            props["orientation"] = (
+                place.orientation if place.orientation in ORIENTATIONS else "parallel"
+            )
+            if place.length_m:
+                props["length_m"] = round(place.length_m, 1)
+                props["cars_per_100m"] = round(count * 100.0 / place.length_m, 1)
+        if place.origin == "lot":
+            props["parking_form"] = place.parking_form
+            if place.area_m2:
+                props["area_m2"] = round(place.area_m2, 1)
+                props["cars_per_1000m2"] = round(count * 1000.0 / place.area_m2, 1)
         features.append(
             {"type": "Feature", "geometry": place.geometry, "properties": props}
         )
@@ -854,6 +908,7 @@ def build_parking_density(
         "type": "FeatureCollection",
         "features": features,
         "counts": _totals(places),
+        "drawing": drawing_params(p, sp),
         "occupancy_rate": _to_float(p.get("occupancy_rate")) or 1.0,
         "needs_review": bool(p.get("needs_review")),
         "source": p.get("source"),
